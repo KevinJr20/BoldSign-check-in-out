@@ -85,7 +85,7 @@ Copy a Signing URL.
 Paste into a browser (e.g., Chrome).
 
 Verify fields:
-Pre-filled: name (e.g., "Kevin Smith"), employee_id (e.g., "EMP123"), date (e.g., "2025-04-16").
+Pre-filled: name (e.g., "Kevin Omondi"), employee_id (e.g., "SFK000"), date (e.g., "2025-04-16").
 
 Editable: time_in, time_out, signature.
 
