@@ -1,13 +1,17 @@
 # BoldSign Check-In/Out Demo
 
-A Python script to streamline employee check-in and check-out using the BoldSign API. Built for Syncfusion, this demo creates a reusable form for employees to sign in (e.g., "09:00 AM") and out (e.g., "05:00 PM") daily, with data synced to HR via webhooks. Perfect for eliminating morning queues and impressing your GM!
+A Python script to streamline employee check-in and check-out using the BoldSign API. Built for Syncfusion, this demo creates a reusable form for employees to sign in (e.g., "09:00 AM") and out (e.g., "05:00 PM") daily, with data synced to HR via webhooks. Perfect for eliminating morning queues and saving check-in & check-out time.
 
 # 🚀 Features
 
 Check-In & Check-Out: One form captures time_in and time_out with employee name, ID, date, and signature.
+
 BoldSign Integration: Creates templates, signing URLs, and webhooks via the API.
+
 Secure Config: Uses .env for API token and base URL.
+
 Demo-Ready: Generates URLs in seconds for a slick 30-second pitch.
+
 Error Handling: Catches issues like 401 Unauthorized or 500 Server Error.
 
 
@@ -64,22 +68,30 @@ Get your token from BoldSign API Tokens.
 
 Expect:
 `Using BASE_URL: https://api.boldsign.com/v1`
+
 `API_TOKEN (first 5 chars): xyz12...`
+
 `Signing URL: https://app.boldsign.com/link/...`
+
 `Signing URL: https://app.boldsign.com/link/...`
+
 `Webhook ID: wh_123`
 
 
 ## Test the Form
 
 Copy a Signing URL.
+
 Paste into a browser (e.g., Chrome).
+
 Verify fields:
 Pre-filled: name (e.g., "Kevin Smith"), employee_id (e.g., "EMP123"), date (e.g., "2025-04-16").
+
 Editable: time_in, time_out, signature.
 
 
 Check-in: Enter time_in (e.g., "09:00 AM"), sign, submit.
+
 Check-out: Reopen URL, enter time_out (e.g., "05:00 PM"), sign, submit.
 
 
@@ -133,7 +145,9 @@ MIT License. See `LICENSE` for details.
 
 # 🙌 Acknowledgments
 
-BoldSign for the API.
+BoldSign for the robust API.
+
 Syncfusion for the inspiration.
+
 `Kevin Ochieng Omondi Jr.` for coding this demo!
 
