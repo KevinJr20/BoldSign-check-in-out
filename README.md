@@ -1,33 +1,28 @@
-# BoldSign Check-In/Out Demo
+# Biometric Check-In Demo
 
-A Python script to streamline employee check-in and check-out using the BoldSign API. Built for Syncfusion, this demo creates a reusable form for employees to sign in (e.g., "09:00 AM") and out (e.g., "05:00 PM") daily, with data synced to HR via webhooks. Perfect for eliminating morning queues and saving check-in & check-out time.
+A Python-based system to enhance Syncfusion's biometric check-in process, addressing manual signing inefficiencies. It features fast check-ins (<10 seconds), a real-time HR dashboard, and compliance with Kenyan labor law (Employment Act, 2007).
 
-# 🚀 Features
+## 🚀 Features
 
-Check-In & Check-Out: One form captures time_in and time_out with employee name, ID, date, and signature.
+- **Fast Check-Ins**: <10-second biometric scans (fingerprint, face).
+- **HR Dashboard**: Real-time attendance logs, exportable to CSV.
+- **Compliance**: Encrypted data, e-signed consents via BoldSign.
+- **Accuracy**: Prevents buddy punching with strict biometric verification.
+- **Employee-Friendly**: Mobile app endpoint, facial recognition fallback.
 
-BoldSign Integration: Creates templates, signing URLs, and webhooks via the API.
+## 📋 Prerequisites
 
-Secure Config: Uses .env for API token and base URL.
+- Python 3.8+
+- SQLite (included)
+- BoldSign account (for consent forms)
 
-Demo-Ready: Generates URLs in seconds for a slick 30-second pitch.
+## ⚙️ Setup
 
-Error Handling: Catches issues like 401 Unauthorized or 500 Server Error.
+1. **Clone the Repo**
 
-
-# 📋 Prerequisites
-
-Python 3.8+
-BoldSign sandbox account (free API token)
-Git (to clone and commit)
-
-
-# ⚙️ Setup
-
-## Clone the Repo
-
-`git clone https://github.com/your-username/boldsign-checkinout-demo.git`
-`cd boldsign-checkinout-demo`
+   ```bash
+   git clone https://github.com/your-username/biometric-checkin-demo.git
+   cd biometric-checkin-demo
 
 
 ## Set Up Virtual Environment
@@ -39,13 +34,13 @@ Git (to clone and commit)
 
 ## Install Dependencies
 
-`pip install requests python-dotenv`
+`pip install -r requirements.txt`
 
 
 ## Configure Environment
 Create a .env file:
-`touch .env  # Linux/Mac`
-`echo.>.env  # Windows (CMD)`
+`echo ENCRYPTION_KEY=$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())") > .env`
+`echo FLASK_ENV=development >> .env  # Windows (CMD)`
 
 Add your BoldSign sandbox token and API URL:
 `BOLDSIGN_API_TOKEN=your_sandbox_token`
@@ -55,27 +50,28 @@ Add your BoldSign sandbox token and API URL:
 Get your token from BoldSign API Tokens.
 .env is gitignored for security.
 
+## Initialize Database
 
+Run `app.py` to create `biometric_attendance.db`:
+
+`python app.py`
 
 
 # 🛠️ Usage
 
-## Run the Script
-`python checkin_out.py`
+## Run the App
+`python app.py`
+
+## Access Dashboard
+
+Open `http://localhost:5000` in Chrome to view HR logs.
 
 
-## Output
+## Test Check-In
 
-Expect:
-`Using BASE_URL: https://api.boldsign.com/v1`
+Simulate biometric check-in:
 
-`API_TOKEN (first 5 chars): xyz12...`
-
-`Signing URL: https://app.boldsign.com/link/...`
-
-`Signing URL: https://app.boldsign.com/link/...`
-
-`Webhook ID: wh_123`
+`curl -X POST http://localhost:5000/checkin -d "employee_id=EMP123&name=Kevin%20Omondi&time_in=08:00%20AM"`
 
 
 ## Test the Form
@@ -94,6 +90,12 @@ Check-in: Enter time_in (e.g., "09:00 AM"), sign, submit.
 
 Check-out: Reopen URL, enter time_out (e.g., "05:00 PM"), sign, submit.
 
+
+## Upload Consent Form
+
+Import `consent_form.md` to BoldSign.
+
+Send to employees for e-signing.
 
 # 📂 Project Structure
 

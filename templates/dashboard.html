@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HR Biometric Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/socket.io@4.7.5/dist/socket.io.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1 { color: #333; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+    </style>
+</head>
+<body>
+    <h1>Biometric Attendance Logs</h1>
+    <table id="attendanceTable">
+        <tr>
+            <th>Timestamp</th>
+            <th>Employee ID</th>
+            <th>Name</th>
+            <th>Date</th>
+            <th>Time In</th>
+            <th>Time Out</th>
+        </tr>
+        {% for log in logs %}
+        <tr>
+            <td>{{ log[0] }}</td>
+            <td>{{ log[1] }}</td>
+            <td>{{ log[2] }}</td>
+            <td>{{ log[3] }}</td>
+            <td>{{ log[4] }}</td>
+            <td>{{ log[5] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    <script>
+        const socket = io();
+        socket.on('update_dashboard', function(data) {
+            const table = document.getElementById('attendanceTable');
+            const row = table.insertRow(1); // Insert after header
+            row.insertCell(0).innerText = data.timestamp;
+            row.insertCell(1).innerText = data.employee_id;
+            row.insertCell(2).innerText = data.name;
+            row.insertCell(3).innerText = data.date;
+            row.insertCell(4).innerText = data.time_in;
+            row.insertCell(5).innerText = data.time_out;
+        });
+    </script>
+</body>
+</html>

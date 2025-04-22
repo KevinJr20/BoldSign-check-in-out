@@ -1,6 +1,7 @@
 import os
-import requests
+from datetime import datetime
 from typing import List, Dict
+import requests
 from requests.exceptions import HTTPError, RequestException
 from dotenv import load_dotenv
 
@@ -9,7 +10,7 @@ load_dotenv()
 
 # Configuration from environment variables
 API_TOKEN = os.getenv("BOLDSIGN_API_TOKEN", "your_api_token")
-BASE_URL = os.getenv("BOLDSIGN_BASE_URL", "https://staging-app.boldsign.com")
+BASE_URL = os.getenv("BOLDSIGN_BASE_URL", "https://api.boldsign.com/v1")
 HEADERS = {"Authorization": f"Bearer {API_TOKEN}", "Content-Type": "application/json"}
 
 # Debug: Print configuration
@@ -21,7 +22,7 @@ def create_template() -> str:
     try:
         payload = {
             "title": "Syncfusion Employee Check-In/Out",
-            "description": "Daily employee check-in/out form for Syncfusion",
+            "description": "Daily employee check-in/out form",
             "document": {
                 "pages": [{"fields": [
                     {"type": "text", "name": "name", "isRequired": True, "x": 50, "y": 50},
@@ -47,6 +48,7 @@ def create_signing_document(template_id: str, employees: List[Dict]) -> List[str
     """Create signing documents for multiple employees."""
     try:
         signing_urls = []
+        current_date = datetime.now().strftime("%Y-%m-%d")  # Dynamic date
         for employee in employees:
             payload = {
                 "templateId": template_id,
@@ -56,7 +58,7 @@ def create_signing_document(template_id: str, employees: List[Dict]) -> List[str
                     "formFields": [
                         {"name": "name", "value": employee["name"]},
                         {"name": "employee_id", "value": employee["id"]},
-                        {"name": "date", "value": "2025-04-16"}
+                        {"name": "date", "value": current_date}  # Use dynamic date
                     ]
                 }],
                 "embeddedSigningLink": True
@@ -90,7 +92,7 @@ def create_webhook(webhook_url: str) -> str:
         raise Exception(f"Failed to create webhook: {str(e)}")
 
 if __name__ == "__main__":
-    # Demo employee data
+    # Demo employee data (customized for GM/HR)
     employees = [
         {"name": "Kevin Omondi", "email": "kevinjr1@syncfusion.com", "id": "SFK000"},
         {"name": "Rudolph Melvin", "email": "rudolphm@syncfusion.com", "id": "SFK001"}
