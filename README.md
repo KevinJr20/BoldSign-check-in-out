@@ -1,155 +1,188 @@
-# Biometric Check-In Demo
+# Biometric Attendance System 🕒
 
-A Python-based system to enhance Syncfusion's biometric check-in process, addressing manual signing inefficiencies. It features fast check-ins (<10 seconds), a real-time HR dashboard, and compliance with Kenyan labor law (Employment Act, 2007).
+A Flask-based web application for managing employee attendance using biometric (fingerprint) scans. Designed for any organization, this system offers real-time check-in/check-out tracking, user management for multiple admins, and a customizable interface.
 
-## 🚀 Features
+## Features ✨
 
-- **Fast Check-Ins**: <10-second biometric scans (fingerprint, face).
-- **HR Dashboard**: Real-time attendance logs, exportable to CSV.
-- **Compliance**: Encrypted data, e-signed consents via BoldSign.
-- **Accuracy**: Prevents buddy punching with strict biometric verification.
-- **Employee-Friendly**: Mobile app endpoint, facial recognition fallback.
+### Biometric Attendance:
 
-## 📋 Prerequisites
+ Record employee check-ins and check-outs with fingerprint scans, stored securely in an SQLite database.
 
-- Python 3.8+
-- SQLite (included)
-- BoldSign account (for consent forms)
+### User Management:
 
-## ⚙️ Setup
+ Admins can add, edit, or delete user accounts for HR staff, with secure JWT authentication.
+Daily Auto-Refresh: Attendance records display only today’s data, refreshing automatically every 60 seconds.
 
-1. **Clone the Repo**
+### Employee Management:
 
-   ```bash
-   git clone https://github.com/your-username/biometric-checkin-demo.git
-   cd biometric-checkin-demo
+ Add, edit, search, or bulk delete employees via a web interface.
+
+### Customizable Branding: 
+
+Configure company name, logo, and colors via config.json.
+
+### Real-Time Updates:
+
+ WebSocket integration for instant attendance updates.
+
+### Export Data:
+
+ Download attendance records as CSV files.
+
+### Audit Logging:
+
+ Track biometric scan actions for accountability.
+
+### Secure Authentication: 
+
+Password hashing with bcrypt and encrypted fingerprint storage.
+
+## Prerequisites 📋
+
+Python 3.8+ (3.10 or 3.11 recommended)
+A biometric scanner (compatible fingerprint templates required)
+SQLite (included with Python)
+
+## Installation 🚀
+
+### Clone the Repository:
+
+`git clone https://github.com/yourusername/biometric-attendance-system.git`
+`cd biometric-attendance-system`
 
 
-## Set Up Virtual Environment
+### Set Up Virtual Environment:
 
 `python -m venv venv`
-`source venv/bin/activate  # Linux/Mac`
-`.\venv\Scripts\activate   # Windows`
+`source venv/bin/activate  # On Windows: venv\Scripts\activate`
 
 
-## Install Dependencies
+### Install Dependencies:
 
 `pip install -r requirements.txt`
 
 
-## Configure Environment
-Create a .env file:
-`echo ENCRYPTION_KEY=$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())") > .env`
-`echo FLASK_ENV=development >> .env  # Windows (CMD)`
+### Configure Environment:
 
-Add your BoldSign sandbox token and API URL:
-`BOLDSIGN_API_TOKEN=your_sandbox_token`
-`BOLDSIGN_BASE_URL=https://api.boldsign.com/v1`
+Create a .env file in the root directory:
+`FLASK_SECRET_KEY=your-secret-key`
+`ENCRYPTION_KEY=$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")`
+`JWT_SECRET_KEY=your-jwt-secret-key`
 
 
-Get your token from BoldSign API Tokens.
-.env is gitignored for security.
+### Customize Branding:
 
-## Initialize Database
+Edit config.json to set company details:
+`{`
+  `"company_name": "Your Company",`
+  `"logo_url": "/static/your_logo.png",`
+  `"primary_color": "#007bff",`
+  `"secondary_color": "#6c757d",`
+  `"max_cycles_per_day": 2,`
+  `"timezone": "UTC"`
+`}`
 
-Run `app.py` to create `biometric_attendance.db`:
 
+Place your logo in `static/` if using a custom `logo_url`.
+
+
+### Run the Application:
 `python app.py`
 
 
-# 🛠️ Usage
-
-## Run the App
-`python app.py`
-
-## Access Dashboard
-
-Open `http://localhost:5000` in Chrome to view HR logs.
+Access at `http://localhost:5000`.
 
 
-## Test Check-In
 
-Simulate biometric check-in:
+## Usage 🖥️
 
-`curl -X POST http://localhost:5000/checkin -d "employee_id=EMP123&name=Kevin%20Omondi&time_in=08:00%20AM"`
+### Login: 
 
+Use default credentials (`admin/admin123`) to access the dashboard.
 
-## Test the Form
+### Manage Users:
 
-Copy a Signing URL.
+ Navigate to "Manage Users" to add/edit/delete admin accounts (min 8-character passwords).
 
-Paste into a browser (e.g., Chrome).
+### Manage Employees:
 
-Verify fields:
-Pre-filled: name (e.g., "Kevin Omondi"), employee_id (e.g., "SFK000"), date (e.g., "2025-04-16").
+ Add employees with IDs (e.g., `EMP001`), names, and fingerprint templates.
 
-Editable: time_in, time_out, signature.
+### Track Attendance:
 
+ Use a biometric scanner to send fingerprint templates via `POST /biometric_scan`. Records auto-refresh daily.
 
-Check-in: Enter time_in (e.g., "09:00 AM"), sign, submit.
+### Export Data:
 
-Check-out: Reopen URL, enter time_out (e.g., "05:00 PM"), sign, submit.
+ Click "Export CSV" to download attendance records.
 
+### Customize:
 
-## Upload Consent Form
+ Update `config.json` for branding or cycle limits.
 
-Import `consent_form.md` to BoldSign.
+## Project Structure 📂
 
-Send to employees for e-signing.
+`biometric-attendance-system/`
+`├── app.py                 # Main Flask application`
+`├── config.json            # Branding and configuration`
+`├── data/`
+`│   └── biometric_attendance.db  # SQLite database`
+`├── static/                # Logos and exported CSVs`
+`├── templates/`
+`│   ├── dashboard.html     # Main dashboard`
+`│   └── users.html         # User management interface`
+`├── .env                   # Environment variables`
+`├── requirements.txt       # Dependencies`
+`└── README.md              # This file`
 
-# 📂 Project Structure
+## Database Schema 🗄️
 
-boldsign-checkinout-demo/
-├── .env              # API token and URL (gitignored)
-├── .gitignore        # Ignores .env, venv, etc.
-├── checkin_out.py    # Main script
-├── README.md         # This file
-└── venv/             # Virtual environment
+employees: `employee_id` (PK), `name`, `fingerprint_template`
+attendance: `timestamp`, `employee_id` (FK), `name`, `date`, `time_in`, `time_out`, `fingerprint`
+audit_log: `timestamp`, `employee_id` (FK), `action`
+users: `username` (PK), `password_hash`
 
+## Security 🔒
 
-# 🐞 Troubleshooting
+Passwords are hashed with `bcrypt`.
+Fingerprints are encrypted using `cryptography.fernet`.
+JWT tokens secure API endpoints.
+Default admin user is protected from deletion.
 
-## 401 Unauthorized:
+## Troubleshooting 🛠️
 
-Check `BOLDSIGN_API_TOKEN` in `.env.`
-Regenerate at BoldSign API Tokens.
+Bcrypt Error: Ensure `bcrypt==4.0.1` and `passlib==1.7.4`:
 
-
-## 500 Server Error:
-
-Verify `BOLDSIGN_BASE_URL=https://api.boldsign.com/v1.`
-Retry or contact BoldSign support.
-
-
-## Missing Fields:
-
-Ensure `checkin_out.py` matches the latest version (includes `time_in`, `time_out`).
-
-
-## No Output:
-
-Confirm `requests`, `python-dotenv` installed (`pip list`).
-Reactivate venv: `.\venv\Scripts\activate` (Windows).
+`pip install bcrypt==4.0.1 passlib==1.7.4`
 
 
-# 🤝 Contributing
+Port Conflict:
+`netstat -ano | findstr :5000`
+`taskkill /PID <pid> /F`
+
+
+Database Issues:
+`python -c "import sqlite3; conn = sqlite3.connect('data/biometric_attendance.db'); cursor = conn.``cursor(); cursor.execute('SELECT name FROM sqlite_master WHERE type=\"table\"'); print(cursor.``fetchall()); conn.close()"`
+
+
+Check logs in the terminal or browser console (F12).
+
+## Contributing 🤝
+
+Contributions are welcome! Please:
 
 Fork the repo.
-Create a branch: `git checkout -b feature-name`.
-Commit changes: `git commit -m "Add feature-name"`.
-Push: `git push origin feature-name`.
+Create a feature branch (`git checkout -b feature/xyz`).
+Commit changes (`git commit -m "Add xyz"`).
+Push to the branch (`git push origin feature/xyz`).
 Open a pull request.
 
-
-# 📜 License
+## License 📜
 
 MIT License. See `LICENSE` for details.
 
-# 🙌 Acknowledgments
+## Contact 📬
 
-BoldSign for the robust API.
+For support or inquiries, contact `kevojr69@gmail.com` or open an issue on GitHub.
 
-Syncfusion for the inspiration.
-
-`Kevin Ochieng Omondi Jr.` for coding this demo!
-
+Built by `Kevin Omondi Jr`. Ready to streamline attendance for any organization!

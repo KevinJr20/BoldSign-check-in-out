@@ -1,146 +1,461 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
-<head>
-  <meta charset="UTF-8">
-  <title>Biometric Attendance Dashboard</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+     <html lang="en" data-theme="light">
+     <head>
+       <meta charset="UTF-8">
+       <title>{{ config.company_name }} Attendance Dashboard</title>
+       <meta name="viewport" content="width=device-width, initial-scale=1">
+       <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+       <style>
+         :root[data-theme='light'] {
+           --bg-color: #f8f9fa;
+           --text-color: #212529;
+           --header-bg: {{ config.primary_color }};
+           --header-text: #000;
+           --table-bg: #fff;
+           --table-header-bg: {{ config.primary_color }};
+           --table-header-text: #fff;
+           --button-bg: {{ config.primary_color }};
+           --button-text: #fff;
+         }
+         :root[data-theme='dark'] {
+           --bg-color: #121212;
+           --text-color: #e0e0e0;
+           --header-bg: {{ config.secondary_color }};
+           --header-text: #e0e0e0;
+           --table-bg: #1e1e1e;
+           --table-header-bg: {{ config.secondary_color }};
+           --table-header-text: #e0e0e0;
+           --button-bg: {{ config.primary_color }};
+           --button-text: #fff;
+         }
+         body {
+           background-color: var(--bg-color);
+           color: var(--text-color);
+           transition: background-color 0.3s, color 0.3s;
+         }
+         .header {
+           background-color: var(--header-bg);
+           color: var(--header-text);
+           padding: 20px;
+           text-align: center;
+         }
+         .logo {
+           max-height: 50px;
+           margin-bottom: 10px;
+         }
+         .table-wrapper {
+           max-height: 70vh;
+           overflow-y: auto;
+           background-color: var(--table-bg);
+         }
+         table thead {
+           background-color: var(--table-header-bg);
+           color: var(--table-header-text);
+         }
+         .btn-custom {
+           background-color: var(--button-bg);
+           color: var(--button-text);
+           border-color: var(--button-bg);
+         }
+         .btn-custom:hover {
+           opacity: 0.9;
+         }
+         .footer {
+           font-size: 0.85rem;
+         }
+         .theme-toggle, .logout-btn, .users-btn {
+           position: absolute;
+           top: 20px;
+         }
+         .theme-toggle { right: 20px; }
+         .logout-btn { right: 80px; }
+         .users-btn { right: 140px; }
+         .employee-form {
+           background-color: var(--table-bg);
+           padding: 20px;
+           border-radius: 8px;
+         }
+         .login-section {
+           max-width: 400px;
+           margin: 20px auto;
+         }
+         .hidden { display: none; }
+       </style>
+     </head>
+     <body>
+       <div class="header position-relative">
+         <img src="{{ config.logo_url }}" alt="{{ config.company_name }} Logo" class="logo">
+         <h2>🕒 {{ config.company_name }} Attendance Dashboard</h2>
+         <p class="mb-0">Real-time overview of employee check-ins and check-outs</p>
+         <button class="btn btn-outline-light btn-sm theme-toggle" id="themeToggle">Theme</button>
+         <button class="btn btn-outline-light btn-sm logout-btn hidden" id="logoutBtn">Logout</button>
+         <a href="/users/manage" class="btn btn-outline-light btn-sm users-btn hidden" id="usersBtn">Manage Users</a>
+       </div>
 
-  <!-- Bootstrap 5 CDN -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  
-  <!-- Custom Styles -->
-  <style>
-    :root[data-theme='light'] {
-      --bg-color: #f8f9fa;
-      --text-color: #212529;
-      --header-bg: #343a40;
-      --table-bg: #fff;
-      --table-header-bg: #343a40;
-      --table-header-text: #fff;
-    }
+       <div class="container mt-4">
+         <!-- Login Section -->
+         <div class="login-section" id="loginSection">
+           <h5 class="mb-3">Admin Login</h5>
+           <form id="loginForm" class="employee-form shadow-sm">
+             <div class="mb-3">
+               <label for="username" class="form-label">Username</label>
+               <input type="text" class="form-control" id="username" required>
+             </div>
+             <div class="mb-3">
+               <label for="password" class="form-label">Password</label>
+               <input type="password" class="form-control" id="password" required>
+             </div>
+             <button type="submit" class="btn btn-custom">Login</button>
+           </form>
+         </div>
 
-    :root[data-theme='dark'] {
-      --bg-color: #121212;
-      --text-color: #e0e0e0;
-      --header-bg: #1f1f1f;
-      --table-bg: #1e1e1e;
-      --table-header-bg: #333;
-      --table-header-text: #e0e0e0;
-    }
+         <!-- Employee Management Section -->
+         <div class="employee-management hidden" id="employeeManagementSection">
+           <div class="mb-4">
+             <h5 class="mb-3">
+               <a data-bs-toggle="collapse" href="#employeeManagement" role="button" aria-expanded="false" aria-controls="employeeManagement">
+                 Manage Employees
+               </a>
+             </h5>
+             <div class="collapse show" id="employeeManagement">
+               <div class="employee-form shadow-sm">
+                 <h6>Add/Edit Employee</h6>
+                 <form id="employeeForm">
+                   <div class="mb-3">
+                     <label for="employeeId" class="form-label">Employee ID (e.g., SFK001)</label>
+                     <input type="text" class="form-control" id="employeeId" pattern="SFK[0-9]{3}" required>
+                   </div>
+                   <div class="mb-3">
+                     <label for="employeeName" class="form-label">Name</label>
+                     <input type="text" class="form-control" id="employeeName" required>
+                   </div>
+                   <div class="mb-3">
+                     <label for="fingerprintTemplate" class="form-label">Fingerprint Template</label>
+                     <input type="text" class="form-control" id="fingerprintTemplate" required>
+                   </div>
+                   <button type="submit" class="btn btn-custom" id="submitEmployeeBtn">Add Employee</button>
+                 </form>
+               </div>
+               <div class="mt-4">
+                 <h6>Employee List</h6>
+                 <div class="mb-3">
+                   <input type="text" class="form-control" id="employeeSearch" placeholder="Search by ID or Name">
+                 </div>
+                 <div class="mb-3">
+                   <button class="btn btn-danger btn-sm" id="bulkDeleteBtn" disabled>Bulk Delete</button>
+                 </div>
+                 <div class="table-wrapper shadow-sm p-3 rounded">
+                   <table class="table table-striped align-middle">
+                     <thead>
+                       <tr>
+                         <th><input type="checkbox" id="selectAll"></th>
+                         <th>Employee ID</th>
+                         <th>Name</th>
+                         <th>Action</th>
+                       </tr>
+                     </thead>
+                     <tbody id="employee-table-body">
+                     </tbody>
+                   </table>
+                 </div>
+               </div>
+             </div>
+           </div>
+         </div>
 
-    body {
-      background-color: var(--bg-color);
-      color: var(--text-color);
-      transition: background-color 0.3s, color 0.3s;
-    }
+         <!-- Attendance Section -->
+         <div class="d-flex justify-content-between align-items-center mb-3">
+           <h5 class="mb-0">Attendance Records (Today)</h5>
+           <div>
+             <button class="btn btn-custom btn-sm" id="refreshAttendance">Refresh</button>
+             <a href="/export" class="btn btn-custom btn-sm">Export CSV</a>
+           </div>
+         </div>
+         <div class="table-wrapper shadow-sm p-3 rounded">
+           <table class="table table-striped align-middle">
+             <thead>
+               <tr>
+                 <th>Employee ID</th>
+                 <th>Name</th>
+                 <th>Date</th>
+                 <th>Time In</th>
+                 <th>Time Out</th>
+               </tr>
+             </thead>
+             <tbody id="attendance-table-body">
+               {% for record in records %}
+               <tr>
+                 <td>{{ record[0] }}</td>
+                 <td>{{ record[1] }}</td>
+                 <td>{{ record[2] }}</td>
+                 <td>{{ record[3] or '-' }}</td>
+                 <td>{{ record[4] or '-' }}</td>
+               </tr>
+               {% endfor %}
+             </tbody>
+           </table>
+         </div>
+       </div>
 
-    .header {
-      background-color: var(--header-bg);
-      color: var(--table-header-text);
-      padding: 20px;
-    }
+       <footer class="footer text-center mt-4 text-muted">
+         © {{ datetime.utcnow().year }} {{ config.company_name }}
+       </footer>
 
-    .table-wrapper {
-      max-height: 70vh;
-      overflow-y: auto;
-      background-color: var(--table-bg);
-    }
+       <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+       <script>
+         const socket = io();
+         const attendanceTbody = document.getElementById('attendance-table-body');
+         const employeeTbody = document.getElementById('employee-table-body');
+         const employeeForm = document.getElementById('employeeForm');
+         const loginForm = document.getElementById('loginForm');
+         const loginSection = document.getElementById('loginSection');
+         const employeeManagementSection = document.getElementById('employeeManagementSection');
+         const logoutBtn = document.getElementById('logoutBtn');
+         const usersBtn = document.getElementById('usersBtn');
+         const employeeSearch = document.getElementById('employeeSearch');
+         const selectAll = document.getElementById('selectAll');
+         const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+         const submitEmployeeBtn = document.getElementById('submitEmployeeBtn');
+         const refreshAttendance = document.getElementById('refreshAttendance');
 
-    table thead {
-      background-color: var(--table-header-bg);
-      color: var(--table-header-text);
-    }
+         let token = localStorage.getItem('token');
+         let isEditing = false;
 
-    .footer {
-      font-size: 0.85rem;
-    }
+         function updateUI() {
+           if (token) {
+             loginSection.classList.add('hidden');
+             employeeManagementSection.classList.remove('hidden');
+             logoutBtn.classList.remove('hidden');
+             usersBtn.classList.remove('hidden');
+             loadEmployees();
+             loadAttendance();
+           } else {
+             loginSection.classList.remove('hidden');
+             employeeManagementSection.classList.add('hidden');
+             logoutBtn.classList.add('hidden');
+             usersBtn.classList.add('hidden');
+           }
+         }
 
-    .theme-toggle {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-    }
-  </style>
-</head>
-<body>
-  <div class="header text-center position-relative">
-    <h2>🕒 Syncfusion Biometric Attendance Dashboard</h2>
-    <p class="mb-0">Real-time overview of employee check-ins and check-outs</p>
-    
-    <button class="btn btn-outline-light btn-sm theme-toggle" id="themeToggle">Theme</button>
-  </div>
+         function loadAttendance() {
+           fetch('/attendance', {
+             headers: { 'Authorization': `Bearer ${token}` }
+           })
+             .then(response => response.json())
+             .then(data => {
+               attendanceTbody.innerHTML = '';
+               if (data.status === 'success') {
+                 data.records.forEach(record => {
+                   const row = document.createElement('tr');
+                   row.innerHTML = `
+                     <td>${record.employee_id}</td>
+                     <td>${record.name}</td>
+                     <td>${record.date}</td>
+                     <td>${record.time_in || '-'}</td>
+                     <td>${record.time_out || '-'}</td>
+                   `;
+                   attendanceTbody.appendChild(row);
+                 });
+               } else {
+                 console.error(data.message);
+               }
+             });
+         }
 
-  <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h5 class="mb-0">Attendance Records</h5>
-      <a href="/export" class="btn btn-outline-success btn-sm">Export CSV</a>
-    </div>
+         loginForm.addEventListener('submit', (e) => {
+           e.preventDefault();
+           const username = document.getElementById('username').value;
+           const password = document.getElementById('password').value;
+           fetch('/login', {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify({ username, password })
+           })
+             .then(response => response.json())
+             .then(data => {
+               if (data.status === 'success') {
+                 localStorage.setItem('token', data.token);
+                 token = data.token;
+                 loginForm.reset();
+                 updateUI();
+               } else {
+                 alert(data.message);
+               }
+             });
+         });
 
-    <div class="table-wrapper shadow-sm p-3 rounded">
-      <table class="table table-striped align-middle">
-        <thead>
-          <tr>
-            <th>Employee ID</th>
-            <th>Name</th>
-            <th>Date</th>
-            <th>Time In</th>
-            <th>Time Out</th>
-          </tr>
-        </thead>
-        <tbody id="attendance-table-body">
-          {% for record in records %}
-          <tr>
-            <td>{{ record[0] }}</td>
-            <td>{{ record[1] }}</td>
-            <td>{{ record[2] }}</td>
-            <td>{{ record[3] or '-' }}</td>
-            <td>{{ record[4] or '-' }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
+         logoutBtn.addEventListener('click', () => {
+           localStorage.removeItem('token');
+           token = null;
+           updateUI();
+         });
 
-  <footer class="footer text-center mt-4 text-muted">
-    &copy; {{ datetime.utcnow().year }} Biometric Attendance System
-  </footer>
+         function loadEmployees(filter = '') {
+           fetch('/employees', {
+             headers: { 'Authorization': `Bearer ${token}` }
+           })
+             .then(response => response.json())
+             .then(data => {
+               employeeTbody.innerHTML = '';
+               if (data.status === 'success') {
+                 const filteredEmployees = data.employees.filter(emp =>
+                   emp.employee_id.toLowerCase().includes(filter.toLowerCase()) ||
+                   emp.name.toLowerCase().includes(filter.toLowerCase())
+                 );
+                 filteredEmployees.forEach(emp => {
+                   const row = document.createElement('tr');
+                   row.innerHTML = `
+                     <td><input type="checkbox" class="employee-checkbox" data-id="${emp.employee_id}"></td>
+                     <td>${emp.employee_id}</td>
+                     <td>${emp.name}</td>
+                     <td>
+                       <button class="btn btn-warning btn-sm edit-btn" data-id="${emp.employee_id}" data-name="${emp.name}" data-fingerprint="${emp.fingerprint_template}">Edit</button>
+                       <button class="btn btn-danger btn-sm delete-btn" data-id="${emp.employee_id}">Delete</button>
+                     </td>
+                   `;
+                   employeeTbody.appendChild(row);
+                 });
+                 document.querySelectorAll('.edit-btn').forEach(btn => {
+                   btn.addEventListener('click', () => {
+                     isEditing = true;
+                     submitEmployeeBtn.textContent = 'Update Employee';
+                     document.getElementById('employeeId').value = btn.getAttribute('data-id');
+                     document.getElementById('employeeId').disabled = true;
+                     document.getElementById('employeeName').value = btn.getAttribute('data-name');
+                     document.getElementById('fingerprintTemplate').value = btn.getAttribute('data-fingerprint');
+                   });
+                 });
+                 document.querySelectorAll('.delete-btn').forEach(btn => {
+                   btn.addEventListener('click', () => {
+                     const employeeId = btn.getAttribute('data-id');
+                     if (confirm(`Delete employee ${employeeId}?`)) {
+                       fetch(`/employees/${employeeId}`, {
+                         method: 'DELETE',
+                         headers: { 'Authorization': `Bearer ${token}` }
+                       })
+                         .then(response => response.json())
+                         .then(data => {
+                           if (data.status === 'success') {
+                             loadEmployees(employeeSearch.value);
+                           } else {
+                             alert(data.message);
+                           }
+                         });
+                     }
+                   });
+                 });
+                 document.querySelectorAll('.employee-checkbox').forEach(cb => {
+                   cb.addEventListener('change', updateBulkDeleteButton);
+                 });
+               } else {
+                 alert(data.message);
+               }
+             });
+         }
 
-  <!-- WebSocket -->
-  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-  <script>
-    const socket = io();
-    const tbody = document.getElementById('attendance-table-body');
+         function updateBulkDeleteButton() {
+           const checkboxes = document.querySelectorAll('.employee-checkbox:checked');
+           bulkDeleteBtn.disabled = checkboxes.length === 0;
+         }
 
-    socket.on('attendance_update', function (data) {
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td>${data.employee_id}</td>
-        <td>${data.name}</td>
-        <td>${data.date}</td>
-        <td>${data.time_in || '-'}</td>
-        <td>${data.time_out || '-'}</td>
-      `;
-      tbody.prepend(row);
-    });
+         employeeForm.addEventListener('submit', (e) => {
+           e.preventDefault();
+           const employeeId = document.getElementById('employeeId').value;
+           const employeeName = document.getElementById('employeeName').value;
+           const fingerprintTemplate = document.getElementById('fingerprintTemplate').value;
+           const url = isEditing ? `/employees/${employeeId}` : '/employees';
+           const method = isEditing ? 'PUT' : 'POST';
+           fetch(url, {
+             method: method,
+             headers: {
+               'Content-Type': 'application/json',
+               'Authorization': `Bearer ${token}`
+             },
+             body: JSON.stringify({ employee_id: employeeId, name: employeeName, fingerprint_template: fingerprintTemplate })
+           })
+             .then(response => response.json())
+             .then(data => {
+               if (data.status === 'success') {
+                 employeeForm.reset();
+                 document.getElementById('employeeId').disabled = false;
+                 isEditing = false;
+                 submitEmployeeBtn.textContent = 'Add Employee';
+                 loadEmployees(employeeSearch.value);
+               }
+               alert(data.message);
+             });
+         });
 
-    // Theme Toggle
-    const root = document.documentElement;
-    const themeToggle = document.getElementById('themeToggle');
+         employeeSearch.addEventListener('input', () => {
+           loadEmployees(employeeSearch.value);
+         });
 
-    function setTheme(theme) {
-      root.setAttribute('data-theme', theme);
-      localStorage.setItem('theme', theme);
-    }
+         selectAll.addEventListener('change', () => {
+           document.querySelectorAll('.employee-checkbox').forEach(cb => {
+             cb.checked = selectAll.checked;
+           });
+           updateBulkDeleteButton();
+         });
 
-    themeToggle.addEventListener('click', () => {
-      const currentTheme = root.getAttribute('data-theme');
-      setTheme(currentTheme === 'light' ? 'dark' : 'light');
-    });
+         bulkDeleteBtn.addEventListener('click', () => {
+           const checkboxes = document.querySelectorAll('.employee-checkbox:checked');
+           const employeeIds = Array.from(checkboxes).map(cb => cb.getAttribute('data-id'));
+           if (employeeIds.length && confirm(`Delete ${employeeIds.length} employees?`)) {
+             fetch('/employees/bulk_delete', {
+               method: 'POST',
+               headers: {
+                 'Content-Type': 'application/json',
+                 'Authorization': `Bearer ${token}`
+               },
+               body: JSON.stringify({ employee_ids: employeeIds })
+             })
+               .then(response => response.json())
+               .then(data => {
+                 if (data.status === 'success') {
+                   loadEmployees(employeeSearch.value);
+                 }
+                 alert(data.message);
+               });
+           }
+         });
 
-    // Load saved theme
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    setTheme(savedTheme);
-  </script>
-</body>
-</html>
+         refreshAttendance.addEventListener('click', () => {
+           loadAttendance();
+         });
+
+         socket.on('attendance_update', (data) => {
+           const row = document.createElement('tr');
+           row.innerHTML = `
+             <td>${data.employee_id}</td>
+             <td>${data.name}</td>
+             <td>${data.date}</td>
+             <td>${data.time_in || '-'}</td>
+             <td>${data.time_out || '-'}</td>
+           `;
+           attendanceTbody.prepend(row);
+         });
+
+         // Auto-refresh attendance every 60 seconds
+         setInterval(() => {
+           if (token) {
+             loadAttendance();
+           }
+         }, 60000);
+
+         const root = document.documentElement;
+         const themeToggle = document.getElementById('themeToggle');
+         function setTheme(theme) {
+           root.setAttribute('data-theme', theme);
+           localStorage.setItem('theme', theme);
+         }
+         themeToggle.addEventListener('click', () => {
+           const currentTheme = root.getAttribute('data-theme');
+           setTheme(currentTheme === 'light' ? 'dark' : 'light');
+         });
+         const savedTheme = localStorage.getItem('theme') || 'light';
+         setTheme(savedTheme);
+
+         updateUI();
+       </script>
+     </body>
+     </html>
