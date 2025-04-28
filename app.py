@@ -258,20 +258,30 @@ def list_employees():
 @require_auth
 def add_employee():
     try:
-        data = request.form
-        employee_id = data.get('employee_id')
-        name = data.get('name')
-        fingerprint_template = data.get('fingerprint_template')
-        photo = request.files.get('photo')
-        photo_url = None
-        if photo:
-            filename = f"{employee_id}_{photo.filename}"
-            photo_path = os.path.join('static', 'photos', filename)
-            os.makedirs(os.path.dirname(photo_path), exist_ok=True)
-            photo.save(photo_path)
-            photo_url = f"/static/photos/{filename}"
+        # Check if the request is multipart/form-data or JSON
+        if request.content_type.startswith('multipart/form-data'):
+            data = request.form
+            employee_id = data.get('employee_id')
+            name = data.get('name')
+            fingerprint_template = data.get('fingerprint_template')
+            photo = request.files.get('photo')
+            photo_url = None
+            if photo:
+                filename = f"{employee_id}_{photo.filename}"
+                photo_path = os.path.join('static', 'photos', filename)
+                os.makedirs(os.path.dirname(photo_path), exist_ok=True)
+                photo.save(photo_path)
+                photo_url = f"/static/photos/{filename}"
+        else:  # Assume JSON
+            data = request.get_json()
+            employee_id = data.get('employee_id')
+            name = data.get('name')
+            fingerprint_template = data.get('fingerprint_template')
+            photo_url = None  # JSON requests don't support file uploads
+
         if not all([employee_id, name, fingerprint_template]):
             return jsonify({'status': 'error', 'message': 'Missing required fields'}), 400
+
         with get_db_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('INSERT OR IGNORE INTO employees (employee_id, name, fingerprint_template, photo_url) VALUES (?, ?, ?, ?)',
@@ -515,7 +525,12 @@ def biometric_scan():
             cursor.execute('SELECT COUNT(*) FROM attendance WHERE employee_id = ? AND date = ? AND time_in IS NOT NULL',
                            (employee_id, current_date))
             cycle_count = cursor.fetchone()[0]
-            if last_record and cycle_count < max_cycles:
+            
+            # Enforce max cycles per day
+            if cycle_count >= max_cycles:
+                return jsonify({'status': 'error', 'message': f'Maximum check-in cycles ({max_cycles}) reached for today'}), 400
+            
+            if last_record:
                 time_in, time_out = last_record
                 if time_in and not time_out:
                     cursor.execute('UPDATE attendance SET time_out = ?, fingerprint = ? WHERE employee_id = ? AND date = ? AND time_in = ?',
