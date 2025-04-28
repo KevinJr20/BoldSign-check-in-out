@@ -122,18 +122,18 @@ Use default credentials (`admin/admin123`) to access the dashboard.
 
 ## Project Structure 📂
 
-`biometric-attendance-system/`
-`├── app.py                 # Main Flask application`
-`├── config.json            # Branding and configuration`
-`├── data/`
-`│   └── biometric_attendance.db  # SQLite database`
-`├── static/                # Logos and exported CSVs`
-`├── templates/`
-`│   ├── dashboard.html     # Main dashboard`
-`│   └── users.html         # User management interface`
-`├── .env                   # Environment variables`
-`├── requirements.txt       # Dependencies`
-`└── README.md              # This file`
+biometric-attendance-system/
+├── app.py                 # Main Flask application
+├── config.json            # Branding and configuration
+├── data/
+│   └── biometric_attendance.db  # SQLite database
+├── static/                # Logos and exported CSVs
+├── templates/
+│   ├── dashboard.html     # Main dashboard
+│   └── users.html         # User management interface
+├── .env                   # Environment variables
+├── requirements.txt       # Dependencies
+└── README.md              # This file
 
 ## Database Schema 🗄️
 
