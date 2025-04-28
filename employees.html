@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Manage Employees - {{ config.company_name }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; }
+        h1 { color: {{ config.primary_color }}; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; }
+        input, button { padding: 8px; margin: 5px 0; width: 100%; max-width: 300px; }
+        button { background-color: {{ config.primary_color }}; color: white; border: none; cursor: pointer; }
+        button:hover { background-color: {{ config.secondary_color }}; }
+        .section { margin-bottom: 30px; }
+        .error { color: red; }
+        .success { color: green; }
+        a { color: {{ config.primary_color }}; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <h1>Manage Employees</h1>
+    
+    <div class="section">
+        <h2>Add Employee</h2>
+        <form id="add-employee-form">
+            <div class="form-group">
+                <label for="employee_id">Employee ID:</label>
+                <input type="text" id="employee_id" required>
+            </div>
+            <div class="form-group">
+                <label for="name">Name:</label>
+                <input type="text" id="name" required>
+            </div>
+            <div class="form-group">
+                <label for="fingerprint_template">Fingerprint Template:</label>
+                <input type="text" id="fingerprint_template" required>
+            </div>
+            <button type="submit">Add Employee</button>
+        </form>
+        <p id="add-message"></p>
+    </div>
+    
+    <div class="section">
+        <h2>Bulk Import Employees (CSV)</h2>
+        <form id="bulk-import-form" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="csv-file">Upload CSV:</label>
+                <input type="file" id="csv-file" accept=".csv" required>
+            </div>
+            <button type="submit">Import CSV</button>
+        </form>
+        <p>CSV Format: <code>employee_id,name,fingerprint_template</code></p>
+        <p>Example:</p>
+        <pre>
+employee_id,name,fingerprint_template
+EMP001,Kevin Omondi,template_EMP001
+EMP002,Valentine Jeryl,template_EMP002
+        </pre>
+        <p id="import-message"></p>
+    </div>
+    
+    <a href="/">Back to Dashboard</a>
+    
+    <script>
+        const token = localStorage.getItem('token'); // Assumes token stored on login
+        if (!token) {
+            window.location.href = '/';
+        }
+
+        // Add single employee
+        document.getElementById('add-employee-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const employee = {
+                employee_id: document.getElementById('employee_id').value,
+                name: document.getElementById('name').value,
+                fingerprint_template: document.getElementById('fingerprint_template').value
+            };
+            try {
+                const response = await fetch('/employees', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(employee)
+                });
+                const result = await response.json();
+                const messageEl = document.getElementById('add-message');
+                messageEl.className = result.status === 'success' ? 'success' : 'error';
+                messageEl.textContent = result.message;
+            } catch (error) {
+                document.getElementById('add-message').className = 'error';
+                document.getElementById('add-message').textContent = 'Error adding employee';
+            }
+        });
+
+        // Bulk import employees
+        document.getElementById('bulk-import-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('file', document.getElementById('csv-file').files[0]);
+            try {
+                const response = await fetch('/employees/bulk_import', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+                const result = await response.json();
+                const messageEl = document.getElementById('import-message');
+                messageEl.className = result.status === 'success' ? 'success' : 'error';
+                messageEl.textContent = result.message;
+            } catch (error) {
+                document.getElementById('import-message').className = 'error';
+                document.getElementById('import-message').textContent = 'Error importing employees';
+            }
+        });
+    </script>
+</body>
+</html>
