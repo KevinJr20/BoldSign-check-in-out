@@ -121,7 +121,7 @@ Use default credentials (`admin/admin123`) to access the dashboard.
  Update `config.json` for branding or cycle limits.
 
 ## Project Structure 📂
-
+```
 biometric-attendance-system/
 ├── app.py                 # Main Flask application
 ├── config.json            # Branding and configuration
@@ -134,7 +134,7 @@ biometric-attendance-system/
 ├── .env                   # Environment variables
 ├── requirements.txt       # Dependencies
 └── README.md              # This file
-
+```
 ## Database Schema 🗄️
 
 employees: `employee_id` (PK), `name`, `fingerprint_template`
