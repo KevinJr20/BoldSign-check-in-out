@@ -1,122 +1,107 @@
 <!DOCTYPE html>
-<html>
-<head>
-    <title>Manage Employees - {{ config.company_name }}</title>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ config.company_name }} - Manage Employees</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; }
-        h1 { color: {{ config.primary_color }}; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; }
-        input, button { padding: 8px; margin: 5px 0; width: 100%; max-width: 300px; }
-        button { background-color: {{ config.primary_color }}; color: white; border: none; cursor: pointer; }
-        button:hover { background-color: {{ config.secondary_color }}; }
-        .section { margin-bottom: 30px; }
-        .error { color: red; }
-        .success { color: green; }
-        a { color: {{ config.primary_color }}; text-decoration: none; }
-        a:hover { text-decoration: underline; }
+      body {
+        background-color: #f8f9fa;
+      }
+      .container {
+        margin-top: 20px;
+      }
+      .table-wrapper {
+        max-height: 70vh;
+        overflow-y: auto;
+        background-color: #fff;
+      }
+      .action-btn {
+        font-size: 1.2rem;
+        cursor: pointer;
+        background: none;
+        border: none;
+        padding: 5px;
+        transition: transform 0.2s;
+      }
+      .action-btn:hover {
+        transform: scale(1.2);
+      }
     </style>
-</head>
-<body>
-    <h1>Manage Employees</h1>
-    
-    <div class="section">
-        <h2>Add Employee</h2>
-        <form id="add-employee-form">
-            <div class="form-group">
-                <label for="employee_id">Employee ID:</label>
-                <input type="text" id="employee_id" required>
-            </div>
-            <div class="form-group">
-                <label for="name">Name:</label>
-                <input type="text" id="name" required>
-            </div>
-            <div class="form-group">
-                <label for="fingerprint_template">Fingerprint Template:</label>
-                <input type="text" id="fingerprint_template" required>
-            </div>
-            <button type="submit">Add Employee</button>
-        </form>
-        <p id="add-message"></p>
+  </head>
+  <body>
+    <div class="container">
+      <h2 class="mb-4">Manage Employees</h2>
+      <a href="/" class="btn btn-primary mb-3">Back to Dashboard</a>
+      <div class="table-wrapper shadow-sm p-3 rounded">
+        <table class="table table-striped align-middle">
+          <thead>
+            <tr>
+              <th>Employee ID</th>
+              <th>Name</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="employee-table-body">
+          </tbody>
+        </table>
+      </div>
     </div>
-    
-    <div class="section">
-        <h2>Bulk Import Employees (CSV)</h2>
-        <form id="bulk-import-form" enctype="multipart/form-data">
-            <div class="form-group">
-                <label for="csv-file">Upload CSV:</label>
-                <input type="file" id="csv-file" accept=".csv" required>
-            </div>
-            <button type="submit">Import CSV</button>
-        </form>
-        <p>CSV Format: <code>employee_id,name,fingerprint_template</code></p>
-        <p>Example:</p>
-        <pre>
-employee_id,name,fingerprint_template
-EMP001,Kevin Omondi,template_EMP001
-EMP002,Valentine Jeryl,template_EMP002
-        </pre>
-        <p id="import-message"></p>
-    </div>
-    
-    <a href="/">Back to Dashboard</a>
-    
+
     <script>
-        const token = localStorage.getItem('token'); // Assumes token stored on login
-        if (!token) {
-            window.location.href = '/';
-        }
+      const token = localStorage.getItem('token');
+      if (!token) {
+        window.location.href = '/';
+      }
 
-        // Add single employee
-        document.getElementById('add-employee-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const employee = {
-                employee_id: document.getElementById('employee_id').value,
-                name: document.getElementById('name').value,
-                fingerprint_template: document.getElementById('fingerprint_template').value
-            };
-            try {
-                const response = await fetch('/employees', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify(employee)
+      function loadEmployees() {
+        fetch('/employees', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+          .then(response => response.json())
+          .then(data => {
+            const tbody = document.getElementById('employee-table-body');
+            tbody.innerHTML = '';
+            if (data.status === 'success') {
+              data.employees.forEach(emp => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                  <td>${emp.employee_id}</td>
+                  <td>${emp.name}</td>
+                  <td>
+                    <button class="btn btn-danger btn-sm delete-btn" data-id="${emp.employee_id}">Delete</button>
+                  </td>
+                `;
+                tbody.appendChild(row);
+              });
+              document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                  const employeeId = btn.getAttribute('data-id');
+                  if (confirm(`Delete employee ${employeeId}?`)) {
+                    fetch(`/employees/${employeeId}`, {
+                      method: 'DELETE',
+                      headers: { 'Authorization': `Bearer ${token}` }
+                    })
+                      .then(response => response.json())
+                      .then(data => {
+                        if (data.status === 'success') {
+                          loadEmployees();
+                        }
+                        alert(data.message);
+                      });
+                  }
                 });
-                const result = await response.json();
-                const messageEl = document.getElementById('add-message');
-                messageEl.className = result.status === 'success' ? 'success' : 'error';
-                messageEl.textContent = result.message;
-            } catch (error) {
-                document.getElementById('add-message').className = 'error';
-                document.getElementById('add-message').textContent = 'Error adding employee';
+              });
+            } else {
+              alert(data.message);
             }
-        });
+          })
+          .catch(error => console.error('Error loading employees:', error));
+      }
 
-        // Bulk import employees
-        document.getElementById('bulk-import-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const formData = new FormData();
-            formData.append('file', document.getElementById('csv-file').files[0]);
-            try {
-                const response = await fetch('/employees/bulk_import', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: formData
-                });
-                const result = await response.json();
-                const messageEl = document.getElementById('import-message');
-                messageEl.className = result.status === 'success' ? 'success' : 'error';
-                messageEl.textContent = result.message;
-            } catch (error) {
-                document.getElementById('import-message').className = 'error';
-                document.getElementById('import-message').textContent = 'Error importing employees';
-            }
-        });
+      loadEmployees();
     </script>
-</body>
+  </body>
 </html>

@@ -10,23 +10,23 @@
       :root[data-theme='light'] {
         --bg-color: #f8f9fa;
         --text-color: #212529;
-        --header-bg: {{ config.primary_color }};
+        --header-bg: {{ config['theme']['primary_color'] }};
         --header-text: #000;
         --table-bg: #fff;
-        --table-header-bg: {{ config.primary_color }};
+        --table-header-bg: {{ config['theme']['primary_color'] }};
         --table-header-text: #fff;
-        --button-bg: {{ config.primary_color }};
+        --button-bg: {{ config['theme']['primary_color'] }};
         --button-text: #fff;
       }
       :root[data-theme='dark'] {
         --bg-color: #121212;
         --text-color: #e0e0e0;
-        --header-bg: {{ config.secondary_color }};
+        --header-bg: {{ config['theme']['secondary_color'] }};
         --header-text: #e0e0e0;
         --table-bg: #1e1e1e;
-        --table-header-bg: {{ config.secondary_color }};
+        --table-header-bg: {{ config['theme']['secondary_color'] }};
         --table-header-text: #e0e0e0;
-        --button-bg: {{ config.primary_color }};
+        --button-bg: {{ config['theme']['primary_color'] }};
         --button-text: #fff;
       }
       body {
@@ -255,9 +255,9 @@
           <button class="action-btn" id="refreshAttendance" data-bs-toggle="tooltip" data-bs-placement="top" title="Refresh">
             <i class="fas fa-sync-alt"></i>
           </button>
-          <a class="action-btn" href="/export" data-bs-toggle="tooltip" data-bs-placement="top" title="Export CSV">
+          <button class="action-btn" id="exportBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Export CSV">
             <i class="fas fa-file-export"></i>
-          </a>
+          </button>
         </div>
       </div>
       <div class="table-wrapper shadow-sm p-3 rounded">
@@ -329,6 +329,7 @@
       const refreshAttendance = document.getElementById('refreshAttendance');
       const filterAttendance = document.getElementById('filterAttendance');
       const themeToggle = document.getElementById('themeToggle');
+      const exportBtn = document.getElementById('exportBtn');
 
       let token = localStorage.getItem('token');
       let isEditing = false;
@@ -404,7 +405,7 @@
                   datasets: [{
                     label: 'Active Employees',
                     data: data.trends.map(t => t.active_employees),
-                    borderColor: '{{ config.primary_color }}',
+                    borderColor: '{{ config["theme"]["primary_color"] }}',
                     fill: false
                   }]
                 },
@@ -465,14 +466,52 @@
         updateUI();
       });
 
-      employeesBtn.addEventListener('click', (e) => {
+      employeesBtn.addEventListener('click', async (e) => {
         e.preventDefault();
-        window.location.href = '/employees/manage';
+        if (!token) {
+          alert('Please log in to access this page.');
+          return;
+        }
+        try {
+          const response = await fetch('/employees', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await response.json();
+          if (data.status === 'success') {
+            window.location.href = '/employees/manage';
+          } else {
+            alert(data.message);
+            localStorage.removeItem('token');
+            token = null;
+            updateUI();
+          }
+        } catch (error) {
+          alert('Error accessing employees page: ' + error.message);
+        }
       });
 
-      usersBtn.addEventListener('click', (e) => {
+      usersBtn.addEventListener('click', async (e) => {
         e.preventDefault();
-        window.location.href = '/users/manage';
+        if (!token) {
+          alert('Please log in to access this page.');
+          return;
+        }
+        try {
+          const response = await fetch('/users', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await response.json();
+          if (data.status === 'success') {
+            window.location.href = '/users/manage';
+          } else {
+            alert(data.message);
+            localStorage.removeItem('token');
+            token = null;
+            updateUI();
+          }
+        } catch (error) {
+          alert('Error accessing users page: ' + error.message);
+        }
       });
 
       function loadEmployees(filter = '') {
@@ -497,7 +536,7 @@
                     ${emp.name}
                   </td>
                   <td>
-                    <button class="btn btnuzzer-warning btn-sm edit-btn" data-id="${emp.employee_id}" data-name="${emp.name}" data-fingerprint="${emp.fingerprint_template}" data-photo="${emp.photo_url || ''}">Edit</button>
+                    <button class="btn btn-warning btn-sm edit-btn" data-id="${emp.employee_id}" data-name="${emp.name}" data-fingerprint="${emp.fingerprint_template}" data-photo="${emp.photo_url || ''}">Edit</button>
                     <button class="btn btn-danger btn-sm delete-btn" data-id="${emp.employee_id}">Delete</button>
                   </td>
                 `;
@@ -636,6 +675,35 @@
       filterAttendance.addEventListener('click', (e) => {
         e.preventDefault();
         loadAttendance();
+      });
+
+      exportBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        if (!token) {
+          alert('Please log in to export attendance.');
+          return;
+        }
+        try {
+          const response = await fetch('/export', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'attendance_export.csv';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+          } else {
+            const data = await response.json();
+            alert(data.message || 'Failed to export CSV.');
+          }
+        } catch (err) {
+          alert('Error exporting CSV: ' + err.message);
+        }
       });
 
       socket.on('attendance_update', (data) => {

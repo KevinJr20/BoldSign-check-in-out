@@ -73,15 +73,19 @@ Create a .env file in the root directory:
 ### Customize Branding:
 
 Edit config.json to set company details:
-`{`
-  `"company_name": "Your Company",`
-  `"logo_url": "/static/your_logo.png",`
-  `"primary_color": "#007bff",`
-  `"secondary_color": "#6c757d",`
-  `"max_cycles_per_day": 2,`
-  `"timezone": "UTC"`
-`}`
 
+```
+{
+    "company_name": " Your Organization",
+    "logo_url": "/static/photos/logo.png",
+    "theme": {
+        "primary_color": "#007bff",
+        "secondary_color": "#6c757d"
+    },
+    "max_cycles_per_day": 2,
+    "timezone": "Africa/Nairobi"
+}
+```
 
 Place your logo in `static/` if using a custom `logo_url`.
 

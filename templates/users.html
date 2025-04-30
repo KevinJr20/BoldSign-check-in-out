@@ -1,227 +1,94 @@
 <!DOCTYPE html>
-     <html lang="en" data-theme="light">
-     <head>
-       <meta charset="UTF-8">
-       <title>{{ config.company_name }} User Management</title>
-       <meta name="viewport" content="width=device-width, initial-scale=1">
-       <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-       <style>
-         :root[data-theme='light'] {
-           --bg-color: #f8f9fa;
-           --text-color: #212529;
-           --header-bg: {{ config.primary_color }};
-           --header-text: #000;
-           --table-bg: #fff;
-           --table-header-bg: {{ config.primary_color }};
-           --table-header-text: #fff;
-           --button-bg: {{ config.primary_color }};
-           --button-text: #fff;
-         }
-         :root[data-theme='dark'] {
-           --bg-color: #121212;
-           --text-color: #e0e0e0;
-           --header-bg: {{ config.secondary_color }};
-           --header-text: #e0e0e0;
-           --table-bg: #1e1e1e;
-           --table-header-bg: {{ config.secondary_color }};
-           --table-header-text: #e0e0e0;
-           --button-bg: {{ config.primary_color }};
-           --button-text: #fff;
-         }
-         body {
-           background-color: var(--bg-color);
-           color: var(--text-color);
-           transition: background-color 0.3s, color 0.3s;
-         }
-         .header {
-           background-color: var(--header-bg);
-           color: var(--header-text);
-           padding: 20px;
-           text-align: center;
-         }
-         .logo {
-           max-height: 50px;
-           margin-bottom: 10px;
-         }
-         .table-wrapper {
-           max-height: 70vh;
-           overflow-y: auto;
-           background-color: var(--table-bg);
-         }
-         table thead {
-           background-color: var(--table-header-bg);
-           color: var(--table-header-text);
-         }
-         .btn-custom {
-           background-color: var(--button-bg);
-           color: var(--button-text);
-           border-color: var(--button-bg);
-         }
-         .btn-custom:hover {
-           opacity: 0.9;
-         }
-         .footer {
-           font-size: 0.85rem;
-         }
-         .theme-toggle, .back-btn {
-           position: absolute;
-           top: 20px;
-         }
-         .theme-toggle { right: 20px; }
-         .back-btn { right: 80px; }
-         .user-form {
-           background-color: var(--table-bg);
-           padding: 20px;
-           border-radius: 8px;
-         }
-       </style>
-     </head>
-     <body>
-       <div class="header position-relative">
-         <img src="{{ config.logo_url }}" alt="{{ config.company_name }} Logo" class="logo">
-         <h2>👤 {{ config.company_name }} User Management</h2>
-         <p class="mb-0">Manage admin accounts</p>
-         <button class="btn btn-outline-light btn-sm theme-toggle" id="themeToggle">Theme</button>
-         <a href="/" class="btn btn-outline-light btn-sm back-btn">Back to Dashboard</a>
-       </div>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ config.company_name }} - Manage Users</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+      body {
+        background-color: #f8f9fa;
+      }
+      .container {
+        margin-top: 20px;
+      }
+      .table-wrapper {
+        max-height: 70vh;
+        overflow-y: auto;
+        background-color: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2 class="mb-4">Manage Users</h2>
+      <a href="/" class="btn btn-primary mb-3">Back to Dashboard</a>
+      <div class="table-wrapper shadow-sm p-3 rounded">
+        <table class="table table-striped align-middle">
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="user-table-body">
+          </tbody>
+        </table>
+      </div>
+    </div>
 
-       <div class="container mt-4">
-         <div class="user-form shadow-sm">
-           <h6>Add/Edit User</h6>
-           <form id="userForm">
-             <div class="mb-3">
-               <label for="username" class="form-label">Username</label>
-               <input type="text" class="form-control" id="username" required>
-             </div>
-             <div class="mb-3">
-               <label for="password" class="form-label">Password (min 8 characters)</label>
-               <input type="password" class="form-control" id="password" minlength="8" required>
-             </div>
-             <button type="submit" class="btn btn-custom" id="submitUserBtn">Add User</button>
-           </form>
-         </div>
-         <div class="mt-4">
-           <h6>User List</h6>
-           <div class="table-wrapper shadow-sm p-3 rounded">
-             <table class="table table-striped align-middle">
-               <thead>
-                 <tr>
-                   <th>Username</th>
-                   <th>Action</th>
-                 </tr>
-               </thead>
-               <tbody id="user-table-body">
-               </tbody>
-             </table>
-           </div>
-         </div>
-       </div>
+    <script>
+      const token = localStorage.getItem('token');
+      if (!token) {
+        window.location.href = '/';
+      }
 
-       <footer class="footer text-center mt-4 text-muted">
-         © {{ datetime.utcnow().year }} {{ config.company_name }}
-       </footer>
+      function loadUsers() {
+        fetch('/users', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+          .then(response => response.json())
+          .then(data => {
+            const tbody = document.getElementById('user-table-body');
+            tbody.innerHTML = '';
+            if (data.status === 'success') {
+              data.users.forEach(user => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                  <td>${user.username}</td>
+                  <td>
+                    <button class="btn btn-danger btn-sm delete-btn" data-username="${user.username}">Delete</button>
+                  </td>
+                `;
+                tbody.appendChild(row);
+              });
+              document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                  const username = btn.getAttribute('data-username');
+                  if (confirm(`Delete user ${username}?`)) {
+                    fetch(`/users/${username}`, {
+                      method: 'DELETE',
+                      headers: { 'Authorization': `Bearer ${token}` }
+                    })
+                      .then(response => response.json())
+                      .then(data => {
+                        if (data.status === 'success') {
+                          loadUsers();
+                        }
+                        alert(data.message);
+                      });
+                  }
+                });
+              });
+            } else {
+              alert(data.message);
+            }
+          })
+          .catch(error => console.error('Error loading users:', error));
+      }
 
-       <script>
-         const userTbody = document.getElementById('user-table-body');
-         const userForm = document.getElementById('userForm');
-         const submitUserBtn = document.getElementById('submitUserBtn');
-         let token = localStorage.getItem('token');
-         let isEditing = false;
-
-         function loadUsers() {
-           fetch('/users', {
-             headers: { 'Authorization': `Bearer ${token}` }
-           })
-             .then(response => response.json())
-             .then(data => {
-               userTbody.innerHTML = '';
-               if (data.status === 'success') {
-                 data.users.forEach(user => {
-                   const row = document.createElement('tr');
-                   row.innerHTML = `
-                     <td>${user.username}</td>
-                     <td>
-                       <button class="btn btn-warning btn-sm edit-btn" data-username="${user.username}" ${user.username === 'admin' ? 'disabled' : ''}>Edit</button>
-                       <button class="btn btn-danger btn-sm delete-btn" data-username="${user.username}" ${user.username === 'admin' ? 'disabled' : ''}>Delete</button>
-                     </td>
-                   `;
-                   userTbody.appendChild(row);
-                 });
-                 document.querySelectorAll('.edit-btn').forEach(btn => {
-                   btn.addEventListener('click', () => {
-                     isEditing = true;
-                     submitUserBtn.textContent = 'Update User';
-                     document.getElementById('username').value = btn.getAttribute('data-username');
-                     document.getElementById('username').disabled = true;
-                     document.getElementById('password').value = '';
-                   });
-                 });
-                 document.querySelectorAll('.delete-btn').forEach(btn => {
-                   btn.addEventListener('click', () => {
-                     const username = btn.getAttribute('data-username');
-                     if (confirm(`Delete user ${username}?`)) {
-                       fetch(`/users/${username}`, {
-                         method: 'DELETE',
-                         headers: { 'Authorization': `Bearer ${token}` }
-                       })
-                         .then(response => response.json())
-                         .then(data => {
-                           if (data.status === 'success') {
-                             loadUsers();
-                           } else {
-                             alert(data.message);
-                           }
-                         });
-                     }
-                   });
-                 });
-               } else {
-                 alert(data.message);
-               }
-             });
-         }
-
-         userForm.addEventListener('submit', (e) => {
-           e.preventDefault();
-           const username = document.getElementById('username').value;
-           const password = document.getElementById('password').value;
-           const url = isEditing ? `/users/${username}` : '/users';
-           const method = isEditing ? 'PUT' : 'POST';
-           fetch(url, {
-             method: method,
-             headers: {
-               'Content-Type': 'application/json',
-               'Authorization': `Bearer ${token}`
-             },
-             body: JSON.stringify({ username, password })
-           })
-             .then(response => response.json())
-             .then(data => {
-               if (data.status === 'success') {
-                 userForm.reset();
-                 document.getElementById('username').disabled = false;
-                 isEditing = false;
-                 submitUserBtn.textContent = 'Add User';
-                 loadUsers();
-               }
-               alert(data.message);
-             });
-         });
-
-         const root = document.documentElement;
-         const themeToggle = document.getElementById('themeToggle');
-         function setTheme(theme) {
-           root.setAttribute('data-theme', theme);
-           localStorage.setItem('theme', theme);
-         }
-         themeToggle.addEventListener('click', () => {
-           const currentTheme = root.getAttribute('data-theme');
-           setTheme(currentTheme === 'light' ? 'dark' : 'light');
-         });
-         const savedTheme = localStorage.getItem('theme') || 'light';
-         setTheme(savedTheme);
-
-         loadUsers();
-       </script>
-     </body>
-     </html>
+      loadUsers();
+    </script>
+  </body>
+</html>
