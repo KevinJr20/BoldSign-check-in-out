@@ -169,7 +169,10 @@ Port Conflict:
 
 Database Issues:
 ```
-python -c "import sqlite3; conn = sqlite3.connect('data/biometric_attendance.db'); cursor = conn.cursor(); cursor.execute('SELECT name FROM sqlite_master WHERE type=\"table\"'); print(cursor.fetchall()); conn.close()"
+python -c "import sqlite3; 
+conn = sqlite3.connect('data/biometric_attendance.db'); 
+cursor = conn.cursor(); cursor.execute('SELECT name FROM sqlite_master WHERE type=\"table\"'); 
+print(cursor.fetchall()); conn.close()"
 ```
 
 Check logs in the terminal or browser console (F12).
