@@ -65,10 +65,12 @@ SQLite (included with Python)
 ### Configure Environment:
 
 Create a .env file in the root directory:
-`FLASK_SECRET_KEY=your-secret-key`
-`ENCRYPTION_KEY=$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")`
-`JWT_SECRET_KEY=your-jwt-secret-key`
+```
+FLASK_SECRET_KEY=your-secret-key
+ENCRYPTION_KEY=$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+JWT_SECRET_KEY=your-jwt-secret-key
 
+```
 
 ### Customize Branding:
 
@@ -189,4 +191,4 @@ MIT License. See `LICENSE` for details.
 
 For support or inquiries, contact `kevojr69@gmail.com` or open an issue on GitHub.
 
-Built by `Kevin Omondi Jr`. Ready to streamline attendance for any organization!
+Built by `Kevin Omondi Jr`.
