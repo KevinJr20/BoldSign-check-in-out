@@ -127,7 +127,7 @@ Use default credentials (`admin/admin123`) to access the dashboard.
  Update `config.json` for branding or cycle limits.
 
 ## Project Structure 📂
-
+```
 biometric-attendance-system/
 ├── app.py                 # Main Flask application
 ├── config.json            # Branding and configuration
@@ -140,7 +140,7 @@ biometric-attendance-system/
 ├── .env                   # Environment variables
 ├── requirements.txt       # Dependencies
 └── README.md              # This file
-
+```
 ## Database Schema 🗄️
 
 employees: `employee_id` (PK), `name`, `fingerprint_template`
@@ -168,8 +168,9 @@ Port Conflict:
 
 
 Database Issues:
-`python -c "import sqlite3; conn = sqlite3.connect('data/biometric_attendance.db'); cursor = conn.``cursor(); cursor.execute('SELECT name FROM sqlite_master WHERE type=\"table\"'); print(cursor.``fetchall()); conn.close()"`
-
+```
+python -c "import sqlite3; conn = sqlite3.connect('data/biometric_attendance.db'); cursor = conn.cursor(); cursor.execute('SELECT name FROM sqlite_master WHERE type=\"table\"'); print(cursor.fetchall()); conn.close()"
+```
 
 Check logs in the terminal or browser console (F12).
 
