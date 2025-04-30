@@ -17,6 +17,12 @@
         --table-header-text: #fff;
         --button-bg: {{ config['theme']['primary_color'] }};
         --button-text: #fff;
+        --modal-bg: #fff;
+        --modal-text: #212529;
+        --upgrade-btn-bg: linear-gradient(90deg, #007bff, #00c4ff);
+        --dropdown-bg: #fff;
+        --dropdown-border: #ced4da;
+        --dropdown-hover-bg: #e9ecef;
       }
       :root[data-theme='dark'] {
         --bg-color: #121212;
@@ -28,6 +34,12 @@
         --table-header-text: #e0e0e0;
         --button-bg: {{ config['theme']['primary_color'] }};
         --button-text: #fff;
+        --modal-bg: #2a2a2a;
+        --modal-text: #e0e0e0;
+        --upgrade-btn-bg: linear-gradient(90deg, #0056b3, #00aaff);
+        --dropdown-bg: #444;
+        --dropdown-border: #666;
+        --dropdown-hover-bg: #555;
       }
       body {
         background-color: var(--bg-color);
@@ -37,48 +49,74 @@
       .header {
         background-color: var(--header-bg);
         color: var(--header-text);
-        padding: 20px;
+        padding: 30px;
         text-align: center;
         position: relative;
+        margin-bottom: 30px;
       }
       .logo {
-        max-height: 50px;
-        margin-bottom: 10px;
+        max-height: 60px;
+        margin-bottom: 15px;
       }
       .table-wrapper {
         max-height: 70vh;
         overflow-y: auto;
         background-color: var(--table-bg);
+        padding: 25px;
+        border-radius: 10px;
       }
       table thead {
         background-color: var(--table-header-bg);
         color: var(--table-header-text);
       }
       .btn-custom {
-        background-color: var(--button-bg);
-        color: var(--button-text);
-        border-color: var(--button-bg);
+        background: var(--upgrade-btn-bg);
+        color: #fff;
+        border: none;
+        border-radius: 25px;
+        padding: 12px 30px;
+        font-weight: 600;
+        transition: transform 0.2s, box-shadow 0.3s;
+        box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
       }
       .btn-custom:hover {
-        opacity: 0.9;
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(0, 123, 255, 0.5);
+      }
+      .upgrade-btn {
+        font-size: 1rem;
+        font-weight: 600;
+        margin-left: 15px;
+        padding: 10px 25px;
+        background: var(--upgrade-btn-bg);
+        color: #fff;
+        border: none;
+        border-radius: 25px;
+        transition: transform 0.2s, box-shadow 0.3s;
+        box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+      }
+      .upgrade-btn:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(0, 123, 255, 0.5);
       }
       .footer {
         font-size: 0.85rem;
+        margin-top: 40px;
       }
       .nav-buttons {
         position: absolute;
-        top: 20px;
-        right: 20px;
+        top: 30px;
+        right: 30px;
         display: flex;
-        gap: 15px;
+        gap: 25px;
       }
       .nav-btn {
         color: var(--header-text);
-        font-size: 1.2rem;
+        font-size: 1.3rem;
         cursor: pointer;
         background: none;
         border: none;
-        padding: 5px;
+        padding: 8px;
         transition: transform 0.2s;
       }
       .nav-btn:hover {
@@ -86,48 +124,148 @@
       }
       .employee-form {
         background-color: var(--table-bg);
-        padding: 20px;
-        border-radius: 8px;
+        padding: 30px;
+        border-radius: 10px;
+        margin-bottom: 30px;
       }
       .login-section {
-        max-width: 400px;
-        margin: 20px auto;
+        max-width: 450px;
+        margin: 30px auto;
       }
       .action-btn {
-        font-size: 1.2rem;
+        font-size: 1.3rem;
         cursor: pointer;
         background: none;
         border: none;
         color: var(--text-color);
-        padding: 5px;
+        padding: 8px;
         transition: transform 0.2s;
       }
       .action-btn:hover {
         transform: scale(1.2);
       }
       .hidden { display: none; }
+      .subscription-info {
+        font-size: 1rem;
+        margin-top: 20px;
+        margin-bottom: 30px;
+      }
+      .modal-content {
+        background-color: var(--modal-bg);
+        color: var(--modal-text);
+        border-radius: 15px;
+        padding: 20px;
+      }
+      .modal-header, .modal-footer {
+        border-color: rgba(255, 255, 255, 0.1);
+      }
+      .modal-title {
+        color: var(--modal-text);
+      }
+      .modal-body {
+        padding: 30px;
+      }
+      .modal-body h6 {
+        font-size: 1.2rem;
+        margin-bottom: 20px;
+      }
+      .modal-body ul {
+        margin-bottom: 30px;
+        padding-left: 20px;
+      }
+      .modal-body ul li {
+        margin-bottom: 15px;
+        font-size: 1rem;
+      }
+      .modal-body .form-label {
+        font-weight: 500;
+        margin-bottom: 10px;
+      }
+      .modal-body .form-control,
+      .modal-body .form-select {
+        background-color: var(--dropdown-bg);
+        border: 1px solid var(--dropdown-border);
+        border-radius: 10px;
+        padding: 12px 15px;
+        font-size: 1rem;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        transition: border-color 0.3s, box-shadow 0.3s;
+        color: var(--modal-text);
+      }
+      .modal-body .form-control:focus,
+      .modal-body .form-select:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 8px rgba(0, 123, 255, 0.3);
+        outline: none;
+      }
+      /* Custom dropdown arrow */
+      .modal-body .form-select {
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23212529' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 15px center;
+        background-size: 18px;
+      }
+      :root[data-theme='dark'] .modal-body .form-select {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e0e0e0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      }
+      .modal-body .form-select option {
+        background-color: var(--dropdown-bg);
+        color: var(--modal-text);
+      }
+      .modal-body .form-select option:hover {
+        background-color: var(--dropdown-hover-bg);
+      }
+      .payment-option {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .payment-option i {
+        font-size: 1.2rem;
+        margin-right: 8px;
+      }
+      .attendance-section {
+        margin-bottom: 40px;
+      }
+      .attendance-header {
+        margin-bottom: 25px;
+      }
+      .gap-3 {
+        gap: 20px !important;
+      }
       @media (max-width: 767px) {
         .header {
-          padding-bottom: 60px;
+          padding: 20px;
+          padding-bottom: 70px;
         }
         .nav-buttons {
-          top: 10px;
-          right: 10px;
-          gap: 10px;
+          top: 15px;
+          right: 15px;
+          gap: 15px;
         }
         #navMenu {
           position: absolute;
           top: 100%;
           right: 0;
           background-color: var(--header-bg);
-          padding: 10px;
-          border-radius: 0 0 0 8px;
-          width: 150px;
+          padding: 15px;
+          border-radius: 0 0 0 10px;
+          width: 160px;
         }
         .nav-buttons .nav-btn {
           display: block;
           text-align: right;
-          margin-bottom: 10px;
+          margin-bottom: 15px;
+        }
+        .upgrade-btn {
+          margin-left: 0;
+          margin-top: 15px;
+        }
+        .modal-body {
+          padding: 20px;
         }
       }
     </style>
@@ -149,6 +287,9 @@
         <button class="nav-btn hidden" id="usersBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Manage Users">
           <i class="fas fa-user"></i>
         </button>
+        <button class="nav-btn hidden" id="subscriptionBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Subscription">
+          <i class="fas fa-credit-card"></i>
+        </button>
         <button class="nav-btn hidden" id="logoutBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Logout">
           <i class="fas fa-sign-out-alt"></i>
         </button>
@@ -158,16 +299,22 @@
       </div>
     </div>
 
-    <div class="container mt-4">
+    <div class="container mt-5">
+      <!-- Subscription Info -->
+      <div class="subscription-info hidden" id="subscriptionInfo">
+        <span id="subscriptionPlan"></span>
+        <button class="btn upgrade-btn" id="upgradeBtn">Upgrade Plan</button>
+      </div>
+
       <!-- Login Section -->
       <div class="login-section" id="loginSection">
-        <h5 class="mb-3">Admin Login</h5>
+        <h5 class="mb-4">Admin Login</h5>
         <form id="loginForm" class="employee-form shadow-sm">
-          <div class="mb-3">
+          <div class="mb-4">
             <label for="username" class="form-label">Username</label>
             <input type="text" class="form-control" id="username" required>
           </div>
-          <div class="mb-3">
+          <div class="mb-4">
             <label for="password" class="form-label">Password</label>
             <input type="password" class="form-control" id="password" required>
           </div>
@@ -177,54 +324,54 @@
 
       <!-- Employee Management Section -->
       <div class="employee-management hidden" id="employeeManagementSection">
-        <div class="mb-4">
-          <h5 class="mb-3">
+        <div class="mb-5">
+          <h5 class="mb-4">
             <a data-bs-toggle="collapse" href="#employeeManagement" role="button" aria-expanded="false" aria-controls="employeeManagement">
               Manage Employees
             </a>
           </h5>
           <div class="collapse show" id="employeeManagement">
             <div class="employee-form shadow-sm">
-              <h6>Add/Edit Employee</h6>
+              <h6 class="mb-4">Add/Edit Employee</h6>
               <form id="employeeForm">
-                <div class="mb-3">
+                <div class="mb-4">
                   <label for="employeeId" class="form-label">Employee ID (e.g., SFK001)</label>
                   <input type="text" class="form-control" id="employeeId" pattern="SFK[0-9]{3}" required>
                 </div>
-                <div class="mb-3">
+                <div class="mb-4">
                   <label for="employeeName" class="form-label">Name</label>
                   <input type="text" class="form-control" id="employeeName" required>
                 </div>
-                <div class="mb-3">
+                <div class="mb-4">
                   <label for="fingerprintTemplate" class="form-label">Fingerprint Template</label>
                   <input type="text" class="form-control" id="fingerprintTemplate" required>
                 </div>
-                <div class="mb-3">
+                <div class="mb-4">
                   <label for="employeePhoto" class="form-label">Employee Photo</label>
                   <input type="file" class="form-control" id="employeePhoto" accept="image/*">
                 </div>
                 <button type="submit" class="btn btn-custom" id="submitEmployeeBtn">Add Employee</button>
               </form>
             </div>
-            <div class="mt-4">
-              <h6>Bulk Import Employees</h6>
+            <div class="mt-5" id="bulkImportSection">
+              <h6 class="mb-4">Bulk Import Employees</h6>
               <form id="bulk-import-form" enctype="multipart/form-data">
-                <div class="mb-3">
+                <div class="mb-4">
                   <input type="file" id="csv-file" class="form-control" accept=".csv" required>
                 </div>
                 <button type="submit" class="btn btn-custom btn-sm">Import CSV</button>
               </form>
-              <p id="import-message" class="mt-2"></p>
+              <p id="import-message" class="mt-3"></p>
             </div>
-            <div class="mt-4">
-              <h6>Employee List</h6>
-              <div class="mb-3">
+            <div class="mt-5">
+              <h6 class="mb-4">Employee List</h6>
+              <div class="mb-4">
                 <input type="text" class="form-control" id="employeeSearch" placeholder="Search by ID or Name">
               </div>
-              <div class="mb-3">
+              <div class="mb-4" id="bulkDeleteSection">
                 <button class="btn btn-danger btn-sm" id="bulkDeleteBtn" disabled>Bulk Delete</button>
               </div>
-              <div class="table-wrapper shadow-sm p-3 rounded">
+              <div class="table-wrapper shadow-sm rounded">
                 <table class="table table-striped align-middle">
                   <thead>
                     <tr>
@@ -244,56 +391,58 @@
       </div>
 
       <!-- Attendance Section -->
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5 class="mb-0">Attendance Records</h5>
-        <div class="d-flex align-items-center gap-2">
-          <input type="date" id="startDate" class="form-control form-control-sm" style="width: 150px;">
-          <input type="date" id="endDate" class="form-control form-control-sm" style="width: 150px;">
-          <button class="action-btn" id="filterAttendance" data-bs-toggle="tooltip" data-bs-placement="top" title="Filter">
-            <i class="fas fa-filter"></i>
-          </button>
-          <button class="action-btn" id="refreshAttendance" data-bs-toggle="tooltip" data-bs-placement="top" title="Refresh">
-            <i class="fas fa-sync-alt"></i>
-          </button>
-          <button class="action-btn" id="exportBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Export CSV">
-            <i class="fas fa-file-export"></i>
-          </button>
+      <div class="attendance-section">
+        <div class="d-flex justify-content-between align-items-center attendance-header">
+          <h5 class="mb-0">Attendance Records</h5>
+          <div class="d-flex align-items-center gap-3">
+            <input type="date" id="startDate" class="form-control form-control-sm" style="width: 160px;">
+            <input type="date" id="endDate" class="form-control form-control-sm" style="width: 160px;">
+            <button class="action-btn" id="filterAttendance" data-bs-toggle="tooltip" data-bs-placement="top" title="Filter">
+              <i class="fas fa-filter"></i>
+            </button>
+            <button class="action-btn" id="refreshAttendance" data-bs-toggle="tooltip" data-bs-placement="top" title="Refresh">
+              <i class="fas fa-sync-alt"></i>
+            </button>
+            <button class="action-btn" id="exportBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Export CSV">
+              <i class="fas fa-file-export"></i>
+            </button>
+          </div>
         </div>
-      </div>
-      <div class="table-wrapper shadow-sm p-3 rounded">
-        <table class="table table-striped align-middle">
-          <thead>
-            <tr>
-              <th>Employee ID</th>
-              <th>Name</th>
-              <th>Date</th>
-              <th>Time In</th>
-              <th>Time Out</th>
-            </tr>
-          </thead>
-          <tbody id="attendance-table-body">
-            {% for record in records %}
-            <tr>
-              <td>{{ record[0] }}</td>
-              <td>{{ record[1] }}</td>
-              <td>{{ record[2] }}</td>
-              <td>{{ record[3] or '-' }}</td>
-              <td>{{ record[4] or '-' }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+        <div class="table-wrapper shadow-sm rounded">
+          <table class="table table-striped align-middle">
+            <thead>
+              <tr>
+                <th>Employee ID</th>
+                <th>Name</th>
+                <th>Date</th>
+                <th>Time In</th>
+                <th>Time Out</th>
+              </tr>
+            </thead>
+            <tbody id="attendance-table-body">
+              {% for record in records %}
+              <tr>
+                <td>{{ record[0] }}</td>
+                <td>{{ record[1] }}</td>
+                <td>{{ record[2] }}</td>
+                <td>{{ record[3] or '-' }}</td>
+                <td>{{ record[4] or '-' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <!-- Analytics Section -->
-      <div class="mt-4 hidden" id="analyticsSection">
-        <h5>Attendance Trends (Last 30 Days)</h5>
-        <canvas id="trendsChart" style="max-height: 300px;"></canvas>
+      <div class="mt-5 hidden" id="analyticsSection">
+        <h5 class="mb-4">Attendance Trends (Last 30 Days)</h5>
+        <canvas id="trendsChart" style="max-height: 350px;"></canvas>
       </div>
     </div>
 
     <!-- Toast for Notifications -->
-    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div class="toast-container position-fixed bottom-0 end-0 p-4">
       <div id="attendanceToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
         <div class="toast-header">
           <strong class="me-auto">Attendance Update</strong>
@@ -303,14 +452,62 @@
       </div>
     </div>
 
-    <footer class="footer text-center mt-4 text-muted">
+    <!-- Subscription Modal -->
+    <div class="modal fade" id="subscriptionModal" tabindex="-1" aria-labelledby="subscriptionModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="subscriptionModalLabel">Manage Subscription</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <h6>Current Plan: <span id="modalCurrentPlan"></span></h6>
+            <p class="mt-3">Upgrade your plan to unlock more features:</p>
+            <ul>
+              <li><strong>Basic:</strong> Up to 10 employees, basic features ($49/month)</li>
+              <li><strong>Starter:</strong> Up to 50 employees, employee management, CSV export ($99/month)</li>
+              <li><strong>Pro:</strong> Up to 500 employees, analytics, bulk operations ($149/month)</li>
+              <li><strong>Enterprise:</strong> Unlimited employees, all features ($199/month - Contact us)</li>
+            </ul>
+            <form id="upgradeForm">
+              <div class="mb-4">
+                <label for="newPlan" class="form-label">Select New Plan</label>
+                <select class="form-select" id="newPlan" required>
+                  <option value="basic">Basic</option>
+                  <option value="starter">Starter</option>
+                  <option value="pro">Pro</option>
+                </select>
+              </div>
+              <div class="mb-4">
+                <label for="paymentMethod" class="form-label">Select Payment Method</label>
+                <select class="form-select" id="paymentMethod" required>
+                  <option value="stripe"><i class="fab fa-stripe-s"></i> Stripe (Cards, Google Pay)</option>
+                  <option value="paypal"><i class="fab fa-paypal"></i> PayPal</option>
+                  <option value="mpesa"><i class="fas fa-mobile-alt"></i> M-Pesa</option>
+                </select>
+              </div>
+              <div class="mb-4 hidden" id="mpesaPhoneSection">
+                <label for="mpesaPhone" class="form-label">M-Pesa Phone Number (e.g., 254712345678)</label>
+                <input type="text" class="form-control" id="mpesaPhone" pattern="254[0-9]{9}" placeholder="254712345678">
+              </div>
+              <button type="submit" class="btn btn-custom">Proceed to Payment</button>
+            </form>
+            <p class="mt-4">Note: For Enterprise plans, please contact support.</p>
+          </div>
+        </font-family: Arial, sans-serif;
+      </div>
+    </div>
+
+    <footer class="footer text-center text-muted">
       © {{ datetime.utcnow().year }} {{ config.company_name }}
     </footer>
 
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://js.stripe.com/v3/"></script>
     <script>
+      const stripe = Stripe('{{ stripe_publishable_key }}');
       const socket = io();
       const attendanceTbody = document.getElementById('attendance-table-body');
       const employeeTbody = document.getElementById('employee-table-body');
@@ -322,17 +519,29 @@
       const logoutBtn = document.getElementById('logoutBtn');
       const usersBtn = document.getElementById('usersBtn');
       const employeesBtn = document.getElementById('employeesBtn');
+      const subscriptionBtn = document.getElementById('subscriptionBtn');
+      const subscriptionInfo = document.getElementById('subscriptionInfo');
+      const subscriptionPlan = document.getElementById('subscriptionPlan');
+      const upgradeBtn = document.getElementById('upgradeBtn');
       const employeeSearch = document.getElementById('employeeSearch');
       const selectAll = document.getElementById('selectAll');
       const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+      const bulkImportSection = document.getElementById('bulkImportSection');
+      const bulkDeleteSection = document.getElementById('bulkDeleteSection');
       const submitEmployeeBtn = document.getElementById('submitEmployeeBtn');
       const refreshAttendance = document.getElementById('refreshAttendance');
       const filterAttendance = document.getElementById('filterAttendance');
       const themeToggle = document.getElementById('themeToggle');
       const exportBtn = document.getElementById('exportBtn');
+      const upgradeForm = document.getElementById('upgradeForm');
+      const modalCurrentPlan = document.getElementById('modalCurrentPlan');
+      const paymentMethodSelect = document.getElementById('paymentMethod');
+      const mpesaPhoneSection = document.getElementById('mpesaPhoneSection');
+      const mpesaPhone = document.getElementById('mpesaPhone');
 
       let token = localStorage.getItem('token');
       let isEditing = false;
+      let currentPlan = null;
 
       // Initialize Bootstrap tooltips
       const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
@@ -342,14 +551,11 @@
         console.log('updateUI called, token:', token);
         if (token) {
           loginSection.classList.add('hidden');
-          employeeManagementSection.classList.remove('hidden');
-          analyticsSection.classList.remove('hidden');
           logoutBtn.classList.remove('hidden');
           usersBtn.classList.remove('hidden');
-          employeesBtn.classList.remove('hidden');
-          loadEmployees();
-          loadAttendance();
-          loadAnalytics();
+          subscriptionBtn.classList.remove('hidden');
+          subscriptionInfo.classList.remove('hidden');
+          loadSubscription();
         } else {
           loginSection.classList.remove('hidden');
           employeeManagementSection.classList.add('hidden');
@@ -357,6 +563,56 @@
           logoutBtn.classList.add('hidden');
           usersBtn.classList.add('hidden');
           employeesBtn.classList.add('hidden');
+          subscriptionBtn.classList.add('hidden');
+          subscriptionInfo.classList.add('hidden');
+        }
+      }
+
+      function loadSubscription() {
+        fetch('/subscription', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+          .then(response => response.json())
+          .then(data => {
+            if (data.status === 'success') {
+              currentPlan = data.subscription.plan.toLowerCase();
+              subscriptionPlan.textContent = `Plan: ${currentPlan.toUpperCase()} (Max ${data.subscription.employee_limit} employees)`;
+              updateFeatureVisibility();
+              loadEmployees();
+              loadAttendance();
+            } else {
+              alert('Failed to load subscription: ' + data.message + '. Please try logging in again or contact support.');
+            }
+          })
+          .catch(error => {
+            console.error('Error loading subscription:', error);
+            alert('Failed to load subscription due to a network error. Please try again or contact support.');
+          });
+      }
+
+      function updateFeatureVisibility() {
+        console.log('updateFeatureVisibility called, currentPlan:', currentPlan);
+        if (currentPlan && ['starter', 'pro', 'enterprise'].includes(currentPlan)) {
+          employeeManagementSection.classList.remove('hidden');
+          employeesBtn.classList.remove('hidden');
+        } else {
+          employeeManagementSection.classList.add('hidden');
+          employeesBtn.classList.add('hidden');
+        }
+
+        if (currentPlan && ['pro', 'enterprise'].includes(currentPlan)) {
+          analyticsSection.classList.remove('hidden');
+          loadAnalytics();
+        } else {
+          analyticsSection.classList.add('hidden');
+        }
+
+        if (currentPlan && ['pro', 'enterprise'].includes(currentPlan)) {
+          bulkImportSection.classList.remove('hidden');
+          bulkDeleteSection.classList.remove('hidden');
+        } else {
+          bulkImportSection.classList.add('hidden');
+          bulkDeleteSection.classList.add('hidden');
         }
       }
 
@@ -463,6 +719,7 @@
         console.log('Logging out');
         localStorage.removeItem('token');
         token = null;
+        currentPlan = null;
         updateUI();
       });
 
@@ -512,6 +769,80 @@
         } catch (error) {
           alert('Error accessing users page: ' + error.message);
         }
+      });
+
+      subscriptionBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        modalCurrentPlan.textContent = currentPlan ? currentPlan.toUpperCase() : 'N/A';
+        const modal = new bootstrap.Modal(document.getElementById('subscriptionModal'));
+        modal.show();
+      });
+
+      upgradeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        modalCurrentPlan.textContent = currentPlan ? currentPlan.toUpperCase() : 'N/A';
+        const modal = new bootstrap.Modal(document.getElementById('subscriptionModal'));
+        modal.show();
+      });
+
+      paymentMethodSelect.addEventListener('change', () => {
+        if (paymentMethodSelect.value === 'mpesa') {
+          mpesaPhoneSection.classList.remove('hidden');
+          mpesaPhone.required = true;
+        } else {
+          mpesaPhoneSection.classList.add('hidden');
+          mpesaPhone.required = false;
+        }
+      });
+
+      upgradeForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const newPlan = document.getElementById('newPlan').value;
+        const paymentMethod = document.getElementById('paymentMethod').value;
+        let payload = { plan: newPlan, payment_method: paymentMethod };
+        if (paymentMethod === 'mpesa') {
+          const phoneNumber = document.getElementById('mpesaPhone').value;
+          if (!phoneNumber.match(/^254[0-9]{9}$/)) {
+            alert('Please enter a valid M-Pesa phone number (e.g., 254712345678)');
+            return;
+          }
+          payload.phone_number = phoneNumber;
+        }
+        fetch('/subscription', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        })
+          .then(response => response.json())
+          .then(data => {
+            if (data.status === 'success') {
+              if (paymentMethod === 'stripe') {
+                stripe.redirectToCheckout({ sessionId: data.session_id })
+                  .then(result => {
+                    if (result.error) {
+                      alert(result.error.message);
+                    }
+                  });
+              } else if (paymentMethod === 'paypal') {
+                window.location.href = data.approval_url;
+              } else if (paymentMethod === 'mpesa') {
+                alert(data.message);
+                const modal = bootstrap.Modal.getInstance(document.getElementById('subscriptionModal'));
+                modal.hide();
+              } else {
+                alert(data.message);
+                loadSubscription();
+                const modal = bootstrap.Modal.getInstance(document.getElementById('subscriptionModal'));
+                modal.hide();
+              }
+            } else {
+              alert(data.message);
+            }
+          })
+          .catch(error => console.error('Error upgrading plan:', error));
       });
 
       function loadEmployees(filter = '') {
@@ -613,8 +944,9 @@
               isEditing = false;
               submitEmployeeBtn.textContent = 'Add Employee';
               loadEmployees(employeeSearch.value);
+            } else {
+              alert(data.message);
             }
-            alert(data.message);
           })
           .catch(error => console.error('Error in employeeForm submit:', error));
       });
@@ -631,6 +963,7 @@
         const data = await response.json();
         document.getElementById('import-message').textContent = data.message;
         if (data.status === 'success') loadEmployees();
+        else alert(data.message);
       });
 
       employeeSearch.addEventListener('input', () => {
@@ -725,7 +1058,6 @@
         }
       });
 
-      // Auto-refresh attendance every 60 seconds
       setInterval(() => {
         if (token) {
           loadAttendance();
