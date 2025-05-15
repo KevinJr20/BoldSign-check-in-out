@@ -2,7 +2,7 @@
 <html lang="en" data-theme="light">
   <head>
     <meta charset="UTF-8">
-    <title>{{ config.company_name }} Attendance Dashboard</title>
+    <title>{{ config.company_name or 'Attendance Dashboard' }} Attendance Dashboard</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
@@ -10,41 +10,50 @@
       :root[data-theme='light'] {
         --bg-color: #f8f9fa;
         --text-color: #212529;
-        --header-bg: {{ config['theme']['primary_color'] }};
+        --header-bg: {{ config['theme']['primary_color'] or '#007bff' }};
         --header-text: #000;
         --table-bg: #fff;
-        --table-header-bg: {{ config['theme']['primary_color'] }};
+        --table-header-bg: {{ config['theme']['primary_color'] or '#007bff' }};
         --table-header-text: #fff;
-        --button-bg: {{ config['theme']['primary_color'] }};
+        --button-bg: {{ config['theme']['primary_color'] or '#007bff' }};
         --button-text: #fff;
-        --modal-bg: #fff;
+        --modal-bg: rgba(255, 255, 255, 0.9);
         --modal-text: #212529;
         --upgrade-btn-bg: linear-gradient(90deg, #007bff, #00c4ff);
         --dropdown-bg: #fff;
         --dropdown-border: #ced4da;
         --dropdown-hover-bg: #e9ecef;
+        --sidebar-bg: rgba(255, 255, 255, 0.1);
+        --sidebar-text: #212529;
       }
       :root[data-theme='dark'] {
         --bg-color: #121212;
         --text-color: #e0e0e0;
-        --header-bg: {{ config['theme']['secondary_color'] }};
+        --header-bg: {{ config['theme']['secondary_color'] or '#0056b3' }};
         --header-text: #e0e0e0;
         --table-bg: #1e1e1e;
-        --table-header-bg: {{ config['theme']['secondary_color'] }};
+        --table-header-bg: {{ config['theme']['secondary_color'] or '#0056b3' }};
         --table-header-text: #e0e0e0;
-        --button-bg: {{ config['theme']['primary_color'] }};
+        --button-bg: {{ config['theme']['primary_color'] or '#007bff' }};
         --button-text: #fff;
-        --modal-bg: #2a2a2a;
+        --modal-bg: rgba(42, 42, 42, 0.9);
         --modal-text: #e0e0e0;
         --upgrade-btn-bg: linear-gradient(90deg, #0056b3, #00aaff);
         --dropdown-bg: #444;
         --dropdown-border: #666;
         --dropdown-hover-bg: #555;
+        --sidebar-bg: rgba(255, 255, 255, 0.1);
+        --sidebar-text: #e0e0e0;
       }
       body {
         background-color: var(--bg-color);
         color: var(--text-color);
         transition: background-color 0.3s, color 0.3s;
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+        display: flex;
+        min-height: 100vh;
       }
       .header {
         background-color: var(--header-bg);
@@ -83,25 +92,12 @@
         transform: scale(1.05);
         box-shadow: 0 4px 12px rgba(0, 123, 255, 0.5);
       }
-      .upgrade-btn {
-        font-size: 1rem;
-        font-weight: 600;
-        margin-left: 15px;
-        padding: 10px 25px;
-        background: var(--upgrade-btn-bg);
-        color: #fff;
-        border: none;
-        border-radius: 25px;
-        transition: transform 0.2s, box-shadow 0.3s;
-        box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
-      }
-      .upgrade-btn:hover {
-        transform: scale(1.05);
-        box-shadow: 0 4px 12px rgba(0, 123, 255, 0.5);
-      }
       .footer {
         font-size: 0.85rem;
         margin-top: 40px;
+        text-align: center;
+        width: 100%;
+        box-sizing: border-box;
       }
       .nav-buttons {
         position: absolute;
@@ -145,52 +141,68 @@
         transform: scale(1.2);
       }
       .hidden { display: none; }
-      .subscription-info {
-        font-size: 1rem;
-        margin-top: 20px;
-        margin-bottom: 30px;
-      }
       .modal-content {
-        background-color: var(--modal-bg);
-        color: var(--modal-text);
+        background: var(--modal-bg);
+        backdrop-filter: blur(15px);
         border-radius: 15px;
-        padding: 20px;
+        padding: 25px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+        animation: fadeIn 0.3s ease-in;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: scale(0.9); }
+        to { opacity: 1; transform: scale(1); }
       }
       .modal-header, .modal-footer {
-        border-color: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.15);
       }
       .modal-title {
         color: var(--modal-text);
+        font-size: 1.5rem;
+        font-weight: 600;
       }
       .modal-body {
-        padding: 30px;
+        padding: 20px 0;
       }
       .modal-body h6 {
-        font-size: 1.2rem;
+        font-size: 1.1rem;
+        color: var(--modal-text);
         margin-bottom: 20px;
+        font-weight: 500;
       }
       .modal-body ul {
-        margin-bottom: 30px;
+        margin-bottom: 25px;
         padding-left: 20px;
       }
       .modal-body ul li {
         margin-bottom: 15px;
         font-size: 1rem;
+        padding: 10px 15px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        transition: transform 0.2s, background 0.2s;
+      }
+      .modal-body ul li:hover {
+        transform: translateX(10px);
+        background: rgba(255, 255, 255, 0.2);
       }
       .modal-body .form-label {
         font-weight: 500;
+        color: var(--modal-text);
         margin-bottom: 10px;
+        font-size: 1rem;
       }
       .modal-body .form-control,
       .modal-body .form-select {
-        background-color: var(--dropdown-bg);
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(5px);
         border: 1px solid var(--dropdown-border);
         border-radius: 10px;
         padding: 12px 15px;
         font-size: 1rem;
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-        transition: border-color 0.3s, box-shadow 0.3s;
         color: var(--modal-text);
+        transition: border-color 0.3s, box-shadow 0.3s;
       }
       .modal-body .form-control:focus,
       .modal-body .form-select:focus {
@@ -198,7 +210,6 @@
         box-shadow: 0 0 8px rgba(0, 123, 255, 0.3);
         outline: none;
       }
-      /* Custom dropdown arrow */
       .modal-body .form-select {
         appearance: none;
         -webkit-appearance: none;
@@ -222,6 +233,7 @@
         display: flex;
         align-items: center;
         gap: 10px;
+        margin-bottom: 15px;
       }
       .payment-option i {
         font-size: 1.2rem;
@@ -236,7 +248,118 @@
       .gap-3 {
         gap: 20px !important;
       }
+      .sidebar {
+        width: 250px;
+        background: var(--sidebar-bg);
+        backdrop-filter: blur(10px);
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        position: fixed;
+        top: 20px;
+        left: 0px;
+        transform: none;
+        height: calc(100% - 40px);
+        transition: transform 0.3s ease;
+        z-index: 2000;
+        color: var(--sidebar-text);
+        animation: fadeIn 0.3s ease-in forwards;
+      }
+      .sidebar.visible {
+        transform: translateX(280px);
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      .sidebar-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        padding: 0 20px;
+      }
+      .sidebar-header h4 {
+        margin: 0;
+        font-size: 1.5rem;
+        color: var(--sidebar-text);
+      }
+      .sidebar-btn {
+        background: none;
+        border: none;
+        color: var(--sidebar-text);
+        font-size: 1.5rem;
+        cursor: pointer;
+        transition: transform 0.2s;
+        padding: 5px;
+      }
+      .sidebar-btn:hover {
+        transform: scale(1.1);
+      }
+      .sidebar-nav {
+        list-style: none;
+        padding: 0 20px;
+      }
+      .sidebar-nav li {
+        margin-bottom: 20px;
+      }
+      .sidebar-nav button {
+        background: none;
+        border: none;
+        color: var(--sidebar-text);
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+        width: 100%;
+        text-align: left;
+        border-radius: 5px;
+        transition: background 0.2s;
+      }
+      .sidebar-nav button:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
+      .main-content {
+        padding: 20px;
+        width: 100%;
+        transition: margin-left 0.3s ease;
+      }
+      .main-content.shifted {
+        margin-left: 280px;
+      }
+      .menu-toggle {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        background: none;
+        border: none;
+        color: var(--header-text);
+        font-size: 1.5rem;
+        z-index: 1100;
+        padding: 10px;
+        margin-left: 0;
+        transition: transform 0.2s;
+      }
+      .menu-toggle:hover {
+        transform: scale(1.1);
+      }
       @media (max-width: 767px) {
+        .sidebar {
+          top: 10px;
+          left: -270px;
+          height: calc(100% - 20px);
+        }
+        .sidebar.visible {
+          transform: translateX(280px);
+        }
+        .main-content {
+          margin-left: 0;
+        }
+        .main-content.shifted {
+          margin-left: 0;
+        }
         .header {
           padding: 20px;
           padding-bottom: 70px;
@@ -260,10 +383,6 @@
           text-align: right;
           margin-bottom: 15px;
         }
-        .upgrade-btn {
-          margin-left: 0;
-          margin-top: 15px;
-        }
         .modal-body {
           padding: 20px;
         }
@@ -271,243 +390,288 @@
     </style>
   </head>
   <body>
-    <div class="header">
-      <img src="{{ config.logo_url }}" alt="{{ config.company_name }} Logo" class="logo">
-      <h2>🕒 {{ config.company_name }} Attendance Dashboard</h2>
-      <p class="mb-0">Real-time overview of employee check-ins and check-outs</p>
-      <div class="nav-buttons d-flex d-md-none">
-        <button class="nav-btn" id="menuToggle" data-bs-toggle="collapse" data-bs-target="#navMenu" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Menu">
-          <i class="fas fa-bars"></i>
+    <button class="menu-toggle hidden" id="menuToggle">
+      <i class="fas fa-bars"></i>
+    </button>
+
+    <div class="sidebar hidden" id="sidebar">
+      <div class="sidebar-header">
+        <h4>Menu</h4>
+        <button class="sidebar-btn" id="closeSidebar">
+          <i class="fas fa-times"></i>
         </button>
       </div>
-      <div class="nav-buttons collapse d-md-flex" id="navMenu">
-        <button class="nav-btn hidden" id="employeesBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Manage Employees">
-          <i class="fas fa-users"></i>
-        </button>
-        <button class="nav-btn hidden" id="usersBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Manage Users">
-          <i class="fas fa-user"></i>
-        </button>
-        <button class="nav-btn hidden" id="subscriptionBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Subscription">
-          <i class="fas fa-credit-card"></i>
-        </button>
-        <button class="nav-btn hidden" id="logoutBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Logout">
-          <i class="fas fa-sign-out-alt"></i>
-        </button>
-        <button class="nav-btn" id="themeToggle" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Theme">
-          <i class="fas fa-moon"></i>
-        </button>
-      </div>
+      <ul class="sidebar-nav">
+        <li>
+          <button class="hidden" id="sidebarEmployeesBtn" data-bs-toggle="tooltip" data-bs-placement="right" title="Manage Employees">
+            <i class="fas fa-users"></i> Employees
+          </button>
+        </li>
+        <li>
+          <button class="hidden" id="sidebarUsersBtn" data-bs-toggle="tooltip" data-bs-placement="right" title="Manage Users">
+            <i class="fas fa-user"></i> Users
+          </button>
+        </li>
+        <li>
+          <button class="hidden" id="sidebarSubscriptionBtn" data-bs-toggle="tooltip" data-bs-placement="right" title="Subscription">
+            <i class="fas fa-credit-card"></i> Subscription
+          </button>
+        </li>
+        <li>
+          <button class="hidden" id="sidebarLogoutBtn" data-bs-toggle="tooltip" data-bs-placement="right" title="Logout">
+            <i class="fas fa-sign-out-alt"></i> Logout
+          </button>
+        </li>
+        <li>
+          <button id="sidebarThemeToggle" data-bs-toggle="tooltip" data-bs-placement="right" title="Theme">
+            <i class="fas fa-moon"></i> Theme
+          </button>
+        </li>
+      </ul>
     </div>
 
-    <div class="container mt-5">
-      <!-- Subscription Info -->
-      <div class="subscription-info hidden" id="subscriptionInfo">
-        <span id="subscriptionPlan"></span>
-        <button class="btn upgrade-btn" id="upgradeBtn">Upgrade Plan</button>
+    <div class="main-content" id="mainContent">
+      <div class="header">
+        <img src="{{ config.logo_url or '/static/default_logo.png' }}" alt="{{ config.company_name or 'Company' }} Logo" class="logo">
+        <h2>🕒 {{ config.company_name or 'Attendance' }} Attendance Dashboard</h2>
+        <p class="mb-0">Real-time overview of employee check-ins and check-outs</p>
+        <div class="nav-buttons d-flex d-md-none">
+          <button class="nav-btn" id="navMenuToggle" data-bs-toggle="collapse" data-bs-target="#navMenu" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Menu">
+            <i class="fas fa-bars"></i>
+          </button>
+        </div>
+        <div class="nav-buttons collapse d-md-flex" id="navMenu">
+          <button class="nav-btn hidden" id="employeesBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Manage Employees">
+            <i class="fas fa-users"></i>
+          </button>
+          <button class="nav-btn hidden" id="usersBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Manage Users">
+            <i class="fas fa-user"></i>
+          </button>
+          <button class="nav-btn hidden" id="subscriptionBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Subscription">
+            <i class="fas fa-credit-card"></i>
+          </button>
+          <button class="nav-btn hidden" id="logoutBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Logout">
+            <i class="fas fa-sign-out-alt"></i>
+          </button>
+          <button class="nav-btn" id="themeToggle" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Theme">
+            <i class="fas fa-moon"></i>
+          </button>
+        </div>
       </div>
 
-      <!-- Login Section -->
-      <div class="login-section" id="loginSection">
-        <h5 class="mb-4">Admin Login</h5>
-        <form id="loginForm" class="employee-form shadow-sm">
-          <div class="mb-4">
-            <label for="username" class="form-label">Username</label>
-            <input type="text" class="form-control" id="username" required>
-          </div>
-          <div class="mb-4">
-            <label for="password" class="form-label">Password</label>
-            <input type="password" class="form-control" id="password" required>
-          </div>
-          <button type="submit" class="btn btn-custom">Login</button>
-        </form>
-      </div>
-
-      <!-- Employee Management Section -->
-      <div class="employee-management hidden" id="employeeManagementSection">
-        <div class="mb-5">
-          <h5 class="mb-4">
-            <a data-bs-toggle="collapse" href="#employeeManagement" role="button" aria-expanded="false" aria-controls="employeeManagement">
-              Manage Employees
-            </a>
-          </h5>
-          <div class="collapse show" id="employeeManagement">
-            <div class="employee-form shadow-sm">
-              <h6 class="mb-4">Add/Edit Employee</h6>
-              <form id="employeeForm">
-                <div class="mb-4">
-                  <label for="employeeId" class="form-label">Employee ID (e.g., SFK001)</label>
-                  <input type="text" class="form-control" id="employeeId" pattern="SFK[0-9]{3}" required>
-                </div>
-                <div class="mb-4">
-                  <label for="employeeName" class="form-label">Name</label>
-                  <input type="text" class="form-control" id="employeeName" required>
-                </div>
-                <div class="mb-4">
-                  <label for="fingerprintTemplate" class="form-label">Fingerprint Template</label>
-                  <input type="text" class="form-control" id="fingerprintTemplate" required>
-                </div>
-                <div class="mb-4">
-                  <label for="employeePhoto" class="form-label">Employee Photo</label>
-                  <input type="file" class="form-control" id="employeePhoto" accept="image/*">
-                </div>
-                <button type="submit" class="btn btn-custom" id="submitEmployeeBtn">Add Employee</button>
-              </form>
+      <div class="container mt-5">
+        <!-- Login Section -->
+        <div class="login-section" id="loginSection">
+          <h5 class="mb-4">Admin Login</h5>
+          <form id="loginForm" class="employee-form shadow-sm">
+            <div class="mb-4">
+              <label for="username" class="form-label">Username</label>
+              <input type="text" class="form-control" id="username" required>
             </div>
-            <div class="mt-5" id="bulkImportSection">
-              <h6 class="mb-4">Bulk Import Employees</h6>
-              <form id="bulk-import-form" enctype="multipart/form-data">
+            <div class="mb-4">
+              <label for="password" class="form-label">Password</label>
+              <input type="password" class="form-control" id="password" required>
+            </div>
+            <button type="submit" class="btn btn-custom">Login</button>
+          </form>
+        </div>
+
+        <!-- Employee Management Section -->
+        <div class="employee-management hidden" id="employeeManagementSection">
+          <div class="mb-5">
+            <h5 class="mb-4">
+              <a data-bs-toggle="collapse" href="#employeeManagement" role="button" aria-expanded="false" aria-controls="employeeManagement">
+                Manage Employees
+              </a>
+            </h5>
+            <div class="collapse show" id="employeeManagement">
+              <div class="employee-form shadow-sm">
+                <h6 class="mb-4">Add/Edit Employee</h6>
+                <form id="employeeForm">
+                  <div class="mb-4">
+                    <label for="employeeId" class="form-label">Employee ID (e.g., SFK001)</label>
+                    <input type="text" class="form-control" id="employeeId" pattern="SFK[0-9]{3}" required>
+                  </div>
+                  <div class="mb-4">
+                    <label for="employeeName" class="form-label">Name</label>
+                    <input type="text" class="form-control" id="employeeName" required>
+                  </div>
+                  <div class="mb-4">
+                    <label for="fingerprintTemplate" class="form-label">Fingerprint Template</label>
+                    <input type="text" class="form-control" id="fingerprintTemplate" required>
+                  </div>
+                  <div class="mb-4">
+                    <label for="employeePhoto" class="form-label">Employee Photo</label>
+                    <input type="file" class="form-control" id="employeePhoto" accept="image/*">
+                  </div>
+                  <button type="submit" class="btn btn-custom" id="submitEmployeeBtn">Add Employee</button>
+                </form>
+              </div>
+              <div class="mt-5" id="bulkImportSection">
+                <h6 class="mb-4">Bulk Import Employees</h6>
+                <form id="bulk-import-form" enctype="multipart/form-data">
+                  <div class="mb-4">
+                    <input type="file" id="csv-file" class="form-control" accept=".csv" required>
+                  </div>
+                  <button type="submit" class="btn btn-custom btn-sm">Import CSV</button>
+                </form>
+                <p id="import-message" class="mt-3"></p>
+              </div>
+              <div class="mt-5">
+                <h6 class="mb-4">Employee List</h6>
                 <div class="mb-4">
-                  <input type="file" id="csv-file" class="form-control" accept=".csv" required>
+                  <input type="text" class="form-control" id="employeeSearch" placeholder="Search by ID or Name">
                 </div>
-                <button type="submit" class="btn btn-custom btn-sm">Import CSV</button>
-              </form>
-              <p id="import-message" class="mt-3"></p>
-            </div>
-            <div class="mt-5">
-              <h6 class="mb-4">Employee List</h6>
-              <div class="mb-4">
-                <input type="text" class="form-control" id="employeeSearch" placeholder="Search by ID or Name">
-              </div>
-              <div class="mb-4" id="bulkDeleteSection">
-                <button class="btn btn-danger btn-sm" id="bulkDeleteBtn" disabled>Bulk Delete</button>
-              </div>
-              <div class="table-wrapper shadow-sm rounded">
-                <table class="table table-striped align-middle">
-                  <thead>
-                    <tr>
-                      <th><input type="checkbox" id="selectAll"></th>
-                      <th>Employee ID</th>
-                      <th>Name</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody id="employee-table-body">
-                  </tbody>
-                </table>
+                <div class="mb-4" id="bulkDeleteSection">
+                  <button class="btn btn-danger btn-sm" id="bulkDeleteBtn" disabled>Bulk Delete</button>
+                </div>
+                <div class="table-wrapper shadow-sm rounded">
+                  <table class="table table-striped align-middle">
+                    <thead>
+                      <tr>
+                        <th><input type="checkbox" id="selectAll"></th>
+                        <th>Employee ID</th>
+                        <th>Name</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="employee-table-body">
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Attendance Section -->
-      <div class="attendance-section">
-        <div class="d-flex justify-content-between align-items-center attendance-header">
-          <h5 class="mb-0">Attendance Records</h5>
-          <div class="d-flex align-items-center gap-3">
-            <input type="date" id="startDate" class="form-control form-control-sm" style="width: 160px;">
-            <input type="date" id="endDate" class="form-control form-control-sm" style="width: 160px;">
-            <button class="action-btn" id="filterAttendance" data-bs-toggle="tooltip" data-bs-placement="top" title="Filter">
-              <i class="fas fa-filter"></i>
-            </button>
-            <button class="action-btn" id="refreshAttendance" data-bs-toggle="tooltip" data-bs-placement="top" title="Refresh">
-              <i class="fas fa-sync-alt"></i>
-            </button>
-            <button class="action-btn" id="exportBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Export CSV">
-              <i class="fas fa-file-export"></i>
-            </button>
+        <!-- Attendance Section -->
+        <div class="attendance-section">
+          <div class="d-flex justify-content-between align-items-center attendance-header">
+            <h5 class="mb-0">Attendance Records</h5>
+            <div class="d-flex align-items-center gap-3">
+              <input type="date" id="startDate" class="form-control form-control-sm" style="width: 160px;">
+              <input type="date" id="endDate" class="form-control form-control-sm" style="width: 160px;">
+              <button class="action-btn" id="filterAttendance" data-bs-toggle="tooltip" data-bs-placement="top" title="Filter">
+                <i class="fas fa-filter"></i>
+              </button>
+              <button class="action-btn" id="refreshAttendance" data-bs-toggle="tooltip" data-bs-placement="top" title="Refresh">
+                <i class="fas fa-sync-alt"></i>
+              </button>
+              <button class="action-btn" id="exportBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Export CSV">
+                <i class="fas fa-file-export"></i>
+              </button>
+            </div>
+          </div>
+          <div class="table-wrapper shadow-sm rounded">
+            <table class="table table-striped align-middle">
+              <thead>
+                <tr>
+                  <th>Employee ID</th>
+                  <th>Name</th>
+                  <th>Date</th>
+                  <th>Time In</th>
+                  <th>Time Out</th>
+                </tr>
+              </thead>
+              <tbody id="attendance-table-body">
+                {% for record in records if records %}
+                <tr>
+                  <td>{{ record[0] or 'N/A' }}</td>
+                  <td>{{ record[1] or 'N/A' }}</td>
+                  <td>{{ record[2] or 'N/A' }}</td>
+                  <td>{{ record[3] or '-' }}</td>
+                  <td>{{ record[4] or '-' }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5">No attendance records available.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
           </div>
         </div>
-        <div class="table-wrapper shadow-sm rounded">
-          <table class="table table-striped align-middle">
-            <thead>
-              <tr>
-                <th>Employee ID</th>
-                <th>Name</th>
-                <th>Date</th>
-                <th>Time In</th>
-                <th>Time Out</th>
-              </tr>
-            </thead>
-            <tbody id="attendance-table-body">
-              {% for record in records %}
-              <tr>
-                <td>{{ record[0] }}</td>
-                <td>{{ record[1] }}</td>
-                <td>{{ record[2] }}</td>
-                <td>{{ record[3] or '-' }}</td>
-                <td>{{ record[4] or '-' }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+
+        <!-- Analytics Section -->
+        <div class="mt-5 hidden" id="analyticsSection">
+          <h5 class="mb-4">Attendance Trends (Last 30 Days)</h5>
+          <canvas id="trendsChart" style="max-height: 350px;"></canvas>
         </div>
       </div>
 
-      <!-- Analytics Section -->
-      <div class="mt-5 hidden" id="analyticsSection">
-        <h5 class="mb-4">Attendance Trends (Last 30 Days)</h5>
-        <canvas id="trendsChart" style="max-height: 350px;"></canvas>
-      </div>
-    </div>
-
-    <!-- Toast for Notifications -->
-    <div class="toast-container position-fixed bottom-0 end-0 p-4">
-      <div id="attendanceToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="toast-header">
-          <strong class="me-auto">Attendance Update</strong>
-          <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+      <!-- Toast for Notifications -->
+      <div class="toast-container position-fixed bottom-0 end-0 p-4">
+        <div id="attendanceToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+          <div class="toast-header">
+            <strong class="me-auto">Attendance Update</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+          </div>
+          <div class="toast-body"></div>
         </div>
-        <div class="toast-body"></div>
       </div>
-    </div>
 
-    <!-- Subscription Modal -->
-    <div class="modal fade" id="subscriptionModal" tabindex="-1" aria-labelledby="subscriptionModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="subscriptionModalLabel">Manage Subscription</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      <!-- Subscription Modal -->
+      <div class="modal fade" id="subscriptionModal" tabindex="-1" aria-labelledby="subscriptionModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="subscriptionModalLabel">Upgrade Subscription</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <div class="row">
+                <div class="col-md-6">
+                  <h6>Current Plan: <span id="modalCurrentPlan" class="text-primary fw-bold"></span></h6>
+                  <p class="text-muted mb-4">Enhance your experience with a new plan.</p>
+                  <ul class="list-unstyled">
+                    <li class="mb-3"><strong>Basic:</strong> 10 employees, basic features - $29/month</li>
+                    <li class="mb-3"><strong>Starter:</strong> 50 employees, management, CSV export - $49/month</li>
+                    <li class="mb-3"><strong>Pro:</strong> 500 employees, analytics, bulk ops - $99/month</li>
+                    <li><strong>Enterprise:</strong> Unlimited, all features - $149/month (Contact us)</li>
+                  </ul>
+                </div>
+                <div class="col-md-6">
+                  <form id="upgradeForm">
+                    <div class="mb-4">
+                      <label for="newPlan" class="form-label">Select Plan</label>
+                      <select class="form-select" id="newPlan" required>
+                        <option value="basic">Basic</option>
+                        <option value="starter">Starter</option>
+                        <option value="pro">Pro</option>
+                        <option value="enterprise">Enterprise</option>
+                      </select>
+                    </div>
+                    <div class="mb-4">
+                      <label for="paymentMethod" class="form-label">Payment Method</label>
+                      <select class="form-select" id="paymentMethod" required>
+                        <option value="stripe"><i class="fab fa-stripe-s"></i> Stripe (Cards, Google Pay)</option>
+                        <option value="paypal"><i class="fab fa-paypal"></i> PayPal</option>
+                        <option value="mpesa"><i class="fas fa-mobile-alt"></i> M-Pesa</option>
+                      </select>
+                    </div>
+                    <div class="mb-4 hidden" id="mpesaPhoneSection">
+                      <label for="mpesaPhone" class="form-label">M-Pesa Phone (e.g., 254712345678)</label>
+                      <input type="text" class="form-control" id="mpesaPhone" pattern="254[0-9]{9}" placeholder="254712345678">
+                    </div>
+                    <button type="submit" class="btn btn-custom w-100">Upgrade Now</button>
+                  </form>
+                  <p class="text-muted mt-3 small">For Enterprise, contact support at kevojr69@gmail.com.</p>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="modal-body">
-            <h6>Current Plan: <span id="modalCurrentPlan"></span></h6>
-            <p class="mt-3">Upgrade your plan to unlock more features:</p>
-            <ul>
-              <li><strong>Basic:</strong> Up to 10 employees, basic features ($49/month)</li>
-              <li><strong>Starter:</strong> Up to 50 employees, employee management, CSV export ($99/month)</li>
-              <li><strong>Pro:</strong> Up to 500 employees, analytics, bulk operations ($149/month)</li>
-              <li><strong>Enterprise:</strong> Unlimited employees, all features ($199/month - Contact us)</li>
-            </ul>
-            <form id="upgradeForm">
-              <div class="mb-4">
-                <label for="newPlan" class="form-label">Select New Plan</label>
-                <select class="form-select" id="newPlan" required>
-                  <option value="basic">Basic</option>
-                  <option value="starter">Starter</option>
-                  <option value="pro">Pro</option>
-                </select>
-              </div>
-              <div class="mb-4">
-                <label for="paymentMethod" class="form-label">Select Payment Method</label>
-                <select class="form-select" id="paymentMethod" required>
-                  <option value="stripe"><i class="fab fa-stripe-s"></i> Stripe (Cards, Google Pay)</option>
-                  <option value="paypal"><i class="fab fa-paypal"></i> PayPal</option>
-                  <option value="mpesa"><i class="fas fa-mobile-alt"></i> M-Pesa</option>
-                </select>
-              </div>
-              <div class="mb-4 hidden" id="mpesaPhoneSection">
-                <label for="mpesaPhone" class="form-label">M-Pesa Phone Number (e.g., 254712345678)</label>
-                <input type="text" class="form-control" id="mpesaPhone" pattern="254[0-9]{9}" placeholder="254712345678">
-              </div>
-              <button type="submit" class="btn btn-custom">Proceed to Payment</button>
-            </form>
-            <p class="mt-4">Note: For Enterprise plans, please contact support.</p>
-          </div>
-        </font-family: Arial, sans-serif;
-      </div>
-    </div>
+        </div>
+      </div
 
-    <footer class="footer text-center text-muted">
-      © {{ datetime.utcnow().year }} {{ config.company_name }}
-    </footer>
+      <footer class="footer text-center text-muted" style="text-align: center;">
+        © {{ datetime.utcnow().year or 2025 }} {{ config.company_name or 'Company' }}
+      </footer>
+    </div>
 
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://js.stripe.com/v3/"></script>
     <script>
-      const stripe = Stripe('{{ stripe_publishable_key }}');
+      const stripe = Stripe('{{ stripe_publishable_key or "pk_test_12345" }}');
       const socket = io();
       const attendanceTbody = document.getElementById('attendance-table-body');
       const employeeTbody = document.getElementById('employee-table-body');
@@ -520,9 +684,6 @@
       const usersBtn = document.getElementById('usersBtn');
       const employeesBtn = document.getElementById('employeesBtn');
       const subscriptionBtn = document.getElementById('subscriptionBtn');
-      const subscriptionInfo = document.getElementById('subscriptionInfo');
-      const subscriptionPlan = document.getElementById('subscriptionPlan');
-      const upgradeBtn = document.getElementById('upgradeBtn');
       const employeeSearch = document.getElementById('employeeSearch');
       const selectAll = document.getElementById('selectAll');
       const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
@@ -538,50 +699,90 @@
       const paymentMethodSelect = document.getElementById('paymentMethod');
       const mpesaPhoneSection = document.getElementById('mpesaPhoneSection');
       const mpesaPhone = document.getElementById('mpesaPhone');
+      const sidebar = document.getElementById('sidebar');
+      const mainContent = document.getElementById('mainContent');
+      const menuToggle = document.getElementById('menuToggle');
+      const closeSidebar = document.getElementById('closeSidebar');
+      const sidebarLogoutBtn = document.getElementById('sidebarLogoutBtn');
+      const sidebarUsersBtn = document.getElementById('sidebarUsersBtn');
+      const sidebarEmployeesBtn = document.getElementById('sidebarEmployeesBtn');
+      const sidebarSubscriptionBtn = document.getElementById('sidebarSubscriptionBtn');
+      const sidebarThemeToggle = document.getElementById('sidebarThemeToggle');
 
       let token = localStorage.getItem('token');
       let isEditing = false;
       let currentPlan = null;
 
-      // Initialize Bootstrap tooltips
+      // Initialize and manage Bootstrap tooltips
       const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-      const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+      const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl, {
+        trigger: 'hover'
+      }));
 
-      function updateUI() {
-        console.log('updateUI called, token:', token);
-        if (token) {
-          loginSection.classList.add('hidden');
-          logoutBtn.classList.remove('hidden');
-          usersBtn.classList.remove('hidden');
-          subscriptionBtn.classList.remove('hidden');
-          subscriptionInfo.classList.remove('hidden');
-          loadSubscription();
-        } else {
-          loginSection.classList.remove('hidden');
-          employeeManagementSection.classList.add('hidden');
-          analyticsSection.classList.add('hidden');
-          logoutBtn.classList.add('hidden');
-          usersBtn.classList.add('hidden');
-          employeesBtn.classList.add('hidden');
-          subscriptionBtn.classList.add('hidden');
-          subscriptionInfo.classList.add('hidden');
-        }
+      // Sidebar toggle functionality
+      function toggleSidebar() {
+        sidebar.classList.toggle('hidden');
+        sidebar.classList.toggle('visible');
+        mainContent.classList.toggle('shifted');
+        tooltipList.forEach(tooltip => tooltip.hide());
       }
 
+      menuToggle.addEventListener('click', toggleSidebar);
+      closeSidebar.addEventListener('click', toggleSidebar);
+
+      function updateUI() {
+    console.log('updateUI called, token:', token);
+    if (token) {
+        loginSection.classList.add('hidden');
+        employeeManagementSection.classList.remove('hidden');
+        logoutBtn.classList.remove('hidden');
+        usersBtn.classList.remove('hidden');
+        employeesBtn.classList.remove('hidden');
+        subscriptionBtn.classList.remove('hidden');
+        sidebarLogoutBtn.classList.remove('hidden');
+        sidebarUsersBtn.classList.remove('hidden');
+        sidebarEmployeesBtn.classList.remove('hidden');
+        sidebarSubscriptionBtn.classList.remove('hidden');
+        menuToggle.classList.remove('hidden');
+        loadSubscription();
+    } else {
+        loginSection.classList.remove('hidden');
+        employeeManagementSection.classList.add('hidden');
+        analyticsSection.classList.add('hidden');
+        logoutBtn.classList.add('hidden');
+        usersBtn.classList.add('hidden');
+        employeesBtn.classList.add('hidden');
+        subscriptionBtn.classList.add('hidden');
+        sidebarLogoutBtn.classList.add('hidden');
+        sidebarUsersBtn.classList.add('hidden');
+        sidebarEmployeesBtn.classList.add('hidden');
+        sidebarSubscriptionBtn.classList.add('hidden');
+        sidebar.classList.add('hidden');
+        menuToggle.classList.add('hidden');
+        mainContent.classList.remove('shifted');
+    }
+  }
+
       function loadSubscription() {
+        if (!token) {
+          console.error('No token available for subscription fetch');
+          return;
+        }
         fetch('/subscription', {
           headers: { 'Authorization': `Bearer ${token}` }
         })
-          .then(response => response.json())
+          .then(response => {
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return response.json();
+          })
           .then(data => {
             if (data.status === 'success') {
               currentPlan = data.subscription.plan.toLowerCase();
-              subscriptionPlan.textContent = `Plan: ${currentPlan.toUpperCase()} (Max ${data.subscription.employee_limit} employees)`;
               updateFeatureVisibility();
               loadEmployees();
               loadAttendance();
             } else {
-              alert('Failed to load subscription: ' + data.message + '. Please try logging in again or contact support.');
+              alert('Failed to load subscription: ' + (data.message || 'Unknown error') + '. Please try logging in again or contact support.');
             }
           })
           .catch(error => {
@@ -595,9 +796,11 @@
         if (currentPlan && ['starter', 'pro', 'enterprise'].includes(currentPlan)) {
           employeeManagementSection.classList.remove('hidden');
           employeesBtn.classList.remove('hidden');
+          sidebarEmployeesBtn.classList.remove('hidden');
         } else {
           employeeManagementSection.classList.add('hidden');
           employeesBtn.classList.add('hidden');
+          sidebarEmployeesBtn.classList.add('hidden');
         }
 
         if (currentPlan && ['pro', 'enterprise'].includes(currentPlan)) {
@@ -617,64 +820,80 @@
       }
 
       function loadAttendance() {
+        if (!token) {
+          console.error('No token available for attendance fetch');
+          return;
+        }
         const startDate = document.getElementById('startDate').value;
         const endDate = document.getElementById('endDate').value;
         const url = startDate && endDate ? `/attendance?start_date=${startDate}&end_date=${endDate}` : '/attendance';
         fetch(url, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
-          .then(response => response.json())
+          .then(response => {
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return response.json();
+          })
           .then(data => {
             attendanceTbody.innerHTML = '';
-            if (data.status === 'success') {
+            if (data.status === 'success' && data.records && data.records.length > 0) {
               data.records.forEach(record => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                  <td>${record.employee_id}</td>
-                  <td>${record.name}</td>
-                  <td>${record.date}</td>
+                  <td>${record.employee_id || 'N/A'}</td>
+                  <td>${record.name || 'N/A'}</td>
+                  <td>${record.date || 'N/A'}</td>
                   <td>${record.time_in || '-'}</td>
                   <td>${record.time_out || '-'}</td>
                 `;
                 attendanceTbody.appendChild(row);
               });
             } else {
-              console.error('loadAttendance failed:', data.message);
-              alert(data.message);
+              attendanceTbody.innerHTML = '<tr><td colspan="5">No attendance records available.</td></tr>';
+              console.error('loadAttendance failed:', data.message || 'No data available');
+              alert(data.message || 'No attendance records available.');
             }
           })
-          .catch(error => console.error('Error in loadAttendance:', error));
+          .catch(error => {
+            console.error('Error in loadAttendance:', error);
+            attendanceTbody.innerHTML = '<tr><td colspan="5">Error loading attendance records.</td></tr>';
+          });
       }
 
       function loadAnalytics() {
+        if (!token) {
+          console.error('No token available for analytics fetch');
+          return;
+        }
         fetch('/analytics', {
           headers: { 'Authorization': `Bearer ${token}` }
         })
-          .then(response => response.json())
+          .then(response => {
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return response.json();
+          })
           .then(data => {
-            if (data.status === 'success') {
+            if (data.status === 'success' && data.trends && data.trends.length > 0) {
               const ctx = document.getElementById('trendsChart').getContext('2d');
               new Chart(ctx, {
                 type: 'line',
                 data: {
-                  labels: data.trends.map(t => t.date),
+                  labels: data.trends.map(t => t.date || 'N/A'),
                   datasets: [{
                     label: 'Active Employees',
-                    data: data.trends.map(t => t.active_employees),
-                    borderColor: '{{ config["theme"]["primary_color"] }}',
+                    data: data.trends.map(t => t.active_employees || 0),
+                    borderColor: '{{ config["theme"]["primary_color"] or "#007bff" }}',
                     fill: false
                   }]
                 },
                 options: {
                   responsive: true,
-                  scales: {
-                    y: { beginAtZero: true }
-                  }
+                  scales: { y: { beginAtZero: true } }
                 }
               });
             } else {
-              console.error('loadAnalytics failed:', data.message);
-              alert(data.message);
+              console.error('loadAnalytics failed:', data.message || 'No data available');
+              alert(data.message || 'No analytics data available.');
             }
           })
           .catch(error => console.error('Error in loadAnalytics:', error));
@@ -692,9 +911,7 @@
         })
           .then(response => {
             console.log('Login response status:', response.status);
-            if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
-            }
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.json();
           })
           .then(data => {
@@ -705,7 +922,7 @@
               loginForm.reset();
               updateUI();
             } else {
-              alert(data.message);
+              alert(data.message || 'Login failed');
             }
           })
           .catch(error => {
@@ -723,6 +940,15 @@
         updateUI();
       });
 
+      sidebarLogoutBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        console.log('Logging out from sidebar');
+        localStorage.removeItem('token');
+        token = null;
+        currentPlan = null;
+        updateUI();
+      });
+
       employeesBtn.addEventListener('click', async (e) => {
         e.preventDefault();
         if (!token) {
@@ -733,11 +959,37 @@
           const response = await fetch('/employees', {
             headers: { 'Authorization': `Bearer ${token}` }
           });
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
           const data = await response.json();
           if (data.status === 'success') {
             window.location.href = '/employees/manage';
           } else {
-            alert(data.message);
+            alert(data.message || 'Access denied');
+            localStorage.removeItem('token');
+            token = null;
+            updateUI();
+          }
+        } catch (error) {
+          alert('Error accessing employees page: ' + error.message);
+        }
+      });
+
+      sidebarEmployeesBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        if (!token) {
+          alert('Please log in to access this page.');
+          return;
+        }
+        try {
+          const response = await fetch('/employees', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+          const data = await response.json();
+          if (data.status === 'success') {
+            window.location.href = '/employees/manage';
+          } else {
+            alert(data.message || 'Access denied');
             localStorage.removeItem('token');
             token = null;
             updateUI();
@@ -757,11 +1009,37 @@
           const response = await fetch('/users', {
             headers: { 'Authorization': `Bearer ${token}` }
           });
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
           const data = await response.json();
           if (data.status === 'success') {
             window.location.href = '/users/manage';
           } else {
-            alert(data.message);
+            alert(data.message || 'Access denied');
+            localStorage.removeItem('token');
+            token = null;
+            updateUI();
+          }
+        } catch (error) {
+          alert('Error accessing users page: ' + error.message);
+        }
+      });
+
+      sidebarUsersBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        if (!token) {
+          alert('Please log in to access this page.');
+          return;
+        }
+        try {
+          const response = await fetch('/users', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+          const data = await response.json();
+          if (data.status === 'success') {
+            window.location.href = '/users/manage';
+          } else {
+            alert(data.message || 'Access denied');
             localStorage.removeItem('token');
             token = null;
             updateUI();
@@ -778,7 +1056,7 @@
         modal.show();
       });
 
-      upgradeBtn.addEventListener('click', (e) => {
+      sidebarSubscriptionBtn.addEventListener('click', (e) => {
         e.preventDefault();
         modalCurrentPlan.textContent = currentPlan ? currentPlan.toUpperCase() : 'N/A';
         const modal = new bootstrap.Modal(document.getElementById('subscriptionModal'));
@@ -808,6 +1086,10 @@
           }
           payload.phone_number = phoneNumber;
         }
+        if (!token) {
+          alert('Please log in to upgrade your plan.');
+          return;
+        }
         fetch('/subscription', {
           method: 'POST',
           headers: {
@@ -816,7 +1098,10 @@
           },
           body: JSON.stringify(payload)
         })
-          .then(response => response.json())
+          .then(response => {
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return response.json();
+          })
           .then(data => {
             if (data.status === 'success') {
               if (paymentMethod === 'stripe') {
@@ -829,46 +1114,56 @@
               } else if (paymentMethod === 'paypal') {
                 window.location.href = data.approval_url;
               } else if (paymentMethod === 'mpesa') {
-                alert(data.message);
+                alert(data.message || 'Payment initiated via M-Pesa.');
                 const modal = bootstrap.Modal.getInstance(document.getElementById('subscriptionModal'));
                 modal.hide();
               } else {
-                alert(data.message);
+                alert(data.message || 'Plan upgraded successfully.');
                 loadSubscription();
                 const modal = bootstrap.Modal.getInstance(document.getElementById('subscriptionModal'));
                 modal.hide();
               }
             } else {
-              alert(data.message);
+              alert(data.message || 'Upgrade failed.');
             }
           })
-          .catch(error => console.error('Error upgrading plan:', error));
+          .catch(error => {
+            console.error('Error upgrading plan:', error);
+            alert('Error upgrading plan: ' + error.message);
+          });
       });
 
       function loadEmployees(filter = '') {
+        if (!token) {
+          console.error('No token available for employees fetch');
+          return;
+        }
         fetch('/employees', {
           headers: { 'Authorization': `Bearer ${token}` }
         })
-          .then(response => response.json())
+          .then(response => {
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return response.json();
+          })
           .then(data => {
             employeeTbody.innerHTML = '';
-            if (data.status === 'success') {
+            if (data.status === 'success' && data.employees && data.employees.length > 0) {
               const filteredEmployees = data.employees.filter(emp =>
-                emp.employee_id.toLowerCase().includes(filter.toLowerCase()) ||
-                emp.name.toLowerCase().includes(filter.toLowerCase())
+                (emp.employee_id || '').toLowerCase().includes(filter.toLowerCase()) ||
+                (emp.name || '').toLowerCase().includes(filter.toLowerCase())
               );
               filteredEmployees.forEach(emp => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                  <td><input type="checkbox" class="employee-checkbox" data-id="${emp.employee_id}"></td>
-                  <td>${emp.employee_id}</td>
+                  <td><input type="checkbox" class="employee-checkbox" data-id="${emp.employee_id || 'N/A'}"></td>
+                  <td>${emp.employee_id || 'N/A'}</td>
                   <td>
-                    <img src="${emp.photo_url || '/static/default_photo.png'}" alt="${emp.name}" style="width: 30px; height: 30px; border-radius: 50%; margin-right: 5px;">
-                    ${emp.name}
+                    <img src="${emp.photo_url || '/static/default_photo.png'}" alt="${emp.name || 'N/A'}" style="width: 30px; height: 30px; border-radius: 50%; margin-right: 5px;">
+                    ${emp.name || 'N/A'}
                   </td>
                   <td>
-                    <button class="btn btn-warning btn-sm edit-btn" data-id="${emp.employee_id}" data-name="${emp.name}" data-fingerprint="${emp.fingerprint_template}" data-photo="${emp.photo_url || ''}">Edit</button>
-                    <button class="btn btn-danger btn-sm delete-btn" data-id="${emp.employee_id}">Delete</button>
+                    <button class="btn btn-warning btn-sm edit-btn" data-id="${emp.employee_id || 'N/A'}" data-name="${emp.name || ''}" data-fingerprint="${emp.fingerprint_template || ''}" data-photo="${emp.photo_url || ''}">Edit</button>
+                    <button class="btn btn-danger btn-sm delete-btn" data-id="${emp.employee_id || 'N/A'}">Delete</button>
                   </td>
                 `;
                 employeeTbody.appendChild(row);
@@ -877,27 +1172,34 @@
                 btn.addEventListener('click', () => {
                   isEditing = true;
                   submitEmployeeBtn.textContent = 'Update Employee';
-                  document.getElementById('employeeId').value = btn.getAttribute('data-id');
+                  document.getElementById('employeeId').value = btn.dataset.id;
                   document.getElementById('employeeId').disabled = true;
-                  document.getElementById('employeeName').value = btn.getAttribute('data-name');
-                  document.getElementById('fingerprintTemplate').value = btn.getAttribute('data-fingerprint');
+                  document.getElementById('employeeName').value = btn.dataset.name;
+                  document.getElementById('fingerprintTemplate').value = btn.dataset.fingerprint;
                 });
               });
               document.querySelectorAll('.delete-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
-                  const employeeId = btn.getAttribute('data-id');
+                  const employeeId = btn.dataset.id;
                   if (confirm(`Delete employee ${employeeId}?`)) {
                     fetch(`/employees/${employeeId}`, {
                       method: 'DELETE',
                       headers: { 'Authorization': `Bearer ${token}` }
                     })
-                      .then(response => response.json())
+                      .then(response => {
+                        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                        return response.json();
+                      })
                       .then(data => {
                         if (data.status === 'success') {
                           loadEmployees(employeeSearch.value);
                         } else {
-                          alert(data.message);
+                          alert(data.message || 'Delete failed');
                         }
+                      })
+                      .catch(error => {
+                        console.error('Error deleting employee:', error);
+                        alert('Error deleting employee: ' + error.message);
                       });
                   }
                 });
@@ -906,11 +1208,15 @@
                 cb.addEventListener('change', updateBulkDeleteButton);
               });
             } else {
-              console.error('loadEmployees failed:', data.message);
-              alert(data.message);
+              employeeTbody.innerHTML = '<tr><td colspan="4">No employees available.</td></tr>';
+              console.error('loadEmployees failed:', data.message || 'No data available');
+              alert(data.message || 'No employees available.');
             }
           })
-          .catch(error => console.error('Error in loadEmployees:', error));
+          .catch(error => {
+            console.error('Error in loadEmployees:', error);
+            employeeTbody.innerHTML = '<tr><td colspan="4">Error loading employees.</td></tr>';
+          });
       }
 
       function updateBulkDeleteButton() {
@@ -920,6 +1226,10 @@
 
       employeeForm.addEventListener('submit', (e) => {
         e.preventDefault();
+        if (!token) {
+          alert('Please log in to manage employees.');
+          return;
+        }
         const employeeId = document.getElementById('employeeId').value;
         const employeeName = document.getElementById('employeeName').value;
         const fingerprintTemplate = document.getElementById('fingerprintTemplate').value;
@@ -936,7 +1246,10 @@
           headers: { 'Authorization': `Bearer ${token}` },
           body: formData
         })
-          .then(response => response.json())
+          .then(response => {
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return response.json();
+          })
           .then(data => {
             if (data.status === 'success') {
               employeeForm.reset();
@@ -945,25 +1258,41 @@
               submitEmployeeBtn.textContent = 'Add Employee';
               loadEmployees(employeeSearch.value);
             } else {
-              alert(data.message);
+              alert(data.message || 'Operation failed');
             }
           })
-          .catch(error => console.error('Error in employeeForm submit:', error));
+          .catch(error => {
+            console.error('Error in employeeForm submit:', error);
+            alert('Error submitting employee form: ' + error.message);
+          });
       });
 
       document.getElementById('bulk-import-form').addEventListener('submit', async (e) => {
         e.preventDefault();
+        if (!token) {
+          alert('Please log in to import employees.');
+          return;
+        }
         const formData = new FormData();
         formData.append('file', document.getElementById('csv-file').files[0]);
-        const response = await fetch('/employees/bulk_import', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` },
-          body: formData
-        });
-        const data = await response.json();
-        document.getElementById('import-message').textContent = data.message;
-        if (data.status === 'success') loadEmployees();
-        else alert(data.message);
+        try {
+          const response = await fetch('/employees/bulk_import', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData
+          });
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+          const data = await response.json();
+          document.getElementById('import-message').textContent = data.message || 'Import failed';
+          if (data.status === 'success') {
+            loadEmployees();
+          } else {
+            alert(data.message || 'Import failed');
+          }
+        } catch (error) {
+          console.error('Error in bulk import:', error);
+          alert('Error importing employees: ' + error.message);
+        }
       });
 
       employeeSearch.addEventListener('input', () => {
@@ -978,8 +1307,12 @@
       });
 
       bulkDeleteBtn.addEventListener('click', () => {
+        if (!token) {
+          alert('Please log in to delete employees.');
+          return;
+        }
         const checkboxes = document.querySelectorAll('.employee-checkbox:checked');
-        const employeeIds = Array.from(checkboxes).map(cb => cb.getAttribute('data-id'));
+        const employeeIds = Array.from(checkboxes).map(cb => cb.dataset.id);
         if (employeeIds.length && confirm(`Delete ${employeeIds.length} employees?`)) {
           fetch('/employees/bulk_delete', {
             method: 'POST',
@@ -989,14 +1322,20 @@
             },
             body: JSON.stringify({ employee_ids: employeeIds })
           })
-            .then(response => response.json())
+            .then(response => {
+              if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+              return response.json();
+            })
             .then(data => {
               if (data.status === 'success') {
                 loadEmployees(employeeSearch.value);
               }
-              alert(data.message);
+              alert(data.message || 'Delete failed');
             })
-            .catch(error => console.error('Error in bulkDelete:', error));
+            .catch(error => {
+              console.error('Error in bulkDelete:', error);
+              alert('Error deleting employees: ' + error.message);
+            });
         }
       });
 
@@ -1041,16 +1380,16 @@
 
       socket.on('attendance_update', (data) => {
         if (data.status === 'error') {
-          alert(data.message);
+          alert(data.message || 'Update failed');
         } else {
           const toast = new bootstrap.Toast(document.getElementById('attendanceToast'));
-          document.querySelector('#attendanceToast .toast-body').textContent = `${data.name} ${data.action === 'check-in' ? 'checked in' : 'checked out'} at ${data.time}`;
+          document.querySelector('#attendanceToast .toast-body').textContent = `${data.name || 'User'} ${data.action === 'check-in' ? 'checked in' : 'checked out'} at ${data.time || 'N/A'}`;
           toast.show();
           const row = document.createElement('tr');
           row.innerHTML = `
-            <td>${data.employee_id}</td>
-            <td>${data.name}</td>
-            <td>${data.date}</td>
+            <td>${data.employee_id || 'N/A'}</td>
+            <td>${data.name || 'N/A'}</td>
+            <td>${data.date || 'N/A'}</td>
             <td>${data.time_in || '-'}</td>
             <td>${data.time_out || '-'}</td>
           `;
@@ -1070,11 +1409,20 @@
         root.setAttribute('data-theme', theme);
         localStorage.setItem('theme', theme);
         themeToggle.querySelector('i').className = theme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+        sidebarThemeToggle.querySelector('i').className = theme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
       }
 
       themeToggle.addEventListener('click', (e) => {
         e.preventDefault();
         console.log('Theme toggle clicked, current token:', token);
+        const currentTheme = root.getAttribute('data-theme');
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        setTheme(newTheme);
+      });
+
+      sidebarThemeToggle.addEventListener('click', (e) => {
+        e.preventDefault();
+        console.log('Theme toggle clicked from sidebar, current token:', token);
         const currentTheme = root.getAttribute('data-theme');
         const newTheme = currentTheme === 'light' ? 'dark' : 'light';
         setTheme(newTheme);
