@@ -1,13 +1,12 @@
 import os
 import json
 import logging
-import jwt
 import sqlite3
 import requests
 from datetime import date, datetime, timedelta
-from functools import wraps
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for
 from flask_socketio import SocketIO, emit
+from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity, set_access_cookies, unset_jwt_cookies
 from cryptography.fernet import Fernet
 import pandas as pd
 from passlib.hash import bcrypt
@@ -34,7 +33,16 @@ cipher = Fernet(ENCRYPTION_KEY.encode())
 # Flask app setup
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key')
+app.config['JWT_TOKEN_LOCATION'] = ['headers', 'cookies']
+app.config['JWT_COOKIE_CSRF_PROTECT'] = False
+app.config['JWT_COOKIE_SECURE'] = False
+app.config['JWT_ACCESS_COOKIE_PATH'] = '/'
+app.config['JWT_COOKIE_SAMESITE'] = 'Lax'
+
 socketio = SocketIO(app)
+
+# Initialize JWTManager
+jwt = JWTManager(app)
 
 # Database setup
 DB_PATH = 'data/biometric_attendance.db'
@@ -83,7 +91,7 @@ def init_db():
                 FOREIGN KEY (organization_id) REFERENCES users (username)
             )
         ''')
-        # Insert default admin user if not exists
+        # Insert default admin user if not existing
         cursor.execute('SELECT * FROM users WHERE username = ?', ('admin',))
         if not cursor.fetchone():
             logger.info("Creating default admin user")
@@ -146,76 +154,33 @@ def get_mpesa_access_token():
     response = requests.get(api_url, auth=auth)
     return response.json().get('access_token')
 
-def require_auth(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        token = request.headers.get('Authorization')
-        if not token or not token.startswith('Bearer '):
-            return jsonify({'status': 'error', 'message': 'Missing or invalid token'}), 401
-        token = token.split(' ')[1]
-        try:
-            payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
-            request.user = payload
-        except jwt.InvalidTokenError:
-            return jsonify({'status': 'error', 'message': 'Invalid token'}), 401
-        return f(*args, **kwargs)
-    return decorated
+# Helper function to check subscription feature
+def verify_subscription_feature(username, feature):
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT plan FROM subscriptions WHERE organization_id = ?', (username,))
+        subscription = cursor.fetchone()
+        if not subscription:
+            return False, jsonify({'status': 'error', 'message': 'No subscription found'}), 403
+        plan = subscription['plan']
+        if feature not in SUBSCRIPTION_TIERS[plan]['features']:
+            return False, jsonify({'status': 'error', 'message': f'Feature "{feature}" not available in your plan ({plan}). Please upgrade.'}), 403
+        return True, None, None
 
-def check_subscription_feature(feature):
-    def decorator(f):
-        @wraps(f)
-        def wrapper(*args, **kwargs):
-            token = request.headers.get('Authorization')
-            if not token or not token.startswith('Bearer '):
-                return jsonify({'status': 'error', 'message': 'Missing or invalid token'}), 401
-            token = token.split(' ')[1]
-            try:
-                payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
-                username = payload['username']
-            except jwt.InvalidTokenError:
-                return jsonify({'status': 'error', 'message': 'Invalid token'}), 401
-
-            with get_db_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute('SELECT plan FROM subscriptions WHERE organization_id = ?', (username,))
-                subscription = cursor.fetchone()
-                if not subscription:
-                    return jsonify({'status': 'error', 'message': 'No subscription found'}), 403
-                plan = subscription['plan']
-                if feature not in SUBSCRIPTION_TIERS[plan]['features']:
-                    return jsonify({'status': 'error', 'message': f'Feature "{feature}" not available in your plan ({plan}). Please upgrade.'}), 403
-            return f(*args, **kwargs)
-        return wrapper
-    return decorator
-
-def check_employee_limit():
-    def decorator(f):
-        @wraps(f)
-        def wrapper(*args, **kwargs):
-            token = request.headers.get('Authorization')
-            if not token or not token.startswith('Bearer '):
-                return jsonify({'status': 'error', 'message': 'Missing or invalid token'}), 401
-            token = token.split(' ')[1]
-            try:
-                payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
-                username = payload['username']
-            except jwt.InvalidTokenError:
-                return jsonify({'status': 'error', 'message': 'Invalid token'}), 401
-
-            with get_db_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute('SELECT plan, employee_limit FROM subscriptions WHERE organization_id = ?', (username,))
-                subscription = cursor.fetchone()
-                if not subscription:
-                    return jsonify({'status': 'error', 'message': 'No subscription found'}), 403
-                plan, employee_limit = subscription['plan'], subscription['employee_limit']
-                cursor.execute('SELECT COUNT(*) FROM employees')
-                employee_count = cursor.fetchone()[0]
-                if employee_count >= employee_limit:
-                    return jsonify({'status': 'error', 'message': f'Employee limit ({employee_limit}) reached for your plan ({plan}). Please upgrade.'}), 403
-            return f(*args, **kwargs)
-        return wrapper
-    return decorator
+# Helper function to check employee limit
+def verify_employee_limit(username):
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT plan, employee_limit FROM subscriptions WHERE organization_id = ?', (username,))
+        subscription = cursor.fetchone()
+        if not subscription:
+            return False, jsonify({'status': 'error', 'message': 'No subscription found'}), 403
+        plan, employee_limit = subscription['plan'], subscription['employee_limit']
+        cursor.execute('SELECT COUNT(*) FROM employees')
+        employee_count = cursor.fetchone()[0]
+        if employee_count >= employee_limit:
+            return False, jsonify({'status': 'error', 'message': f'Employee limit ({employee_limit}) reached for your plan ({plan}). Please upgrade.'}), 403
+        return True, None, None
 
 @app.route('/')
 def index():
@@ -225,8 +190,26 @@ def index():
         records = cursor.fetchall()
     return render_template('dashboard.html', records=records, config=config, datetime=datetime, stripe_publishable_key=STRIPE_PUBLISHABLE_KEY)
 
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT password_hash FROM users WHERE username = ?', (username,))
+        user = cursor.fetchone()
+        if user and bcrypt.verify(password, user['password_hash']):
+            access_token = create_access_token(identity=username, expires_delta=timedelta(hours=24))
+            print(f"Generated token: {access_token}")  # Log for debugging
+            response = jsonify({'status': 'success', 'message': 'Login successful'})
+            set_access_cookies(response, access_token)
+            print(f"Cookie set in response: {response.headers.get('Set-Cookie')}")  # Debug cookie
+            return response, 200
+        return jsonify({'status': 'error', 'message': 'Invalid credentials'}), 401
+
 @app.route('/attendance')
-@require_auth
+@jwt_required()
 def get_attendance():
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
@@ -239,58 +222,69 @@ def get_attendance():
         records = cursor.fetchall()
     return jsonify({'status': 'success', 'records': [dict(record) for record in records]})
 
-@app.route('/analytics')
-@require_auth
-@check_subscription_feature('analytics')
-def analytics():
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        end_date = date.today()
-        start_date = end_date - timedelta(days=30)
-        cursor.execute('''
-            SELECT date, COUNT(DISTINCT employee_id) as active_employees
-            FROM attendance
-            WHERE date BETWEEN ? AND ?
-            GROUP BY date
-            ORDER BY date
-        ''', (start_date.isoformat(), end_date.isoformat()))
-        trends = cursor.fetchall()
-    return jsonify({'status': 'success', 'trends': [dict(trend) for trend in trends]})
-
 @app.route('/employees', methods=['GET', 'POST'])
-@require_auth
-@check_subscription_feature('employee_management')
-@check_employee_limit()
-def manage_employees():
-    if request.method == 'GET':
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('SELECT employee_id, name, fingerprint_template, photo_url FROM employees')
-            employees = cursor.fetchall()
-        return jsonify({'status': 'success', 'employees': [dict(emp) for emp in employees]})
+@jwt_required()
+def employees():
+    print(f"Request cookies for /employees: {request.cookies}")
+    username = get_jwt_identity()  
+    # Check if the request is for JSON data (API call) or HTML (page load)
+    if request.headers.get('Accept') == 'application/json':
+        # For API calls, require the token
+        @jwt_required()
+        def get_employees_json():
+            # Check subscription feature for employee_management
+            has_access, error_response, status_code = verify_subscription_feature(username, 'employee_management')
+            if not has_access:
+                return error_response, status_code
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT employee_id, name, fingerprint_template, photo_url FROM employees')
+                employees = cursor.fetchall()
+            return jsonify({'status': 'success', 'employees': [dict(emp) for emp in employees]})
+        return get_employees_json()
     elif request.method == 'POST':
-        data = request.form
-        employee_id = data.get('employee_id')
-        name = data.get('name')
-        fingerprint_template = data.get('fingerprint_template')
-        photo = request.files.get('photo')
-        photo_url = None
-        if photo:
-            photo_path = os.path.join('static', 'uploads', f"{employee_id}.jpg")
-            os.makedirs(os.path.dirname(photo_path), exist_ok=True)
-            photo.save(photo_path)
-            photo_url = f"/static/uploads/{employee_id}.jpg"
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('INSERT OR REPLACE INTO employees (employee_id, name, fingerprint_template, photo_url) VALUES (?, ?, ?, ?)',
-                           (employee_id, name, fingerprint_template, photo_url))
-            conn.commit()
-        return jsonify({'status': 'success', 'message': 'Employee added successfully'})
+        # For POST requests (e.g., adding an employee), require the token
+        @jwt_required()
+        def post_employee():
+            # Check subscription feature and employee limit
+            has_access, error_response, status_code = verify_subscription_feature(username, 'employee_management')
+            if not has_access:
+                return error_response, status_code
+            limit_ok, limit_error, limit_status = verify_employee_limit(username)
+            if not limit_ok:
+                return limit_error, limit_status
+
+            data = request.form
+            employee_id = data.get('employee_id')
+            name = data.get('name')
+            fingerprint_template = data.get('fingerprint_template')
+            photo = request.files.get('photo')
+            photo_url = None
+            if photo:
+                photo_path = os.path.join('static', 'uploads', f"{employee_id}.jpg")
+                os.makedirs(os.path.dirname(photo_path), exist_ok=True)
+                photo.save(photo_path)
+                photo_url = f"/static/uploads/{employee_id}.jpg"
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('INSERT OR REPLACE INTO employees (employee_id, name, fingerprint_template, photo_url) VALUES (?, ?, ?, ?)',
+                               (employee_id, name, fingerprint_template, photo_url))
+                conn.commit()
+            return jsonify({'status': 'success', 'message': 'Employee added successfully'})
+        return post_employee()
+    else:
+        # For direct page loads (GET for HTML), render the template without requiring a token initially
+        return render_template('employees.html', config=config, datetime=datetime)
 
 @app.route('/employees/<employee_id>', methods=['PUT', 'DELETE'])
-@require_auth
-@check_subscription_feature('employee_management')
+@jwt_required()
 def update_delete_employee(employee_id):
+    username = get_jwt_identity()
+    # Check subscription feature for employee_management
+    has_access, error_response, status_code = verify_subscription_feature(username, 'employee_management')
+    if not has_access:
+        return error_response, status_code
+
     if request.method == 'PUT':
         data = request.form
         name = data.get('name')
@@ -320,10 +314,18 @@ def update_delete_employee(employee_id):
         return jsonify({'status': 'success', 'message': 'Employee deleted successfully'})
 
 @app.route('/employees/bulk_import', methods=['POST'])
-@require_auth
-@check_subscription_feature('bulk_operations')
-@check_employee_limit()
+@jwt_required()
 def bulk_import():
+    username = get_jwt_identity()
+    # Check subscription feature for bulk_operations
+    has_access, error_response, status_code = verify_subscription_feature(username, 'bulk_operations')
+    if not has_access:
+        return error_response, status_code
+    # Check employee limit
+    limit_ok, limit_error, limit_status = verify_employee_limit(username)
+    if not limit_ok:
+        return limit_error, limit_status
+
     if 'file' not in request.files:
         return jsonify({'status': 'error', 'message': 'No file uploaded'}), 400
     file = request.files['file']
@@ -341,10 +343,15 @@ def bulk_import():
         conn.commit()
     return jsonify({'status': 'success', 'message': 'Employees imported successfully'})
 
-@app.route('/employees/bulk_delete', methods=['POST'])
-@require_auth
-@check_subscription_feature('bulk_operations')
+@app.route('/employees/bulk_delete', methods=[' edadPOST'])
+@jwt_required()
 def bulk_delete():
+    username = get_jwt_identity()
+    # Check subscription feature for bulk_operations
+    has_access, error_response, status_code = verify_subscription_feature(username, 'bulk_operations')
+    if not has_access:
+        return error_response, status_code
+
     data = request.get_json()
     employee_ids = data.get('employee_ids', [])
     with get_db_connection() as conn:
@@ -356,16 +363,24 @@ def bulk_delete():
     return jsonify({'status': 'success', 'message': 'Employees deleted successfully'})
 
 @app.route('/users', methods=['GET'])
-@require_auth
-def get_users():
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute('SELECT username FROM users')
-        users = cursor.fetchall()
-    return jsonify({'status': 'success', 'users': [dict(user) for user in users]})
+def users():
+    # Check if the request is for JSON data (API call) or HTML (page load)
+    if request.headers.get('Accept') == 'application/json':
+        # For API calls, require the token
+        @jwt_required()
+        def get_users_json():
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('SELECT username FROM users')
+                users = cursor.fetchall()
+            return jsonify({'status': 'success', 'users': [dict(user) for user in users]})
+        return get_users_json()
+    else:
+        # For direct page loads, render the template without requiring a token
+        return render_template('users.html', config=config, datetime=datetime)
 
 @app.route('/users/<username>', methods=['DELETE'])
-@require_auth
+@jwt_required()
 def delete_user(username):
     with get_db_connection() as conn:
         cursor = conn.cursor()
@@ -373,21 +388,10 @@ def delete_user(username):
         conn.commit()
     return jsonify({'status': 'success', 'message': 'User deleted successfully'})
 
-@app.route('/employees/manage')
-@require_auth
-@check_subscription_feature('employee_management')
-def manage_employees_page():
-    return render_template('employees.html', config=config)
-
-@app.route('/users/manage')
-@require_auth
-def manage_users_page():
-    return render_template('users.html', config=config)
-
 @app.route('/subscription', methods=['GET', 'POST'])
-@require_auth
+@jwt_required()
 def manage_subscription():
-    username = request.user['username']
+    username = get_jwt_identity()
     with get_db_connection() as conn:
         cursor = conn.cursor()
         if request.method == 'GET':
@@ -400,7 +404,16 @@ def manage_subscription():
                 conn.commit()
                 cursor.execute('SELECT plan, employee_limit, start_date, end_date FROM subscriptions WHERE organization_id = ?', (username,))
                 subscription = cursor.fetchone()
-            return jsonify({'status': 'success', 'subscription': dict(subscription)})
+            if request.headers.get('Accept') == 'application/json':
+                return jsonify({'status': 'success', 'subscription': dict(subscription)})
+            return render_template(
+                'subscription.html',
+                config=config,
+                subscription=dict(subscription),
+                stripe_publishable_key=STRIPE_PUBLISHABLE_KEY,
+                username=username,
+                datetime=datetime  # Pass datetime to the template context
+            )
         elif request.method == 'POST':
             data = request.get_json()
             new_plan = data.get('plan')
@@ -495,11 +508,11 @@ def manage_subscription():
                     return jsonify({'status': 'error', 'message': result.get('errorMessage', 'Failed to initiate M-Pesa payment')}), 500
 
 @app.route('/subscription/success')
-@require_auth
+@jwt_required()
 def subscription_success():
     session_id = request.args.get('session_id')
     plan = request.args.get('plan')
-    username = request.user['username']
+    username = get_jwt_identity()
     try:
         session = stripe.checkout.Session.retrieve(session_id)
         if session.payment_status == 'paid':
@@ -520,12 +533,12 @@ def subscription_cancel():
     return jsonify({'status': 'error', 'message': 'Payment cancelled'})
 
 @app.route('/subscription/paypal/success')
-@require_auth
+@jwt_required()
 def paypal_success():
     payment_id = request.args.get('paymentId')
     payer_id = request.args.get('PayerID')
     plan = request.args.get('plan')
-    username = request.user['username']
+    username = get_jwt_identity()
     payment = paypalrestsdk.Payment.find(payment_id)
     if payment.execute({"payer_id": payer_id}):
         with get_db_connection() as conn:
@@ -559,25 +572,51 @@ def mpesa_callback():
     else:
         return jsonify({'status': 'error', 'message': 'M-Pesa payment failed'})
 
-@app.route('/login', methods=['POST'])
-def login():
-    data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
+@app.route('/analytics')
+@jwt_required()
+def analytics():
+    username = get_jwt_identity()
+    # Check subscription feature for analytics
+    has_access, error_response, status_code = verify_subscription_feature(username, 'analytics')
+    if not has_access:
+        return error_response, status_code
+
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute('SELECT password_hash FROM users WHERE username = ?', (username,))
-        user = cursor.fetchone()
-        if user and bcrypt.verify(password, user['password_hash']):
-            token = jwt.encode({'username': username, 'exp': datetime.utcnow() + timedelta(hours=24)},
-                              app.config['SECRET_KEY'], algorithm='HS256')
-            return jsonify({'status': 'success', 'token': token})
-        return jsonify({'status': 'error', 'message': 'Invalid credentials'}), 401
+        end_date = date.today()
+        start_date = end_date - timedelta(days=30)
+        cursor.execute('''
+            SELECT date, COUNT(DISTINCT employee_id) as active_employees
+            FROM attendance
+            WHERE date BETWEEN ? AND ?
+            GROUP BY date
+            ORDER BY date
+        ''', (start_date.isoformat(), end_date.isoformat()))
+        trends = cursor.fetchall()
+    return jsonify({'status': 'success', 'trends': [dict(trend) for trend in trends]})
+
+@app.route('/logout', methods=['POST'])
+def logout():
+    response = jsonify({"status": "success", "message": "Logged out"})
+    unset_jwt_cookies(response)
+    return response, 200
+
+@app.route('/check_auth', methods=['GET'])
+@jwt_required(optional=True)
+def check_auth():
+    if get_jwt_identity():
+        return jsonify({"status": "success"}), 200
+    return jsonify({"status": "unauthenticated"}), 401
 
 @app.route('/export', methods=['GET'])
-@require_auth
-@check_subscription_feature('csv_export')
+@jwt_required()
 def export_attendance():
+    username = get_jwt_identity()
+    # Check subscription feature for csv_export
+    has_access, error_response, status_code = verify_subscription_feature(username, 'csv_export')
+    if not has_access:
+        return error_response, status_code
+
     with get_db_connection() as conn:
         cursor = conn.cursor()
         cursor.execute('SELECT employee_id, name, date, time_in, time_out FROM attendance ORDER BY timestamp DESC')
@@ -586,6 +625,50 @@ def export_attendance():
     csv_path = 'attendance_export.csv'
     df.to_csv(csv_path, index=False)
     return send_file(csv_path, as_attachment=True)
+
+@app.route('/biometric_scan', methods=['POST'])
+def biometric_scan():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'status': 'error', 'message': 'No data provided in request body'}), 400
+        
+        employee_id = data.get('employee_id')
+        scan_data = data.get('scan_data')
+        
+        if not employee_id:
+            return jsonify({'status': 'error', 'message': 'Missing employee_id in request'}), 400
+        if not scan_data:
+            return jsonify({'status': 'error', 'message': 'Missing scan_data in request'}), 400
+        
+        # Validate employee exists
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT employee_id FROM employees WHERE employee_id = ?', (employee_id,))
+            employee = cursor.fetchone()
+            if not employee:
+                return jsonify({'status': 'error', 'message': f'Employee with ID {employee_id} not found'}), 404
+            
+            # Simulate biometric scan validation (replace with actual logic)
+            if len(scan_data) < 10:  # Example validation
+                return jsonify({'status': 'error', 'message': 'Invalid scan data: too short'}), 400
+            
+            # Record attendance
+            today = date.today().isoformat()
+            current_time = datetime.now().strftime('%H:%M:%S')
+            cursor.execute('SELECT name FROM employees WHERE employee_id = ?', (employee_id,))
+            employee_name = cursor.fetchone()['name']
+            cursor.execute('INSERT INTO attendance (employee_id, name, date, time_in, timestamp) VALUES (?, ?, ?, ?, ?)',
+                           (employee_id, employee_name, today, current_time, datetime.now().isoformat()))
+            conn.commit()
+            return jsonify({'status': 'success', 'message': 'Biometric scan recorded successfully'})
+    
+    except sqlite3.IntegrityError:
+        return jsonify({'status': 'error', 'message': 'Database integrity error: possible duplicate scan'}), 400
+    except sqlite3.Error as e:
+        return jsonify({'status': 'error', 'message': f'Database error: {str(e)}'}), 500
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': f'Unexpected error: {str(e)}'}), 500
 
 @socketio.on('connect')
 def handle_connect():

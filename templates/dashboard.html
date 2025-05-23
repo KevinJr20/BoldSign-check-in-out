@@ -60,7 +60,11 @@
         color: var(--header-text);
         padding: 30px;
         text-align: center;
-        position: relative;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        width: 100%;
+        box-sizing: border-box;
         margin-bottom: 30px;
       }
       .logo {
@@ -92,12 +96,21 @@
         transform: scale(1.05);
         box-shadow: 0 4px 12px rgba(0, 123, 255, 0.5);
       }
+      .main-content {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        box-sizing: border-box;
+        align-items: center;
+        transition: margin-left 0.3s ease;
+      }
       .footer {
         font-size: 0.85rem;
         margin-top: 40px;
         text-align: center;
         width: 100%;
         box-sizing: border-box;
+        padding-bottom: 20px;
       }
       .nav-buttons {
         position: absolute;
@@ -114,15 +127,12 @@
         border: none;
         padding: 8px;
         transition: transform 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
       .nav-btn:hover {
         transform: scale(1.2);
-      }
-      .employee-form {
-        background-color: var(--table-bg);
-        padding: 30px;
-        border-radius: 10px;
-        margin-bottom: 30px;
       }
       .login-section {
         max-width: 450px;
@@ -141,106 +151,10 @@
         transform: scale(1.2);
       }
       .hidden { display: none; }
-      .modal-content {
-        background: var(--modal-bg);
-        backdrop-filter: blur(15px);
-        border-radius: 15px;
-        padding: 25px;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
-        animation: fadeIn 0.3s ease-in;
-      }
-      @keyframes fadeIn {
-        from { opacity: 0; transform: scale(0.9); }
-        to { opacity: 1; transform: scale(1); }
-      }
-      .modal-header, .modal-footer {
-        border-color: rgba(255, 255, 255, 0.15);
-      }
-      .modal-title {
-        color: var(--modal-text);
-        font-size: 1.5rem;
-        font-weight: 600;
-      }
-      .modal-body {
-        padding: 20px 0;
-      }
-      .modal-body h6 {
-        font-size: 1.1rem;
-        color: var(--modal-text);
-        margin-bottom: 20px;
-        font-weight: 500;
-      }
-      .modal-body ul {
-        margin-bottom: 25px;
-        padding-left: 20px;
-      }
-      .modal-body ul li {
-        margin-bottom: 15px;
-        font-size: 1rem;
-        padding: 10px 15px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 8px;
-        transition: transform 0.2s, background 0.2s;
-      }
-      .modal-body ul li:hover {
-        transform: translateX(10px);
-        background: rgba(255, 255, 255, 0.2);
-      }
-      .modal-body .form-label {
-        font-weight: 500;
-        color: var(--modal-text);
-        margin-bottom: 10px;
-        font-size: 1rem;
-      }
-      .modal-body .form-control,
-      .modal-body .form-select {
-        background: rgba(255, 255, 255, 0.15);
-        backdrop-filter: blur(5px);
-        border: 1px solid var(--dropdown-border);
-        border-radius: 10px;
-        padding: 12px 15px;
-        font-size: 1rem;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-        color: var(--modal-text);
-        transition: border-color 0.3s, box-shadow 0.3s;
-      }
-      .modal-body .form-control:focus,
-      .modal-body .form-select:focus {
-        border-color: #007bff;
-        box-shadow: 0 0 8px rgba(0, 123, 255, 0.3);
-        outline: none;
-      }
-      .modal-body .form-select {
-        appearance: none;
-        -webkit-appearance: none;
-        -moz-appearance: none;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23212529' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 15px center;
-        background-size: 18px;
-      }
-      :root[data-theme='dark'] .modal-body .form-select {
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e0e0e0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-      }
-      .modal-body .form-select option {
-        background-color: var(--dropdown-bg);
-        color: var(--modal-text);
-      }
-      .modal-body .form-select option:hover {
-        background-color: var(--dropdown-hover-bg);
-      }
-      .payment-option {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin-bottom: 15px;
-      }
-      .payment-option i {
-        font-size: 1.2rem;
-        margin-right: 8px;
-      }
       .attendance-section {
         margin-bottom: 40px;
+        width: 90%;
+        max-width: 1200px;
       }
       .attendance-header {
         margin-bottom: 25px;
@@ -257,22 +171,15 @@
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         position: fixed;
         top: 20px;
-        left: 0px;
-        transform: none;
+        left: -270px;
         height: calc(100% - 40px);
-        transition: transform 0.3s ease;
+        transition: left 0.3s ease;
         z-index: 2000;
         color: var(--sidebar-text);
-        animation: fadeIn 0.3s ease-in forwards;
       }
       .sidebar.visible {
-        transform: translateX(280px);
+        left: 0;
       }
-
-      .hidden {
-        display: none;
-      }
-
       .sidebar-header {
         display: flex;
         justify-content: space-between;
@@ -304,7 +211,7 @@
       .sidebar-nav li {
         margin-bottom: 20px;
       }
-      .sidebar-nav button {
+      .sidebar-nav a {
         background: none;
         border: none;
         color: var(--sidebar-text);
@@ -316,15 +223,11 @@
         width: 100%;
         text-align: left;
         border-radius: 5px;
+        text-decoration: none;
         transition: background 0.2s;
       }
-      .sidebar-nav button:hover {
+      .sidebar-nav a:hover {
         background: rgba(255, 255, 255, 0.2);
-      }
-      .main-content {
-        padding: 20px;
-        width: 100%;
-        transition: margin-left 0.3s ease;
       }
       .main-content.shifted {
         margin-left: 280px;
@@ -339,20 +242,33 @@
         font-size: 1.5rem;
         z-index: 1100;
         padding: 10px;
-        margin-left: 0;
         transition: transform 0.2s;
       }
       .menu-toggle:hover {
         transform: scale(1.1);
       }
+      /* Mobile menu */
+      .mobile-menu {
+        display: none;
+      }
+      .mobile-menu .dropdown-menu {
+        background: var(--header-bg);
+        border-radius: 0 0 0 10px;
+      }
+      .mobile-menu .dropdown-item {
+        color: var(--header-text);
+        padding: 10px 15px;
+        transition: background 0.2s;
+      }
+      .mobile-menu .dropdown-item:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
       @media (max-width: 767px) {
         .sidebar {
-          top: 10px;
           left: -270px;
-          height: calc(100% - 20px);
         }
         .sidebar.visible {
-          transform: translateX(280px);
+          left: 0;
         }
         .main-content {
           margin-left: 0;
@@ -369,32 +285,42 @@
           right: 15px;
           gap: 15px;
         }
-        #navMenu {
-          position: absolute;
-          top: 100%;
-          right: 0;
-          background-color: var(--header-bg);
-          padding: 15px;
-          border-radius: 0 0 0 10px;
-          width: 160px;
+        .nav-buttons.d-md-none, #navMenu {
+          display: none;
         }
-        .nav-buttons .nav-btn {
+        .mobile-menu {
           display: block;
-          text-align: right;
-          margin-bottom: 15px;
+          position: absolute;
+          top: 15px;
+          right: 15px;
         }
-        .modal-body {
-          padding: 20px;
+      }
+      @media (min-width: 768px) {
+        .sidebar {
+          /* Removed left: 0; to allow .visible to control visibility */
+          display: block;
+        }
+        .mobile-menu {
+          display: none;
+        }
+        .menu-toggle {
+          display: block; /* Keep the toggle visible on larger screens */
+        }
+        .main-content {
+          margin-left: 0; /* Default state without shifted class */
+        }
+        .main-content.shifted {
+          margin-left: 280px;
         }
       }
     </style>
   </head>
   <body>
-    <button class="menu-toggle hidden" id="menuToggle">
+    <button class="menu-toggle" id="menuToggle">
       <i class="fas fa-bars"></i>
     </button>
 
-    <div class="sidebar hidden" id="sidebar">
+    <div class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <h4>Menu</h4>
         <button class="sidebar-btn" id="closeSidebar">
@@ -403,19 +329,19 @@
       </div>
       <ul class="sidebar-nav">
         <li>
-          <button class="hidden" id="sidebarEmployeesBtn" data-bs-toggle="tooltip" data-bs-placement="right" title="Manage Employees">
+          <a href="/employees" id="sidebarEmployeesBtn" data-bs-toggle="tooltip" data-bs-placement="right" title="Manage Employees">
             <i class="fas fa-users"></i> Employees
-          </button>
+          </a>
         </li>
         <li>
-          <button class="hidden" id="sidebarUsersBtn" data-bs-toggle="tooltip" data-bs-placement="right" title="Manage Users">
+          <a href="/users" id="sidebarUsersBtn" data-bs-toggle="tooltip" data-bs-placement="right" title="Manage Users">
             <i class="fas fa-user"></i> Users
-          </button>
+          </a>
         </li>
         <li>
-          <button class="hidden" id="sidebarSubscriptionBtn" data-bs-toggle="tooltip" data-bs-placement="right" title="Subscription">
+          <a href="/subscription" id="sidebarSubscriptionBtn" data-bs-toggle="tooltip" data-bs-placement="right" title="Subscription">
             <i class="fas fa-credit-card"></i> Subscription
-          </button>
+          </a>
         </li>
         <li>
           <button class="hidden" id="sidebarLogoutBtn" data-bs-toggle="tooltip" data-bs-placement="right" title="Logout">
@@ -435,27 +361,34 @@
         <img src="{{ config.logo_url or '/static/default_logo.png' }}" alt="{{ config.company_name or 'Company' }} Logo" class="logo">
         <h2>🕒 {{ config.company_name or 'Attendance' }} Attendance Dashboard</h2>
         <p class="mb-0">Real-time overview of employee check-ins and check-outs</p>
-        <div class="nav-buttons d-flex d-md-none">
-          <button class="nav-btn" id="navMenuToggle" data-bs-toggle="collapse" data-bs-target="#navMenu" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Menu">
+        <div class="nav-buttons d-flex d-md-none mobile-menu">
+          <button class="nav-btn" type="button" data-bs-toggle="collapse" data-bs-target="#mobileNavMenu" aria-expanded="false" aria-controls="mobileNavMenu">
             <i class="fas fa-bars"></i>
           </button>
         </div>
         <div class="nav-buttons collapse d-md-flex" id="navMenu">
-          <button class="nav-btn hidden" id="employeesBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Manage Employees">
+          <a class="nav-btn" href="/employees" id="employeesBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Manage Employees">
             <i class="fas fa-users"></i>
-          </button>
-          <button class="nav-btn hidden" id="usersBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Manage Users">
+          </a>
+          <a class="nav-btn" href="/users" id="usersBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Manage Users">
             <i class="fas fa-user"></i>
-          </button>
-          <button class="nav-btn hidden" id="subscriptionBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Subscription">
+          </a>
+          <a class="nav-btn" href="/subscription" id="subscriptionBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Subscription">
             <i class="fas fa-credit-card"></i>
-          </button>
+          </a>
           <button class="nav-btn hidden" id="logoutBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Logout">
             <i class="fas fa-sign-out-alt"></i>
           </button>
           <button class="nav-btn" id="themeToggle" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Theme">
             <i class="fas fa-moon"></i>
           </button>
+        </div>
+        <div class="collapse mobile-menu" id="mobileNavMenu">
+          <a class="dropdown-item" href="/employees">Employees</a>
+          <a class="dropdown-item" href="/users">Users</a>
+          <a class="dropdown-item" href="/subscription">Subscription</a>
+          <button class="dropdown-item" id="mobileLogoutBtn">Logout</button>
+          <button class="dropdown-item" id="mobileThemeToggle">Theme</button>
         </div>
       </div>
 
@@ -476,76 +409,8 @@
           </form>
         </div>
 
-        <!-- Employee Management Section -->
-        <div class="employee-management hidden" id="employeeManagementSection">
-          <div class="mb-5">
-            <h5 class="mb-4">
-              <a data-bs-toggle="collapse" href="#employeeManagement" role="button" aria-expanded="false" aria-controls="employeeManagement">
-                Manage Employees
-              </a>
-            </h5>
-            <div class="collapse show" id="employeeManagement">
-              <div class="employee-form shadow-sm">
-                <h6 class="mb-4">Add/Edit Employee</h6>
-                <form id="employeeForm">
-                  <div class="mb-4">
-                    <label for="employeeId" class="form-label">Employee ID (e.g., SFK001)</label>
-                    <input type="text" class="form-control" id="employeeId" pattern="SFK[0-9]{3}" required>
-                  </div>
-                  <div class="mb-4">
-                    <label for="employeeName" class="form-label">Name</label>
-                    <input type="text" class="form-control" id="employeeName" required>
-                  </div>
-                  <div class="mb-4">
-                    <label for="fingerprintTemplate" class="form-label">Fingerprint Template</label>
-                    <input type="text" class="form-control" id="fingerprintTemplate" required>
-                  </div>
-                  <div class="mb-4">
-                    <label for="employeePhoto" class="form-label">Employee Photo</label>
-                    <input type="file" class="form-control" id="employeePhoto" accept="image/*">
-                  </div>
-                  <button type="submit" class="btn btn-custom" id="submitEmployeeBtn">Add Employee</button>
-                </form>
-              </div>
-              <div class="mt-5" id="bulkImportSection">
-                <h6 class="mb-4">Bulk Import Employees</h6>
-                <form id="bulk-import-form" enctype="multipart/form-data">
-                  <div class="mb-4">
-                    <input type="file" id="csv-file" class="form-control" accept=".csv" required>
-                  </div>
-                  <button type="submit" class="btn btn-custom btn-sm">Import CSV</button>
-                </form>
-                <p id="import-message" class="mt-3"></p>
-              </div>
-              <div class="mt-5">
-                <h6 class="mb-4">Employee List</h6>
-                <div class="mb-4">
-                  <input type="text" class="form-control" id="employeeSearch" placeholder="Search by ID or Name">
-                </div>
-                <div class="mb-4" id="bulkDeleteSection">
-                  <button class="btn btn-danger btn-sm" id="bulkDeleteBtn" disabled>Bulk Delete</button>
-                </div>
-                <div class="table-wrapper shadow-sm rounded">
-                  <table class="table table-striped align-middle">
-                    <thead>
-                      <tr>
-                        <th><input type="checkbox" id="selectAll"></th>
-                        <th>Employee ID</th>
-                        <th>Name</th>
-                        <th>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody id="employee-table-body">
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <!-- Attendance Section -->
-        <div class="attendance-section">
+        <div class="attendance-section hidden" id="attendanceSection">
           <div class="d-flex justify-content-between align-items-center attendance-header">
             <h5 class="mb-0">Attendance Records</h5>
             <div class="d-flex align-items-center gap-3">
@@ -608,60 +473,7 @@
         </div>
       </div>
 
-      <!-- Subscription Modal -->
-      <div class="modal fade" id="subscriptionModal" tabindex="-1" aria-labelledby="subscriptionModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title" id="subscriptionModalLabel">Upgrade Subscription</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-              <div class="row">
-                <div class="col-md-6">
-                  <h6>Current Plan: <span id="modalCurrentPlan" class="text-primary fw-bold"></span></h6>
-                  <p class="text-muted mb-4">Enhance your experience with a new plan.</p>
-                  <ul class="list-unstyled">
-                    <li class="mb-3"><strong>Basic:</strong> 10 employees, basic features - $29/month</li>
-                    <li class="mb-3"><strong>Starter:</strong> 50 employees, management, CSV export - $49/month</li>
-                    <li class="mb-3"><strong>Pro:</strong> 500 employees, analytics, bulk ops - $99/month</li>
-                    <li><strong>Enterprise:</strong> Unlimited, all features - $149/month (Contact us)</li>
-                  </ul>
-                </div>
-                <div class="col-md-6">
-                  <form id="upgradeForm">
-                    <div class="mb-4">
-                      <label for="newPlan" class="form-label">Select Plan</label>
-                      <select class="form-select" id="newPlan" required>
-                        <option value="basic">Basic</option>
-                        <option value="starter">Starter</option>
-                        <option value="pro">Pro</option>
-                        <option value="enterprise">Enterprise</option>
-                      </select>
-                    </div>
-                    <div class="mb-4">
-                      <label for="paymentMethod" class="form-label">Payment Method</label>
-                      <select class="form-select" id="paymentMethod" required>
-                        <option value="stripe"><i class="fab fa-stripe-s"></i> Stripe (Cards, Google Pay)</option>
-                        <option value="paypal"><i class="fab fa-paypal"></i> PayPal</option>
-                        <option value="mpesa"><i class="fas fa-mobile-alt"></i> M-Pesa</option>
-                      </select>
-                    </div>
-                    <div class="mb-4 hidden" id="mpesaPhoneSection">
-                      <label for="mpesaPhone" class="form-label">M-Pesa Phone (e.g., 254712345678)</label>
-                      <input type="text" class="form-control" id="mpesaPhone" pattern="254[0-9]{9}" placeholder="254712345678">
-                    </div>
-                    <button type="submit" class="btn btn-custom w-100">Upgrade Now</button>
-                  </form>
-                  <p class="text-muted mt-3 small">For Enterprise, contact support at kevojr69@gmail.com.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div
-
-      <footer class="footer text-center text-muted" style="text-align: center;">
+      <footer class="footer text-center text-muted">
         © {{ datetime.utcnow().year or 2025 }} {{ config.company_name or 'Company' }}
       </footer>
     </div>
@@ -669,49 +481,29 @@
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://js.stripe.com/v3/"></script>
     <script>
-      const stripe = Stripe('{{ stripe_publishable_key or "pk_test_12345" }}');
       const socket = io();
       const attendanceTbody = document.getElementById('attendance-table-body');
-      const employeeTbody = document.getElementById('employee-table-body');
-      const employeeForm = document.getElementById('employeeForm');
       const loginForm = document.getElementById('loginForm');
       const loginSection = document.getElementById('loginSection');
-      const employeeManagementSection = document.getElementById('employeeManagementSection');
+      const attendanceSection = document.getElementById('attendanceSection');
       const analyticsSection = document.getElementById('analyticsSection');
       const logoutBtn = document.getElementById('logoutBtn');
-      const usersBtn = document.getElementById('usersBtn');
-      const employeesBtn = document.getElementById('employeesBtn');
-      const subscriptionBtn = document.getElementById('subscriptionBtn');
-      const employeeSearch = document.getElementById('employeeSearch');
-      const selectAll = document.getElementById('selectAll');
-      const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
-      const bulkImportSection = document.getElementById('bulkImportSection');
-      const bulkDeleteSection = document.getElementById('bulkDeleteSection');
-      const submitEmployeeBtn = document.getElementById('submitEmployeeBtn');
-      const refreshAttendance = document.getElementById('refreshAttendance');
-      const filterAttendance = document.getElementById('filterAttendance');
-      const themeToggle = document.getElementById('themeToggle');
-      const exportBtn = document.getElementById('exportBtn');
-      const upgradeForm = document.getElementById('upgradeForm');
-      const modalCurrentPlan = document.getElementById('modalCurrentPlan');
-      const paymentMethodSelect = document.getElementById('paymentMethod');
-      const mpesaPhoneSection = document.getElementById('mpesaPhoneSection');
-      const mpesaPhone = document.getElementById('mpesaPhone');
+      const sidebarLogoutBtn = document.getElementById('sidebarLogoutBtn');
+      const mobileLogoutBtn = document.getElementById('mobileLogoutBtn');
       const sidebar = document.getElementById('sidebar');
       const mainContent = document.getElementById('mainContent');
       const menuToggle = document.getElementById('menuToggle');
       const closeSidebar = document.getElementById('closeSidebar');
-      const sidebarLogoutBtn = document.getElementById('sidebarLogoutBtn');
-      const sidebarUsersBtn = document.getElementById('sidebarUsersBtn');
-      const sidebarEmployeesBtn = document.getElementById('sidebarEmployeesBtn');
-      const sidebarSubscriptionBtn = document.getElementById('sidebarSubscriptionBtn');
+      const themeToggle = document.getElementById('themeToggle');
       const sidebarThemeToggle = document.getElementById('sidebarThemeToggle');
+      const mobileThemeToggle = document.getElementById('mobileThemeToggle');
+      const refreshAttendance = document.getElementById('refreshAttendance');
+      const filterAttendance = document.getElementById('filterAttendance');
+      const exportBtn = document.getElementById('exportBtn');
 
-      let token = localStorage.getItem('token');
-      let isEditing = false;
-      let currentPlan = null;
+      // Check authentication status by making a request to a protected endpoint
+      let isAuthenticated = false;
 
       // Initialize and manage Bootstrap tooltips
       const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
@@ -721,115 +513,47 @@
 
       // Sidebar toggle functionality
       function toggleSidebar() {
-        sidebar.classList.toggle('hidden');
         sidebar.classList.toggle('visible');
         mainContent.classList.toggle('shifted');
         tooltipList.forEach(tooltip => tooltip.hide());
       }
 
       menuToggle.addEventListener('click', toggleSidebar);
-      closeSidebar.addEventListener('click', toggleSidebar);
+      closeSidebar.addEventListener('click', () => {
+        sidebar.classList.remove('visible');
+        mainContent.classList.remove('shifted');
+        tooltipList.forEach(tooltip => tooltip.hide());
+      });
 
       function updateUI() {
-    console.log('updateUI called, token:', token);
-    if (token) {
-        loginSection.classList.add('hidden');
-        employeeManagementSection.classList.remove('hidden');
-        logoutBtn.classList.remove('hidden');
-        usersBtn.classList.remove('hidden');
-        employeesBtn.classList.remove('hidden');
-        subscriptionBtn.classList.remove('hidden');
-        sidebarLogoutBtn.classList.remove('hidden');
-        sidebarUsersBtn.classList.remove('hidden');
-        sidebarEmployeesBtn.classList.remove('hidden');
-        sidebarSubscriptionBtn.classList.remove('hidden');
-        menuToggle.classList.remove('hidden');
-        loadSubscription();
-    } else {
-        loginSection.classList.remove('hidden');
-        employeeManagementSection.classList.add('hidden');
-        analyticsSection.classList.add('hidden');
-        logoutBtn.classList.add('hidden');
-        usersBtn.classList.add('hidden');
-        employeesBtn.classList.add('hidden');
-        subscriptionBtn.classList.add('hidden');
-        sidebarLogoutBtn.classList.add('hidden');
-        sidebarUsersBtn.classList.add('hidden');
-        sidebarEmployeesBtn.classList.add('hidden');
-        sidebarSubscriptionBtn.classList.add('hidden');
-        sidebar.classList.add('hidden');
-        menuToggle.classList.add('hidden');
-        mainContent.classList.remove('shifted');
-    }
-  }
-
-      function loadSubscription() {
-        if (!token) {
-          console.error('No token available for subscription fetch');
-          return;
-        }
-        fetch('/subscription', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-          .then(response => {
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            return response.json();
-          })
-          .then(data => {
-            if (data.status === 'success') {
-              currentPlan = data.subscription.plan.toLowerCase();
-              updateFeatureVisibility();
-              loadEmployees();
-              loadAttendance();
-            } else {
-              alert('Failed to load subscription: ' + (data.message || 'Unknown error') + '. Please try logging in again or contact support.');
-            }
-          })
-          .catch(error => {
-            console.error('Error loading subscription:', error);
-            alert('Failed to load subscription due to a network error. Please try again or contact support.');
-          });
-      }
-
-      function updateFeatureVisibility() {
-        console.log('updateFeatureVisibility called, currentPlan:', currentPlan);
-        if (currentPlan && ['starter', 'pro', 'enterprise'].includes(currentPlan)) {
-          employeeManagementSection.classList.remove('hidden');
-          employeesBtn.classList.remove('hidden');
-          sidebarEmployeesBtn.classList.remove('hidden');
-        } else {
-          employeeManagementSection.classList.add('hidden');
-          employeesBtn.classList.add('hidden');
-          sidebarEmployeesBtn.classList.add('hidden');
-        }
-
-        if (currentPlan && ['pro', 'enterprise'].includes(currentPlan)) {
-          analyticsSection.classList.remove('hidden');
+        console.log('updateUI called, isAuthenticated:', isAuthenticated);
+        if (isAuthenticated) {
+          loginSection.classList.add('hidden');
+          attendanceSection.classList.remove('hidden');
+          logoutBtn.classList.remove('hidden');
+          sidebarLogoutBtn.classList.remove('hidden');
+          mobileLogoutBtn.classList.remove('hidden');
+          menuToggle.classList.remove('hidden');
+          loadAttendance();
           loadAnalytics();
         } else {
+          loginSection.classList.remove('hidden');
+          attendanceSection.classList.add('hidden');
           analyticsSection.classList.add('hidden');
-        }
-
-        if (currentPlan && ['pro', 'enterprise'].includes(currentPlan)) {
-          bulkImportSection.classList.remove('hidden');
-          bulkDeleteSection.classList.remove('hidden');
-        } else {
-          bulkImportSection.classList.add('hidden');
-          bulkDeleteSection.classList.add('hidden');
+          logoutBtn.classList.add('hidden');
+          sidebarLogoutBtn.classList.add('hidden');
+          mobileLogoutBtn.classList.add('hidden');
+          sidebar.classList.remove('visible');
+          mainContent.classList.remove('shifted');
+          menuToggle.classList.add('hidden');
         }
       }
 
       function loadAttendance() {
-        if (!token) {
-          console.error('No token available for attendance fetch');
-          return;
-        }
         const startDate = document.getElementById('startDate').value;
         const endDate = document.getElementById('endDate').value;
         const url = startDate && endDate ? `/attendance?start_date=${startDate}&end_date=${endDate}` : '/attendance';
-        fetch(url, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
+        fetch(url)
           .then(response => {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.json();
@@ -851,7 +575,6 @@
             } else {
               attendanceTbody.innerHTML = '<tr><td colspan="5">No attendance records available.</td></tr>';
               console.error('loadAttendance failed:', data.message || 'No data available');
-              alert(data.message || 'No attendance records available.');
             }
           })
           .catch(error => {
@@ -861,13 +584,7 @@
       }
 
       function loadAnalytics() {
-        if (!token) {
-          console.error('No token available for analytics fetch');
-          return;
-        }
-        fetch('/analytics', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
+        fetch('/analytics')
           .then(response => {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.json();
@@ -893,7 +610,6 @@
               });
             } else {
               console.error('loadAnalytics failed:', data.message || 'No data available');
-              alert(data.message || 'No analytics data available.');
             }
           })
           .catch(error => console.error('Error in loadAnalytics:', error));
@@ -917,9 +633,8 @@
           .then(data => {
             console.log('Login response data:', data);
             if (data.status === 'success') {
-              localStorage.setItem('token', data.token);
-              token = data.token;
               loginForm.reset();
+              isAuthenticated = true;
               updateUI();
             } else {
               alert(data.message || 'Login failed');
@@ -934,409 +649,49 @@
       logoutBtn.addEventListener('click', (e) => {
         e.preventDefault();
         console.log('Logging out');
-        localStorage.removeItem('token');
-        token = null;
-        currentPlan = null;
-        updateUI();
+        fetch('/logout', {
+          method: 'POST',
+          credentials: 'include'
+        })
+          .then(response => {
+            if (response.ok) {
+              isAuthenticated = false;
+              updateUI();
+            }
+          })
+          .catch(error => console.error('Error during logout:', error));
       });
 
       sidebarLogoutBtn.addEventListener('click', (e) => {
         e.preventDefault();
         console.log('Logging out from sidebar');
-        localStorage.removeItem('token');
-        token = null;
-        currentPlan = null;
-        updateUI();
-      });
-
-      employeesBtn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        if (!token) {
-          alert('Please log in to access this page.');
-          return;
-        }
-        try {
-          const response = await fetch('/employees', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-          const data = await response.json();
-          if (data.status === 'success') {
-            window.location.href = '/employees/manage';
-          } else {
-            alert(data.message || 'Access denied');
-            localStorage.removeItem('token');
-            token = null;
-            updateUI();
-          }
-        } catch (error) {
-          alert('Error accessing employees page: ' + error.message);
-        }
-      });
-
-      sidebarEmployeesBtn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        if (!token) {
-          alert('Please log in to access this page.');
-          return;
-        }
-        try {
-          const response = await fetch('/employees', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-          const data = await response.json();
-          if (data.status === 'success') {
-            window.location.href = '/employees/manage';
-          } else {
-            alert(data.message || 'Access denied');
-            localStorage.removeItem('token');
-            token = null;
-            updateUI();
-          }
-        } catch (error) {
-          alert('Error accessing employees page: ' + error.message);
-        }
-      });
-
-      usersBtn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        if (!token) {
-          alert('Please log in to access this page.');
-          return;
-        }
-        try {
-          const response = await fetch('/users', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-          const data = await response.json();
-          if (data.status === 'success') {
-            window.location.href = '/users/manage';
-          } else {
-            alert(data.message || 'Access denied');
-            localStorage.removeItem('token');
-            token = null;
-            updateUI();
-          }
-        } catch (error) {
-          alert('Error accessing users page: ' + error.message);
-        }
-      });
-
-      sidebarUsersBtn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        if (!token) {
-          alert('Please log in to access this page.');
-          return;
-        }
-        try {
-          const response = await fetch('/users', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-          const data = await response.json();
-          if (data.status === 'success') {
-            window.location.href = '/users/manage';
-          } else {
-            alert(data.message || 'Access denied');
-            localStorage.removeItem('token');
-            token = null;
-            updateUI();
-          }
-        } catch (error) {
-          alert('Error accessing users page: ' + error.message);
-        }
-      });
-
-      subscriptionBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        modalCurrentPlan.textContent = currentPlan ? currentPlan.toUpperCase() : 'N/A';
-        const modal = new bootstrap.Modal(document.getElementById('subscriptionModal'));
-        modal.show();
-      });
-
-      sidebarSubscriptionBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        modalCurrentPlan.textContent = currentPlan ? currentPlan.toUpperCase() : 'N/A';
-        const modal = new bootstrap.Modal(document.getElementById('subscriptionModal'));
-        modal.show();
-      });
-
-      paymentMethodSelect.addEventListener('change', () => {
-        if (paymentMethodSelect.value === 'mpesa') {
-          mpesaPhoneSection.classList.remove('hidden');
-          mpesaPhone.required = true;
-        } else {
-          mpesaPhoneSection.classList.add('hidden');
-          mpesaPhone.required = false;
-        }
-      });
-
-      upgradeForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const newPlan = document.getElementById('newPlan').value;
-        const paymentMethod = document.getElementById('paymentMethod').value;
-        let payload = { plan: newPlan, payment_method: paymentMethod };
-        if (paymentMethod === 'mpesa') {
-          const phoneNumber = document.getElementById('mpesaPhone').value;
-          if (!phoneNumber.match(/^254[0-9]{9}$/)) {
-            alert('Please enter a valid M-Pesa phone number (e.g., 254712345678)');
-            return;
-          }
-          payload.phone_number = phoneNumber;
-        }
-        if (!token) {
-          alert('Please log in to upgrade your plan.');
-          return;
-        }
-        fetch('/subscription', {
+        fetch('/logout', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(payload)
+          credentials: 'include'
         })
           .then(response => {
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            return response.json();
-          })
-          .then(data => {
-            if (data.status === 'success') {
-              if (paymentMethod === 'stripe') {
-                stripe.redirectToCheckout({ sessionId: data.session_id })
-                  .then(result => {
-                    if (result.error) {
-                      alert(result.error.message);
-                    }
-                  });
-              } else if (paymentMethod === 'paypal') {
-                window.location.href = data.approval_url;
-              } else if (paymentMethod === 'mpesa') {
-                alert(data.message || 'Payment initiated via M-Pesa.');
-                const modal = bootstrap.Modal.getInstance(document.getElementById('subscriptionModal'));
-                modal.hide();
-              } else {
-                alert(data.message || 'Plan upgraded successfully.');
-                loadSubscription();
-                const modal = bootstrap.Modal.getInstance(document.getElementById('subscriptionModal'));
-                modal.hide();
-              }
-            } else {
-              alert(data.message || 'Upgrade failed.');
+            if (response.ok) {
+              isAuthenticated = false;
+              updateUI();
             }
           })
-          .catch(error => {
-            console.error('Error upgrading plan:', error);
-            alert('Error upgrading plan: ' + error.message);
-          });
+          .catch(error => console.error('Error during logout:', error));
       });
 
-      function loadEmployees(filter = '') {
-        if (!token) {
-          console.error('No token available for employees fetch');
-          return;
-        }
-        fetch('/employees', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-          .then(response => {
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            return response.json();
-          })
-          .then(data => {
-            employeeTbody.innerHTML = '';
-            if (data.status === 'success' && data.employees && data.employees.length > 0) {
-              const filteredEmployees = data.employees.filter(emp =>
-                (emp.employee_id || '').toLowerCase().includes(filter.toLowerCase()) ||
-                (emp.name || '').toLowerCase().includes(filter.toLowerCase())
-              );
-              filteredEmployees.forEach(emp => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                  <td><input type="checkbox" class="employee-checkbox" data-id="${emp.employee_id || 'N/A'}"></td>
-                  <td>${emp.employee_id || 'N/A'}</td>
-                  <td>
-                    <img src="${emp.photo_url || '/static/default_photo.png'}" alt="${emp.name || 'N/A'}" style="width: 30px; height: 30px; border-radius: 50%; margin-right: 5px;">
-                    ${emp.name || 'N/A'}
-                  </td>
-                  <td>
-                    <button class="btn btn-warning btn-sm edit-btn" data-id="${emp.employee_id || 'N/A'}" data-name="${emp.name || ''}" data-fingerprint="${emp.fingerprint_template || ''}" data-photo="${emp.photo_url || ''}">Edit</button>
-                    <button class="btn btn-danger btn-sm delete-btn" data-id="${emp.employee_id || 'N/A'}">Delete</button>
-                  </td>
-                `;
-                employeeTbody.appendChild(row);
-              });
-              document.querySelectorAll('.edit-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                  isEditing = true;
-                  submitEmployeeBtn.textContent = 'Update Employee';
-                  document.getElementById('employeeId').value = btn.dataset.id;
-                  document.getElementById('employeeId').disabled = true;
-                  document.getElementById('employeeName').value = btn.dataset.name;
-                  document.getElementById('fingerprintTemplate').value = btn.dataset.fingerprint;
-                });
-              });
-              document.querySelectorAll('.delete-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                  const employeeId = btn.dataset.id;
-                  if (confirm(`Delete employee ${employeeId}?`)) {
-                    fetch(`/employees/${employeeId}`, {
-                      method: 'DELETE',
-                      headers: { 'Authorization': `Bearer ${token}` }
-                    })
-                      .then(response => {
-                        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                        return response.json();
-                      })
-                      .then(data => {
-                        if (data.status === 'success') {
-                          loadEmployees(employeeSearch.value);
-                        } else {
-                          alert(data.message || 'Delete failed');
-                        }
-                      })
-                      .catch(error => {
-                        console.error('Error deleting employee:', error);
-                        alert('Error deleting employee: ' + error.message);
-                      });
-                  }
-                });
-              });
-              document.querySelectorAll('.employee-checkbox').forEach(cb => {
-                cb.addEventListener('change', updateBulkDeleteButton);
-              });
-            } else {
-              employeeTbody.innerHTML = '<tr><td colspan="4">No employees available.</td></tr>';
-              console.error('loadEmployees failed:', data.message || 'No data available');
-              alert(data.message || 'No employees available.');
-            }
-          })
-          .catch(error => {
-            console.error('Error in loadEmployees:', error);
-            employeeTbody.innerHTML = '<tr><td colspan="4">Error loading employees.</td></tr>';
-          });
-      }
-
-      function updateBulkDeleteButton() {
-        const checkboxes = document.querySelectorAll('.employee-checkbox:checked');
-        bulkDeleteBtn.disabled = checkboxes.length === 0;
-      }
-
-      employeeForm.addEventListener('submit', (e) => {
+      mobileLogoutBtn.addEventListener('click', (e) => {
         e.preventDefault();
-        if (!token) {
-          alert('Please log in to manage employees.');
-          return;
-        }
-        const employeeId = document.getElementById('employeeId').value;
-        const employeeName = document.getElementById('employeeName').value;
-        const fingerprintTemplate = document.getElementById('fingerprintTemplate').value;
-        const photo = document.getElementById('employeePhoto').files[0];
-        const formData = new FormData();
-        formData.append('employee_id', employeeId);
-        formData.append('name', employeeName);
-        formData.append('fingerprint_template', fingerprintTemplate);
-        if (photo) formData.append('photo', photo);
-        const url = isEditing ? `/employees/${employeeId}` : '/employees';
-        const method = isEditing ? 'PUT' : 'POST';
-        fetch(url, {
-          method: method,
-          headers: { 'Authorization': `Bearer ${token}` },
-          body: formData
+        console.log('Logging out from mobile');
+        fetch('/logout', {
+          method: 'POST',
+          credentials: 'include'
         })
           .then(response => {
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            return response.json();
-          })
-          .then(data => {
-            if (data.status === 'success') {
-              employeeForm.reset();
-              document.getElementById('employeeId').disabled = false;
-              isEditing = false;
-              submitEmployeeBtn.textContent = 'Add Employee';
-              loadEmployees(employeeSearch.value);
-            } else {
-              alert(data.message || 'Operation failed');
+            if (response.ok) {
+              isAuthenticated = false;
+              updateUI();
             }
           })
-          .catch(error => {
-            console.error('Error in employeeForm submit:', error);
-            alert('Error submitting employee form: ' + error.message);
-          });
-      });
-
-      document.getElementById('bulk-import-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        if (!token) {
-          alert('Please log in to import employees.');
-          return;
-        }
-        const formData = new FormData();
-        formData.append('file', document.getElementById('csv-file').files[0]);
-        try {
-          const response = await fetch('/employees/bulk_import', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` },
-            body: formData
-          });
-          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-          const data = await response.json();
-          document.getElementById('import-message').textContent = data.message || 'Import failed';
-          if (data.status === 'success') {
-            loadEmployees();
-          } else {
-            alert(data.message || 'Import failed');
-          }
-        } catch (error) {
-          console.error('Error in bulk import:', error);
-          alert('Error importing employees: ' + error.message);
-        }
-      });
-
-      employeeSearch.addEventListener('input', () => {
-        loadEmployees(employeeSearch.value);
-      });
-
-      selectAll.addEventListener('change', () => {
-        document.querySelectorAll('.employee-checkbox').forEach(cb => {
-          cb.checked = selectAll.checked;
-        });
-        updateBulkDeleteButton();
-      });
-
-      bulkDeleteBtn.addEventListener('click', () => {
-        if (!token) {
-          alert('Please log in to delete employees.');
-          return;
-        }
-        const checkboxes = document.querySelectorAll('.employee-checkbox:checked');
-        const employeeIds = Array.from(checkboxes).map(cb => cb.dataset.id);
-        if (employeeIds.length && confirm(`Delete ${employeeIds.length} employees?`)) {
-          fetch('/employees/bulk_delete', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ employee_ids: employeeIds })
-          })
-            .then(response => {
-              if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-              return response.json();
-            })
-            .then(data => {
-              if (data.status === 'success') {
-                loadEmployees(employeeSearch.value);
-              }
-              alert(data.message || 'Delete failed');
-            })
-            .catch(error => {
-              console.error('Error in bulkDelete:', error);
-              alert('Error deleting employees: ' + error.message);
-            });
-        }
+          .catch(error => console.error('Error during logout:', error));
       });
 
       refreshAttendance.addEventListener('click', (e) => {
@@ -1351,14 +706,8 @@
 
       exportBtn.addEventListener('click', async (e) => {
         e.preventDefault();
-        if (!token) {
-          alert('Please log in to export attendance.');
-          return;
-        }
         try {
-          const response = await fetch('/export', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
+          const response = await fetch('/export', { credentials: 'include' });
           if (response.ok) {
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
@@ -1398,7 +747,7 @@
       });
 
       setInterval(() => {
-        if (token) {
+        if (isAuthenticated) {
           loadAttendance();
         }
       }, 60000);
@@ -1410,11 +759,12 @@
         localStorage.setItem('theme', theme);
         themeToggle.querySelector('i').className = theme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
         sidebarThemeToggle.querySelector('i').className = theme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+        mobileThemeToggle.querySelector('i').className = theme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
       }
 
       themeToggle.addEventListener('click', (e) => {
         e.preventDefault();
-        console.log('Theme toggle clicked, current token:', token);
+        console.log('Theme toggle clicked');
         const currentTheme = root.getAttribute('data-theme');
         const newTheme = currentTheme === 'light' ? 'dark' : 'light';
         setTheme(newTheme);
@@ -1422,7 +772,15 @@
 
       sidebarThemeToggle.addEventListener('click', (e) => {
         e.preventDefault();
-        console.log('Theme toggle clicked from sidebar, current token:', token);
+        console.log('Theme toggle clicked from sidebar');
+        const currentTheme = root.getAttribute('data-theme');
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        setTheme(newTheme);
+      });
+
+      mobileThemeToggle.addEventListener('click', (e) => {
+        e.preventDefault();
+        console.log('Theme toggle clicked from mobile');
         const currentTheme = root.getAttribute('data-theme');
         const newTheme = currentTheme === 'light' ? 'dark' : 'light';
         setTheme(newTheme);
@@ -1431,7 +789,21 @@
       const savedTheme = localStorage.getItem('theme') || 'light';
       setTheme(savedTheme);
 
-      updateUI();
+      // Check authentication status on page load
+      fetch('/check_auth', { credentials: 'include' })
+        .then(response => {
+          if (response.ok) {
+            isAuthenticated = true;
+          } else {
+            isAuthenticated = false;
+          }
+          updateUI();
+        })
+        .catch(error => {
+          console.error('Error checking auth:', error);
+          isAuthenticated = false;
+          updateUI();
+        });
     </script>
   </body>
 </html>
