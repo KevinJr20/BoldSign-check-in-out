@@ -8,6 +8,7 @@ from flask import Flask, render_template, request, jsonify, send_file, redirect,
 from flask_socketio import SocketIO, emit
 from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity, set_access_cookies, unset_jwt_cookies
 from cryptography.fernet import Fernet
+from python_daraja import payment
 import pandas as pd
 from passlib.hash import bcrypt
 from dotenv import load_dotenv
@@ -724,6 +725,69 @@ def handle_fingerprint_data(data):
     except Exception as e:
         logger.error(f"Error processing fingerprint data: {e}")
         emit('attendance_update', {'status': 'error', 'message': 'Internal server error'})
+        
+@app.route('/check_in', methods=['POST'])
+@jwt_required()
+def check_in():
+    data = request.get_json()
+    employee_id = data.get('employee_id')
+    name = data.get('name')
+    if not employee_id or not name:
+        return jsonify({'status': 'error', 'message': 'Employee ID and name are required'}), 400
+
+    today = date.today().isoformat()
+    now = datetime.now().strftime('%H:%M:%S')
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM attendance WHERE employee_id = ? AND date = ?', (employee_id, today))
+        record = cursor.fetchone()
+        if record and record['time_in'] and not record['time_out']:
+            return jsonify({'status': 'error', 'message': 'Employee already checked in today; please check out first'}), 400
+
+        max_cycles = config.get('max_cycles_per_day', 2)
+        cursor.execute('SELECT COUNT(*) FROM attendance WHERE employee_id = ? AND date = ?', (employee_id, today))
+        cycle_count = cursor.fetchone()[0]
+        if cycle_count >= max_cycles:
+            return jsonify({'status': 'error', 'message': 'Maximum check-in/out cycles reached for today'}), 400
+
+        cursor.execute('INSERT INTO attendance (employee_id, name, date, time_in, timestamp) VALUES (?, ?, ?, ?, ?)',
+                       (employee_id, name, today, now, datetime.now().isoformat()))
+        conn.commit()
+        socketio.emit('attendance_update', {
+            'status': 'success', 'employee_id': employee_id, 'name': name, 'date': today,
+            'time_in': now, 'time_out': None, 'action': 'check-in'
+        }, broadcast=True)
+    return jsonify({'status': 'success', 'message': 'Checked in successfully'})
+
+@app.route('/check_out', methods=['POST'])
+@jwt_required()
+def check_out():
+    data = request.get_json()
+    employee_id = data.get('employee_id')
+    if not employee_id:
+        return jsonify({'status': 'error', 'message': 'Employee ID is required'}), 400
+
+    today = date.today().isoformat()
+    now = datetime.now().strftime('%H:%M:%S')
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM attendance WHERE employee_id = ? AND date = ? ORDER BY timestamp DESC LIMIT 1', (employee_id, today))
+        record = cursor.fetchone()
+        if not record or not record['time_in']:
+            return jsonify({'status': 'error', 'message': 'Employee has not checked in today'}), 400
+        if record['time_out']:
+            return jsonify({'status': 'error', 'message': 'Employee already checked out; please start a new check-in cycle'}), 400
+
+        cursor.execute('UPDATE attendance SET time_out = ?, timestamp = ? WHERE id = ?',
+                       (now, datetime.now().isoformat(), record['id']))
+        conn.commit()
+        socketio.emit('attendance_update', {
+            'status': 'success', 'employee_id': employee_id, 'name': record['name'], 'date': today,
+            'time_in': record['time_in'], 'time_out': now, 'action': 'check-out'
+        }, broadcast=True)
+    return jsonify({'status': 'success', 'message': 'Checked out successfully'})
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)

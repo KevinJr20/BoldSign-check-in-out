@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8">
+    <title>{% block title %}{{ config.company_name or 'Attendance Dashboard' }}{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+      :root[data-theme='light'] {
+        --bg-color: #f8f9fa;
+        --text-color: #212529;
+        --header-bg: {{ config['theme']['primary_color'] or '#007bff' }};
+        --header-text: #000;
+        --table-bg: #fff;
+        --table-header-bg: {{ config['theme']['primary_color'] or '#007bff' }};
+        --table-header-text: #fff;
+        --button-bg: {{ config['theme']['primary_color'] or '#007bff' }};
+        --button-text: #fff;
+        --modal-bg: rgba(255, 255, 255, 0.9);
+        --modal-text: #212529;
+        --upgrade-btn-bg: linear-gradient(90deg, #007bff, #00c4ff);
+        --dropdown-bg: #fff;
+        --dropdown-border: #ced4da;
+        --dropdown-hover-bg: #e9ecef;
+        --sidebar-bg: rgba(255, 255, 255, 0.1);
+        --sidebar-text: #212529;
+        --sidebar-hover-bg: rgba(255, 255, 255, 0.2);
+      }
+      :root[data-theme='dark'] {
+        --bg-color: #121212;
+        --text-color: #e0e0e0;
+        --header-bg: {{ config['theme']['secondary_color'] or '#0056b3' }};
+        --header-text: #e0e0e0;
+        --table-bg: #1e1e1e;
+        --table-header-bg: {{ config['theme']['secondary_color'] or '#0056b3' }};
+        --table-header-text: #e0e0e0;
+        --button-bg: {{ config['theme']['primary_color'] or '#007bff' }};
+        --button-text: #fff;
+        --modal-bg: rgba(42, 42, 42, 0.9);
+        --modal-text: #e0e0e0;
+        --upgrade-btn-bg: linear-gradient(90deg, #0056b3, #00aaff);
+        --dropdown-bg: #444;
+        --dropdown-border: #666;
+        --dropdown-hover-bg: #555;
+        --sidebar-bg: rgba(0, 0, 0, 0.3);
+        --sidebar-text: #e0e0e0;
+        --sidebar-hover-bg: rgba(255, 255, 255, 0.1);
+      }
+      body {
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        transition: background-color 0.3s, color 0.3s;
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+        display: flex;
+        min-height: 100vh;
+      }
+      .header {
+        background-color: var(--header-bg);
+        color: var(--header-text);
+        padding: 30px;
+        text-align: center;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        width: 100%;
+        box-sizing: border-box;
+        margin-bottom: 30px;
+      }
+      .logo {
+        max-height: 60px;
+        margin-bottom: 15px;
+      }
+      .btn-custom {
+        background: var(--upgrade-btn-bg);
+        color: #fff;
+        border: none;
+        border-radius: 25px;
+        padding: 12px 30px;
+        font-weight: 600;
+        transition: transform 0.2s, box-shadow 0.3s;
+        box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+      }
+      .btn-custom:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(0, 123, 255, 0.5);
+      }
+      .main-content {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        box-sizing: border-box;
+        align-items: center;
+        transition: margin-left 0.3s ease;
+      }
+      .footer {
+        font-size: 0.85rem;
+        margin-top: 40px;
+        text-align: center;
+        width: 100%;
+        box-sizing: border-box;
+        padding-bottom: 20px;
+      }
+      .nav-buttons {
+        position: absolute;
+        top: 30px;
+        right: 30px;
+        display: flex;
+        gap: 25px;
+      }
+      .nav-btn {
+        color: var(--header-text);
+        font-size: 1.3rem;
+        cursor: pointer;
+        background: none;
+        border: none;
+        padding: 8px;
+        transition: transform 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .nav-btn:hover {
+        transform: scale(1.2);
+      }
+      .hidden { display: none; }
+      .sidebar {
+        width: 250px;
+        background: var(--sidebar-bg);
+        backdrop-filter: blur(10px);
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        position: fixed;
+        top: 20px;
+        left: -270px;
+        height: calc(100% - 40px);
+        transition: left 0.3s ease;
+        z-index: 2000;
+        color: var(--sidebar-text);
+      }
+      .sidebar.visible {
+        left: 0;
+      }
+      .sidebar-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        padding: 0 20px;
+      }
+      .sidebar-header h4 {
+        margin: 0;
+        font-size: 1.5rem;
+        color: var(--sidebar-text);
+      }
+      .sidebar-btn {
+        background: none;
+        border: none;
+        color: var(--sidebar-text);
+        font-size: 1.5rem;
+        cursor: pointer;
+        transition: transform 0.2s;
+        padding: 5px;
+      }
+      .sidebar-btn:hover {
+        transform: scale(1.1);
+      }
+      .sidebar-nav {
+        list-style: none;
+        padding: 0 20px;
+      }
+      .sidebar-nav li {
+        margin-bottom: 20px;
+      }
+      .sidebar-nav a {
+        background: var(--sidebar-bg);
+        border: none;
+        color: var(--sidebar-text);
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+        width: 100%;
+        text-align: left;
+        border-radius: 5px;
+        text-decoration: none;
+        transition: background 0.2s;
+      }
+      .sidebar-nav a:hover {
+        background: var(--sidebar-hover-bg);
+      }
+      .main-content.shifted {
+        margin-left: 280px;
+      }
+      .menu-toggle {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        background: none;
+        border: none;
+        color: var(--header-text);
+        font-size: 1.5rem;
+        z-index: 1100;
+        padding: 10px;
+        transition: transform 0.2s;
+      }
+      .menu-toggle:hover {
+        transform: scale(1.1);
+      }
+      /* Mobile menu */
+      .mobile-menu {
+        display: none;
+      }
+      .mobile-menu .dropdown-menu {
+        background: var(--header-bg);
+        border-radius: 0 0 0 10px;
+      }
+      .mobile-menu .dropdown-item {
+        color: var(--header-text);
+        padding: 10px 15px;
+        transition: background 0.2s;
+      }
+      .mobile-menu .dropdown-item:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
+      @media (max-width: 767px) {
+        .sidebar {
+          left: -270px;
+        }
+        .sidebar.visible {
+          left: 0;
+        }
+        .main-content {
+          margin-left: 0;
+        }
+        .main-content.shifted {
+          margin-left: 0;
+        }
+        .header {
+          padding: 20px;
+          padding-bottom: 70px;
+        }
+        .nav-buttons {
+          top: 15px;
+          right: 15px;
+          gap: 15px;
+        }
+        .nav-buttons.d-md-none, #navMenu {
+          display: none;
+        }
+        .mobile-menu {
+          display: block;
+          position: absolute;
+          top: 15px;
+          right: 15px;
+        }
+      }
+      @media (min-width: 768px) {
+        .sidebar {
+          display: block;
+        }
+        .mobile-menu {
+          display: none;
+        }
+        .menu-toggle {
+          display: block;
+        }
+        .main-content {
+          margin-left: 0;
+        }
+        .main-content.shifted {
+          margin-left: 280px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <button class="menu-toggle" id="menuToggle">
+      <i class="fas fa-bars"></i>
+    </button>
+
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h4>Menu</h4>
+        <button class="sidebar-btn" id="closeSidebar">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <ul class="sidebar-nav">
+        <li>
+          <a href="/" id="sidebarHomeBtn" data-bs-toggle="tooltip" data-bs-placement="right" title="Home">
+            <i class="fas fa-home"></i> Home
+          </a>
+        </li>
+        <li>
+          <a href="/employees" id="sidebarEmployeesBtn" data-bs-toggle="tooltip" data-bs-placement="right" title="Manage Employees">
+            <i class="fas fa-users"></i> Employees
+          </a>
+        </li>
+        <li>
+          <a href="/users" id="sidebarUsersBtn" data-bs-toggle="tooltip" data-bs-placement="right" title="Manage Users">
+            <i class="fas fa-user"></i> Users
+          </a>
+        </li>
+        <li>
+          <a href="/subscription" id="sidebarSubscriptionBtn" data-bs-toggle="tooltip" data-bs-placement="right" title="Subscription">
+            <i class="fas fa-credit-card"></i> Subscription
+          </a>
+        </li>
+        <li>
+          <button class="hidden" id="sidebarLogoutBtn" data-bs-toggle="tooltip" data-bs-placement="right" title="Logout">
+            <i class="fas fa-sign-out-alt"></i> Logout
+          </button>
+        </li>
+        <li>
+          <button id="sidebarThemeToggle" data-bs-toggle="tooltip" data-bs-placement="right" title="Theme">
+            <i class="fas fa-moon"></i> Theme
+          </button>
+        </li>
+      </ul>
+    </div>
+
+    <div class="main-content" id="mainContent">
+      <div class="header">
+        <a href="/" style="text-decoration: none; color: inherit;">
+          <img src="{{ config.logo_url or '/static/default_logo.png' }}" alt="{{ config.company_name or 'Company' }} Logo" class="logo">
+          <h2>🕒 {{ config.company_name or 'Attendance' }} {% block header_title %}Attendance Dashboard{% endblock %}</h2>
+        </a>
+        <p class="mb-0">{% block header_subtitle %}Real-time overview of employee check-ins and check-outs{% endblock %}</p>
+        <div class="nav-buttons d-flex d-md-none mobile-menu">
+          <button class="nav-btn" type="button" data-bs-toggle="collapse" data-bs-target="#mobileNavMenu" aria-expanded="false" aria-controls="mobileNavMenu">
+            <i class="fas fa-bars"></i>
+          </button>
+        </div>
+        <div class="nav-buttons collapse d-md-flex" id="navMenu">
+          <a href="/" class="nav-btn" id="homeBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Home">
+            <i class="fas fa-home"></i>
+          </a>
+          <a class="nav-btn" href="/employees" id="employeesBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Manage Employees">
+            <i class="fas fa-users"></i>
+          </a>
+          <a class="nav-btn" href="/users" id="usersBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Manage Users">
+            <i class="fas fa-user"></i>
+          </a>
+          <a class="nav-btn" href="/subscription" id="subscriptionBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Subscription">
+            <i class="fas fa-credit-card"></i>
+          </a>
+          <button class="nav-btn hidden" id="logoutBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Logout">
+            <i class="fas fa-sign-out-alt"></i>
+          </button>
+          <button class="nav-btn" id="themeToggle" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Theme">
+            <i class="fas fa-moon"></i>
+          </button>
+        </div>
+        <div class="collapse mobile-menu" id="mobileNavMenu">
+          <a class="dropdown-item" href="/">Home</a>
+          <a class="dropdown-item" href="/employees">Employees</a>
+          <a class="dropdown-item" href="/users">Users</a>
+          <a class="dropdown-item" href="/subscription">Subscription</a>
+          <button class="dropdown-item" id="mobileLogoutBtn">Logout</button>
+          <button class="dropdown-item" id="mobileThemeToggle">Theme</button>
+        </div>
+      </div>
+
+      <div class="container mt-5">
+        {% block content %}
+        {% endblock %}
+      </div>
+
+      <footer class="footer text-center text-muted">
+        © {{ datetime.utcnow().year or 2025 }} {{ config.company_name or 'Company' }}
+      </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      const sidebar = document.getElementById('sidebar');
+      const mainContent = document.getElementById('mainContent');
+      const menuToggle = document.getElementById('menuToggle');
+      const closeSidebar = document.getElementById('closeSidebar');
+      const themeToggle = document.getElementById('themeToggle');
+      const sidebarThemeToggle = document.getElementById('sidebarThemeToggle');
+      const mobileThemeToggle = document.getElementById('mobileThemeToggle');
+      const logoutBtn = document.getElementById('logoutBtn');
+      const sidebarLogoutBtn = document.getElementById('sidebarLogoutBtn');
+      const mobileLogoutBtn = document.getElementById('mobileLogoutBtn');
+
+      let isAuthenticated = false;
+
+      // Initialize and manage Bootstrap tooltips
+      const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+      const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl, {
+        trigger: 'hover'
+      }));
+
+      // Sidebar toggle functionality
+      function toggleSidebar() {
+        sidebar.classList.toggle('visible');
+        mainContent.classList.toggle('shifted');
+        tooltipList.forEach(tooltip => tooltip.hide());
+      }
+
+      menuToggle.addEventListener('click', toggleSidebar);
+      closeSidebar.addEventListener('click', () => {
+        sidebar.classList.remove('visible');
+        mainContent.classList.remove('shifted');
+        tooltipList.forEach(tooltip => tooltip.hide());
+      });
+
+      function checkAuth(callback) {
+        fetch('/check_auth', { credentials: 'include' })
+          .then(response => {
+            console.log('Check auth response:', response.status);
+            if (response.ok) {
+              isAuthenticated = true;
+            } else {
+              isAuthenticated = false;
+            }
+            if (callback) callback();
+          })
+          .catch(error => {
+            console.error('Error checking auth:', error);
+            isAuthenticated = false;
+            if (callback) callback();
+          });
+      }
+
+      // Navigation event listener
+      document.querySelectorAll('a[href], button[id^="sidebar"], button[id^="mobile"]').forEach(element => {
+        element.addEventListener('click', (e) => {
+          if (e.target.tagName === 'A') {
+            const href = e.target.getAttribute('href');
+            if (!isAuthenticated && href !== '/') {
+              e.preventDefault();
+              alert('Please log in to access this page.');
+              return;
+            }
+          }
+          if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
+            const button = e.target.tagName === 'BUTTON' ? e.target : e.target.closest('button');
+            if (button.id.includes('Logout')) {
+              e.preventDefault();
+              fetch('/logout', { method: 'POST', credentials: 'include' })
+                .then(response => {
+                  if (response.ok) {
+                    isAuthenticated = false;
+                    window.location.href = '/'; // Redirect to homepage after logout
+                  }
+                })
+                .catch(error => console.error('Error during logout:', error));
+            }
+          }
+        });
+      });
+
+      const root = document.documentElement;
+      function setTheme(theme) {
+        console.log('Setting theme to:', theme);
+        root.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
+        themeToggle.querySelector('i').className = theme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+        sidebarThemeToggle.querySelector('i').className = theme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+        mobileThemeToggle.querySelector('i').className = theme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+      }
+
+      themeToggle.addEventListener('click', (e) => {
+        e.preventDefault();
+        const currentTheme = root.getAttribute('data-theme');
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        setTheme(newTheme);
+      });
+
+      sidebarThemeToggle.addEventListener('click', (e) => {
+        e.preventDefault();
+        const currentTheme = root.getAttribute('data-theme');
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        setTheme(newTheme);
+      });
+
+      mobileThemeToggle.addEventListener('click', (e) => {
+        e.preventDefault();
+        const currentTheme = root.getAttribute('data-theme');
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        setTheme(newTheme);
+      });
+
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      setTheme(savedTheme);
+
+      // Initial auth check
+      checkAuth(() => {
+        if (!isAuthenticated) {
+          window.location.href = '/';
+        }
+      });
+
+      {% block scripts %}{% endblock %}
+    </script>
+  </body>
+</html>

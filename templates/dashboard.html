@@ -25,6 +25,7 @@
         --dropdown-hover-bg: #e9ecef;
         --sidebar-bg: rgba(255, 255, 255, 0.1);
         --sidebar-text: #212529;
+        --sidebar-hover-bg: rgba(255, 255, 255, 0.2);
       }
       :root[data-theme='dark'] {
         --bg-color: #121212;
@@ -42,8 +43,9 @@
         --dropdown-bg: #444;
         --dropdown-border: #666;
         --dropdown-hover-bg: #555;
-        --sidebar-bg: rgba(255, 255, 255, 0.1);
+        --sidebar-bg: rgba(0, 0, 0, 0.3);
         --sidebar-text: #e0e0e0;
+        --sidebar-hover-bg: rgba(255, 255, 255, 0.1);
       }
       body {
         background-color: var(--bg-color);
@@ -77,10 +79,37 @@
         background-color: var(--table-bg);
         padding: 25px;
         border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        border: 1px solid var(--dropdown-border);
+      }
+      table.table-striped {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
       }
       table thead {
         background-color: var(--table-header-bg);
         color: var(--table-header-text);
+        position: sticky;
+        top: 0;
+        z-index: 1;
+      }
+      table th, table td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid var(--dropdown-border);
+      }
+      table th {
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      table tr:hover {
+        background-color: var(--dropdown-hover-bg);
+        transition: background-color 0.2s;
+      }
+      table tr:last-child td {
+        border-bottom: none;
       }
       .btn-custom {
         background: var(--upgrade-btn-bg);
@@ -212,7 +241,7 @@
         margin-bottom: 20px;
       }
       .sidebar-nav a {
-        background: none;
+        background: var(--sidebar-bg);
         border: none;
         color: var(--sidebar-text);
         font-size: 1.1rem;
@@ -227,7 +256,7 @@
         transition: background 0.2s;
       }
       .sidebar-nav a:hover {
-        background: rgba(255, 255, 255, 0.2);
+        background: var(--sidebar-hover-bg);
       }
       .main-content.shifted {
         margin-left: 280px;
@@ -297,17 +326,16 @@
       }
       @media (min-width: 768px) {
         .sidebar {
-          /* Removed left: 0; to allow .visible to control visibility */
           display: block;
         }
         .mobile-menu {
           display: none;
         }
         .menu-toggle {
-          display: block; /* Keep the toggle visible on larger screens */
+          display: block;
         }
         .main-content {
-          margin-left: 0; /* Default state without shifted class */
+          margin-left: 0;
         }
         .main-content.shifted {
           margin-left: 280px;
@@ -328,6 +356,11 @@
         </button>
       </div>
       <ul class="sidebar-nav">
+        <li>
+          <a href="/" id="sidebarHomeBtn" data-bs-toggle="tooltip" data-bs-placement="right" title="Home">
+            <i class="fas fa-home"></i> Home
+          </a>
+        </li>
         <li>
           <a href="/employees" id="sidebarEmployeesBtn" data-bs-toggle="tooltip" data-bs-placement="right" title="Manage Employees">
             <i class="fas fa-users"></i> Employees
@@ -358,8 +391,10 @@
 
     <div class="main-content" id="mainContent">
       <div class="header">
-        <img src="{{ config.logo_url or '/static/default_logo.png' }}" alt="{{ config.company_name or 'Company' }} Logo" class="logo">
-        <h2>🕒 {{ config.company_name or 'Attendance' }} Attendance Dashboard</h2>
+        <a href="/" style="text-decoration: none; color: inherit;">
+          <img src="{{ config.logo_url or '/static/default_logo.png' }}" alt="{{ config.company_name or 'Company' }} Logo" class="logo">
+          <h2>🕒 {{ config.company_name or 'Attendance' }} Attendance Dashboard</h2>
+        </a>
         <p class="mb-0">Real-time overview of employee check-ins and check-outs</p>
         <div class="nav-buttons d-flex d-md-none mobile-menu">
           <button class="nav-btn" type="button" data-bs-toggle="collapse" data-bs-target="#mobileNavMenu" aria-expanded="false" aria-controls="mobileNavMenu">
@@ -367,6 +402,9 @@
           </button>
         </div>
         <div class="nav-buttons collapse d-md-flex" id="navMenu">
+          <a href="/" class="nav-btn" id="homeBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Home">
+            <i class="fas fa-home"></i>
+          </a>
           <a class="nav-btn" href="/employees" id="employeesBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Manage Employees">
             <i class="fas fa-users"></i>
           </a>
@@ -384,6 +422,7 @@
           </button>
         </div>
         <div class="collapse mobile-menu" id="mobileNavMenu">
+          <a class="dropdown-item" href="/">Home</a>
           <a class="dropdown-item" href="/employees">Employees</a>
           <a class="dropdown-item" href="/users">Users</a>
           <a class="dropdown-item" href="/subscription">Subscription</a>
@@ -502,7 +541,6 @@
       const filterAttendance = document.getElementById('filterAttendance');
       const exportBtn = document.getElementById('exportBtn');
 
-      // Check authentication status by making a request to a protected endpoint
       let isAuthenticated = false;
 
       // Initialize and manage Bootstrap tooltips
@@ -549,11 +587,45 @@
         }
       }
 
+      function checkAuth() {
+        fetch('/check_auth', { credentials: 'include' })
+          .then(response => {
+            console.log('Check auth response:', response.status);
+            if (response.ok) {
+              isAuthenticated = true;
+            } else {
+              isAuthenticated = false;
+            }
+            updateUI();
+          })
+          .catch(error => {
+            console.error('Error checking auth:', error);
+            isAuthenticated = false;
+            updateUI();
+          });
+      }
+
+      // Check auth on page load and navigation
+      window.addEventListener('load', checkAuth);
+      document.querySelectorAll('a[href], button[id^="sidebar"], button[id^="mobile"]').forEach(element => {
+        element.addEventListener('click', (e) => {
+          if (e.target.tagName === 'A' && !isAuthenticated) {
+            e.preventDefault();
+            alert('Please log in to access this page.');
+          } else if (element.id.includes('Logout')) {
+            // Handle logout
+          } else {
+            setTimeout(checkAuth, 100); // Re-check auth after navigation
+          }
+        });
+      });
+
       function loadAttendance() {
-        const startDate = document.getElementById('startDate').value;
-        const endDate = document.getElementById('endDate').value;
-        const url = startDate && endDate ? `/attendance?start_date=${startDate}&end_date=${endDate}` : '/attendance';
-        fetch(url)
+        const today = new Date().toISOString().split('T')[0];
+        const startDate = document.getElementById('startDate').value || today;
+        const endDate = document.getElementById('endDate').value || today;
+        const url = `/attendance?start_date=${startDate}&end_date=${endDate}`;
+        fetch(url, { credentials: 'include' })
           .then(response => {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.json();
@@ -584,7 +656,7 @@
       }
 
       function loadAnalytics() {
-        fetch('/analytics')
+        fetch('/analytics', { credentials: 'include' })
           .then(response => {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.json();
@@ -789,21 +861,8 @@
       const savedTheme = localStorage.getItem('theme') || 'light';
       setTheme(savedTheme);
 
-      // Check authentication status on page load
-      fetch('/check_auth', { credentials: 'include' })
-        .then(response => {
-          if (response.ok) {
-            isAuthenticated = true;
-          } else {
-            isAuthenticated = false;
-          }
-          updateUI();
-        })
-        .catch(error => {
-          console.error('Error checking auth:', error);
-          isAuthenticated = false;
-          updateUI();
-        });
+      // Initial auth check
+      checkAuth();
     </script>
   </body>
 </html>
