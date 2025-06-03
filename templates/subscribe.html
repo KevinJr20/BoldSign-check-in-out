@@ -1,0 +1,187 @@
+{% extends "dashboard.html" %}
+
+{% block title %}
+{{ config.company_name or 'Hospitality Dashboard' }} - Subscribe
+{% endblock %}
+
+{% block content %}
+<!-- Intro Paragraph -->
+<div class="intro-section">
+  <h1>Upgrade Your Plan</h1>
+  <p>Unlock premium features to enhance your hospitality management experience. Choose a plan and payment method below to get started.</p>
+</div>
+
+<div class="container mt-4 mx-auto">
+  <div class="tab-content">
+    <div class="login-section" id="subscriptionSection">
+      <div class="section-title">Subscription Plans</div>
+      <form id="subscriptionForm" class="shadow-sm">
+        <div class="mb-3">
+          <label for="planType" class="form-label">Select Plan</label>
+          <select class="form-control" id="planType" required>
+            <option value="">Choose a Plan</option>
+            <option value="basic">Basic - $10/month</option>
+            <option value="pro">Pro - $25/month</option>
+            <option value="enterprise">Enterprise - $50/month</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label for="paymentMethod" class="form-label">Payment Method</label>
+          <select class="form-control" id="paymentMethod" required>
+            <option value="">Select Payment Method</option>
+            <option value="credit-card">Credit Card</option>
+            <option value="paypal">PayPal</option>
+            <option value="mpesa">M-Pesa</option>
+          </select>
+        </div>
+
+        <!-- Credit Card Fields -->
+        <div id="creditCardFields" class="payment-fields hidden">
+          <div class="mb-3">
+            <label for="cardNumber" class="form-label">Card Number</label>
+            <input type="text" class="form-control" id="cardNumber" placeholder="1234 5678 9012 3456" maxlength="19">
+          </div>
+          <div class="mb-3 d-flex gap-3">
+            <div class="w-50">
+              <label for="expiryDate" class="form-label">Expiry Date</label>
+              <input type="text" class="form-control" id="expiryDate" placeholder="MM/YY" maxlength="5">
+            </div>
+            <div class="w-50">
+              <label for="cvv" class="form-label">CVV</label>
+              <input type="text" class="form-control" id="cvv" placeholder="123" maxlength="3">
+            </div>
+          </div>
+        </div>
+
+        <!-- M-Pesa Fields -->
+        <div id="mpesaFields" class="payment-fields hidden">
+          <div class="mb-3">
+            <label for="mpesaNumber" class="form-label">M-Pesa Phone Number</label>
+            <input type="text" class="form-control" id="mpesaNumber" placeholder="+254712345678">
+          </div>
+          <p class="text-muted">After submitting, you will receive a prompt on your phone to confirm the payment.</p>
+        </div>
+
+        <!-- PayPal Fields -->
+        <div id="paypalFields" class="payment-fields hidden">
+          <p class="text-muted">You will be redirected to PayPal to complete your payment securely.</p>
+        </div>
+
+        <div class="d-flex justify-content-center align-items-center gap-2 mt-3">
+          <button type="submit" class="btn btn-custom">
+            <i class="fas fa-check me-2"></i> Subscribe Now
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const paymentMethodSelect = document.getElementById('paymentMethod');
+  const creditCardFields = document.getElementById('creditCardFields');
+  const mpesaFields = document.getElementById('mpesaFields');
+  const paypalFields = document.getElementById('paypalFields');
+  const subscriptionForm = document.getElementById('subscriptionForm');
+
+  paymentMethodSelect.addEventListener('change', () => {
+    const method = paymentMethodSelect.value;
+    creditCardFields.classList.add('hidden');
+    mpesaFields.classList.add('hidden');
+    paypalFields.classList.add('hidden');
+
+    if (method === 'credit-card') {
+      creditCardFields.classList.remove('hidden');
+    } else if (method === 'mpesa') {
+      mpesaFields.classList.remove('hidden');
+    } else if (method === 'paypal') {
+      paypalFields.classList.remove('hidden');
+    }
+  });
+
+  subscriptionForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const planType = document.getElementById('planType').value;
+    const paymentMethod = document.getElementById('paymentMethod').value;
+
+    if (!planType || !paymentMethod) {
+      alert('Please select a plan and payment method.');
+      return;
+    }
+
+    let paymentData = { plan_type: planType, payment_method: paymentMethod };
+
+    if (paymentMethod === 'credit-card') {
+      const cardNumber = document.getElementById('cardNumber').value;
+      const expiryDate = document.getElementById('expiryDate').value;
+      const cvv = document.getElementById('cvv').value;
+      if (!cardNumber || !expiryDate || !cvv) {
+        alert('Please fill in all credit card details.');
+        return;
+      }
+      paymentData = { ...paymentData, card_number: cardNumber, expiry_date: expiryDate, cvv };
+    } else if (paymentMethod === 'mpesa') {
+      const mpesaNumber = document.getElementById('mpesaNumber').value;
+      if (!mpesaNumber) {
+        alert('Please enter your M-Pesa phone number.');
+        return;
+      }
+      paymentData = { ...paymentData, mpesa_number: mpesaNumber };
+    }
+
+    fetch('/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(paymentData),
+      credentials: 'include'
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === 'success') {
+          const toast = new bootstrap.Toast(document.getElementById('attendanceToast'));
+          document.querySelector('#attendanceToast .toast-body').textContent = 'Subscription successful!';
+          toast.show();
+          if (paymentMethod === 'paypal') {
+            // Simulate PayPal redirect
+            alert('Redirecting to PayPal...');
+            window.location.href = 'https://www.paypal.com';
+          }
+        } else {
+          alert(data.message || 'Subscription failed.');
+        }
+      })
+      .catch(error => {
+        console.error('Error during subscription:', error);
+        alert('Subscription failed. Check console for details.');
+      });
+  });
+
+  // Format card number input (adds spaces every 4 digits)
+  document.getElementById('cardNumber')?.addEventListener('input', (e) => {
+    let value = e.target.value.replace(/\D/g, '');
+    value = value.match(/.{1,4}/g)?.join(' ') || value;
+    e.target.value = value;
+  });
+
+  // Format expiry date input (MM/YY)
+  document.getElementById('expiryDate')?.addEventListener('input', (e) => {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length > 2) {
+      value = value.substring(0, 2) + '/' + value.substring(2, 4);
+    }
+    e.target.value = value;
+  });
+
+  // Restrict CVV to numbers only
+  document.getElementById('cvv')?.addEventListener('input', (e) => {
+    e.target.value = e.target.value.replace(/\D/g, '');
+  });
+
+  // Restrict M-Pesa number to numbers and + only
+  document.getElementById('mpesaNumber')?.addEventListener('input', (e) => {
+    e.target.value = e.target.value.replace(/[^0-9+]/g, '');
+  });
+</script>
+{% endblock %}

@@ -2,16 +2,20 @@
 <html lang="en" data-theme="light">
   <head>
     <meta charset="UTF-8">
-    <title>{{ config.company_name or 'Attendance Dashboard' }} Attendance Dashboard</title>
+    <title>{% block title %}{{ config.company_name or 'Hospitality Dashboard' }} Dashboard{% endblock %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    {% block extra_head %}{% endblock %}
     <style>
       :root[data-theme='light'] {
         --bg-color: #f8f9fa;
         --text-color: #212529;
         --header-bg: {{ config['theme']['primary_color'] or '#007bff' }};
-        --header-text: #000;
+        --header-text: #fff;
         --table-bg: #fff;
         --table-header-bg: {{ config['theme']['primary_color'] or '#007bff' }};
         --table-header-text: #fff;
@@ -23,9 +27,9 @@
         --dropdown-bg: #fff;
         --dropdown-border: #ced4da;
         --dropdown-hover-bg: #e9ecef;
-        --sidebar-bg: rgba(255, 255, 255, 0.1);
+        --sidebar-bg: rgba(255, 255, 255, 0.9);
         --sidebar-text: #212529;
-        --sidebar-hover-bg: rgba(255, 255, 255, 0.2);
+        --sidebar-hover-bg: rgba(200, 200, 200, 0.2);
       }
       :root[data-theme='dark'] {
         --bg-color: #121212;
@@ -43,7 +47,7 @@
         --dropdown-bg: #444;
         --dropdown-border: #666;
         --dropdown-hover-bg: #555;
-        --sidebar-bg: rgba(0, 0, 0, 0.3);
+        --sidebar-bg: rgba(30, 30, 30, 0.9);
         --sidebar-text: #e0e0e0;
         --sidebar-hover-bg: rgba(255, 255, 255, 0.1);
       }
@@ -53,31 +57,31 @@
         transition: background-color 0.3s, color 0.3s;
         margin: 0;
         padding: 0;
-        font-family: Arial, sans-serif;
+        font-family: 'Poppins', sans-serif;
         display: flex;
         min-height: 100vh;
       }
       .header {
         background-color: var(--header-bg);
         color: var(--header-text);
-        padding: 30px;
+        padding: 20px;
         text-align: center;
         position: sticky;
         top: 0;
         z-index: 1000;
         width: 100%;
         box-sizing: border-box;
-        margin-bottom: 30px;
+        margin-bottom: 20px;
       }
       .logo {
         max-height: 60px;
-        margin-bottom: 15px;
+        margin-bottom: 10px;
       }
       .table-wrapper {
-        max-height: 70vh;
+        max-height: 50vh;
         overflow-y: auto;
         background-color: var(--table-bg);
-        padding: 25px;
+        padding: 15px;
         border-radius: 10px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         border: 1px solid var(--dropdown-border);
@@ -95,7 +99,7 @@
         z-index: 1;
       }
       table th, table td {
-        padding: 12px 15px;
+        padding: 10px 12px;
         text-align: left;
         border-bottom: 1px solid var(--dropdown-border);
       }
@@ -116,7 +120,7 @@
         color: #fff;
         border: none;
         border-radius: 25px;
-        padding: 12px 30px;
+        padding: 10px 25px;
         font-weight: 600;
         transition: transform 0.2s, box-shadow 0.3s;
         box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
@@ -132,6 +136,7 @@
         box-sizing: border-box;
         align-items: center;
         transition: margin-left 0.3s ease;
+        position: relative;
       }
       .footer {
         font-size: 0.85rem;
@@ -143,32 +148,36 @@
       }
       .nav-buttons {
         position: absolute;
-        top: 30px;
-        right: 30px;
+        top: 20px;
+        right: 20px;
         display: flex;
-        gap: 25px;
+        gap: 15px;
       }
       .nav-btn {
         color: var(--header-text);
-        font-size: 1.3rem;
+        font-size: 1.2rem;
         cursor: pointer;
-        background: none;
+        background: rgba(255, 255, 255, 0.1);
         border: none;
         padding: 8px;
-        transition: transform 0.2s;
+        border-radius: 50%;
+        transition: transform 0.2s, background 0.2s;
         display: flex;
         align-items: center;
         justify-content: center;
+        width: 40px;
+        height: 40px;
       }
       .nav-btn:hover {
-        transform: scale(1.2);
+        transform: scale(1.1);
+        background: rgba(255, 255, 255, 0.2);
       }
       .login-section {
         max-width: 450px;
-        margin: 30px auto;
+        margin: 20px auto;
       }
       .action-btn {
-        font-size: 1.3rem;
+        font-size: 1.2rem;
         cursor: pointer;
         background: none;
         border: none;
@@ -179,29 +188,42 @@
       .action-btn:hover {
         transform: scale(1.2);
       }
-      .hidden { display: none; }
-      .attendance-section {
-        margin-bottom: 40px;
-        width: 90%;
-        max-width: 1200px;
+      .attendance-records .action-btn {
+        font-size: 1rem;
+        padding: 6px;
       }
-      .attendance-header {
-        margin-bottom: 25px;
+      .hidden { display: none; }
+      .tab-content {
+        width: 90%;
+        max-width: 1000px;
+      }
+      #myTabContent {
+        margin-top: 2rem;
+      }
+      .section-header {
+        margin-bottom: 20px;
+      }
+      .section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 0;
       }
       .gap-3 {
-        gap: 20px !important;
+        gap: 15px !important;
+      }
+      .gap-2 {
+        gap: 10px !important;
       }
       .sidebar {
         width: 250px;
         background: var(--sidebar-bg);
-        backdrop-filter: blur(10px);
-        border-radius: 15px;
+        border-radius: 0 15px 15px 0;
         padding: 20px;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        box-shadow: 2px 0 15px rgba(0, 0, 0, 0.2);
         position: fixed;
-        top: 20px;
-        left: -270px;
-        height: calc(100% - 40px);
+        top: 0;
+        left: -250px;
+        height: 100%;
         transition: left 0.3s ease;
         z-index: 2000;
         color: var(--sidebar-text);
@@ -213,19 +235,19 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 30px;
-        padding: 0 20px;
+        margin-bottom: 20px;
+        padding: 0 10px;
       }
       .sidebar-header h4 {
         margin: 0;
-        font-size: 1.5rem;
-        color: var(--sidebar-text);
+        font-size: 1.4rem;
+        font-weight: 600;
       }
       .sidebar-btn {
         background: none;
         border: none;
         color: var(--sidebar-text);
-        font-size: 1.5rem;
+        font-size: 1.4rem;
         cursor: pointer;
         transition: transform 0.2s;
         padding: 5px;
@@ -235,66 +257,80 @@
       }
       .sidebar-nav {
         list-style: none;
-        padding: 0 20px;
+        padding: 0 10px;
+        margin: 0;
       }
       .sidebar-nav li {
-        margin-bottom: 20px;
+        margin-bottom: 10px;
       }
-      .sidebar-nav a {
-        background: var(--sidebar-bg);
+      .sidebar-nav a, .sidebar-nav button {
+        background: transparent;
         border: none;
         color: var(--sidebar-text);
-        font-size: 1.1rem;
+        font-size: 1rem;
         display: flex;
         align-items: center;
         gap: 10px;
         padding: 10px;
         width: 100%;
         text-align: left;
-        border-radius: 5px;
+        border-radius: 8px;
         text-decoration: none;
-        transition: background 0.2s;
+        transition: background 0.2s, transform 0.2s;
+        font-weight: 600;
       }
-      .sidebar-nav a:hover {
+      .sidebar-nav a:hover, .sidebar-nav button:hover {
         background: var(--sidebar-hover-bg);
+        transform: translateX(5px);
       }
       .main-content.shifted {
-        margin-left: 280px;
+        margin-left: 250px;
       }
       .menu-toggle {
         position: fixed;
-        top: 20px;
-        left: 20px;
-        background: none;
+        top: 15px;
+        left: 15px;
+        background: rgba(0, 0, 0, 0.5);
         border: none;
-        color: var(--header-text);
-        font-size: 1.5rem;
+        color: #fff;
+        font-size: 1.4rem;
         z-index: 1100;
-        padding: 10px;
-        transition: transform 0.2s;
+        padding: 8px;
+        border-radius: 5px;
+        transition: transform 0.2s, background 0.2s;
+        display: block;
       }
       .menu-toggle:hover {
         transform: scale(1.1);
+        background: rgba(0, 0, 0, 0.7);
       }
-      /* Mobile menu */
-      .mobile-menu {
-        display: none;
-      }
-      .mobile-menu .dropdown-menu {
-        background: var(--header-bg);
-        border-radius: 0 0 0 10px;
-      }
-      .mobile-menu .dropdown-item {
+      .nav-tabs .nav-link {
+        background: linear-gradient(135deg, var(--header-bg), rgba(255, 255, 255, 0.1));
         color: var(--header-text);
-        padding: 10px 15px;
-        transition: background 0.2s;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 20px;
+        margin-right: 10px;
+        font-weight: 600;
+        transition: background 0.3s, transform 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       }
-      .mobile-menu .dropdown-item:hover {
-        background: rgba(255, 255, 255, 0.2);
+      .nav-tabs .nav-link.active {
+        background: linear-gradient(135deg, var(--header-bg), rgba(255, 255, 255, 0.3));
+        color: var(--header-text);
+        font-weight: 600;
+      }
+      .nav-tabs .nav-link:hover {
+        background: linear-gradient(135deg, var(--header-bg), rgba(255, 255, 255, 0.2));
+        transform: translateY(-2px);
       }
       @media (max-width: 767px) {
         .sidebar {
-          left: -270px;
+          left: -250px;
+          width: 200px;
         }
         .sidebar.visible {
           left: 0;
@@ -306,39 +342,90 @@
           margin-left: 0;
         }
         .header {
-          padding: 20px;
-          padding-bottom: 70px;
+          padding: 15px;
         }
         .nav-buttons {
           top: 15px;
           right: 15px;
-          gap: 15px;
+          gap: 10px;
         }
-        .nav-buttons.d-md-none, #navMenu {
-          display: none;
+        .nav-buttons.d-md-flex {
+          display: none !important;
         }
-        .mobile-menu {
+        .tab-content {
+          width: 95%;
+        }
+        .table-wrapper {
+          max-height: 40vh;
+          padding: 10px;
+        }
+        table th, table td {
+          padding: 8px 10px;
+          font-size: 0.9rem;
+        }
+        .btn-custom {
+          padding: 8px 20px;
+          font-size: 0.9rem;
+        }
+        .nav-tabs .nav-link {
+          padding: 8px 15px;
+          margin-right: 0;
+          margin-bottom: 10px;
+          width: 100%;
+        }
+        .nav-tabs .nav-item {
+          width: 100%;
+        }
+        .nav-tabs {
+          flex-direction: column;
+          gap: 0;
+        }
+        .menu-toggle {
           display: block;
-          position: absolute;
-          top: 15px;
-          right: 15px;
         }
       }
       @media (min-width: 768px) {
         .sidebar {
-          display: block;
+          left: -250px;
         }
-        .mobile-menu {
-          display: none;
-        }
-        .menu-toggle {
-          display: block;
+        .sidebar.visible {
+          left: 0;
         }
         .main-content {
           margin-left: 0;
         }
         .main-content.shifted {
-          margin-left: 280px;
+          margin-left: 250px;
+        }
+        .nav-buttons.d-md-flex {
+          display: flex !important;
+        }
+        .nav-tabs {
+          flex-direction: row;
+          gap: 10px;
+          justify-content: center;
+        }
+        .menu-toggle {
+          display: block;
+        }
+      }
+      .qr-code-container {
+        margin-top: 20px;
+        text-align: center;
+      }
+      /* Intro Paragraph Styles */
+      .intro-section {
+        text-align: center;
+        padding: 20px 15px;
+        max-width: 800px;
+        margin: 0 auto 40px auto;
+        color: var(--text-color);
+        font-size: 1.2rem;
+      }
+      @media (max-width: 767px) {
+        .intro-section {
+          font-size: 1rem;
+          padding: 15px;
         }
       }
     </style>
@@ -357,62 +444,65 @@
       </div>
       <ul class="sidebar-nav">
         <li>
-          <a href="/" id="sidebarHomeBtn" data-bs-toggle="tooltip" data-bs-placement="right" title="Home">
+          <a href="/" id="sidebarHomeBtn">
             <i class="fas fa-home"></i> Home
           </a>
         </li>
         <li>
-          <a href="/employees" id="sidebarEmployeesBtn" data-bs-toggle="tooltip" data-bs-placement="right" title="Manage Employees">
+          <a href="#employee-tab" id="sidebarEmployeeBtn">
             <i class="fas fa-users"></i> Employees
           </a>
         </li>
         <li>
-          <a href="/users" id="sidebarUsersBtn" data-bs-toggle="tooltip" data-bs-placement="right" title="Manage Users">
-            <i class="fas fa-user"></i> Users
+          <a href="#booking-tab" id="sidebarBookingBtn">
+            <i class="fas fa-bed"></i> Booking
           </a>
         </li>
         <li>
-          <a href="/subscription" id="sidebarSubscriptionBtn" data-bs-toggle="tooltip" data-bs-placement="right" title="Subscription">
-            <i class="fas fa-credit-card"></i> Subscription
+          <a href="#guest-tab" id="sidebarGuestBtn">
+            <i class="fas fa-user"></i> Guests
           </a>
         </li>
         <li>
-          <button class="hidden" id="sidebarLogoutBtn" data-bs-toggle="tooltip" data-bs-placement="right" title="Logout">
+          <a href="/subscribe" id="sidebarSubscribeBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Subscribe">
+            <i class="bi bi-credit-card"></i> Subscribe
+          </a>
+        </li>
+        <li>
+          <button class="hidden" id="sidebarLogoutBtn">
             <i class="fas fa-sign-out-alt"></i> Logout
           </button>
         </li>
         <li>
-          <button id="sidebarThemeToggle" data-bs-toggle="tooltip" data-bs-placement="right" title="Theme">
+          <button id="sidebarThemeToggle">
             <i class="fas fa-moon"></i> Theme
           </button>
         </li>
       </ul>
     </div>
 
-    <div class="main-content" id="mainContent">
+    <div class="main-content">
       <div class="header">
         <a href="/" style="text-decoration: none; color: inherit;">
-          <img src="{{ config.logo_url or '/static/default_logo.png' }}" alt="{{ config.company_name or 'Company' }} Logo" class="logo">
-          <h2>🕒 {{ config.company_name or 'Attendance' }} Attendance Dashboard</h2>
+          <img src="{{ config.logo_url or '/static/default-logo.png' }}" alt="{{ config.company_name or 'Company' }}" class="logo">
+          <h2>🏨 {{ config.company_name or 'Hospitality' }} Dashboard</h2>
         </a>
-        <p class="mb-0">Real-time overview of employee check-ins and check-outs</p>
-        <div class="nav-buttons d-flex d-md-none mobile-menu">
-          <button class="nav-btn" type="button" data-bs-toggle="collapse" data-bs-target="#mobileNavMenu" aria-expanded="false" aria-controls="mobileNavMenu">
-            <i class="fas fa-bars"></i>
-          </button>
-        </div>
-        <div class="nav-buttons collapse d-md-flex" id="navMenu">
+        <p class="mb-0">Manage employees, bookings, and guests efficiently</p>
+        <div class="nav-buttons d-md-flex" id="navMenu">
           <a href="/" class="nav-btn" id="homeBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Home">
             <i class="fas fa-home"></i>
           </a>
-          <a class="nav-btn" href="/employees" id="employeesBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Manage Employees">
+          <a class="nav-btn" href="#employee-tab" id="employeeBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Employee Management">
             <i class="fas fa-users"></i>
           </a>
-          <a class="nav-btn" href="/users" id="usersBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Manage Users">
+          <a class="nav-btn" href="#booking-tab" id="bookingBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Hotel Booking">
+            <i class="fas fa-bed"></i>
+          </a>
+          <a class="nav-btn" href="#guest-tab" id="guestBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Guest Management">
             <i class="fas fa-user"></i>
           </a>
-          <a class="nav-btn" href="/subscription" id="subscriptionBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Subscription">
-            <i class="fas fa-credit-card"></i>
+          <a href="/subscribe" class="nav-btn" id="subscribeBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Subscribe">
+            <i class="bi bi-credit-card"></i>
           </a>
           <button class="nav-btn hidden" id="logoutBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Logout">
             <i class="fas fa-sign-out-alt"></i>
@@ -421,91 +511,250 @@
             <i class="fas fa-moon"></i>
           </button>
         </div>
-        <div class="collapse mobile-menu" id="mobileNavMenu">
-          <a class="dropdown-item" href="/">Home</a>
-          <a class="dropdown-item" href="/employees">Employees</a>
-          <a class="dropdown-item" href="/users">Users</a>
-          <a class="dropdown-item" href="/subscription">Subscription</a>
-          <button class="dropdown-item" id="mobileLogoutBtn">Logout</button>
-          <button class="dropdown-item" id="mobileThemeToggle">Theme</button>
-        </div>
       </div>
 
-      <div class="container mt-5">
-        <!-- Login Section -->
-        <div class="login-section" id="loginSection">
-          <h5 class="mb-4">Admin Login</h5>
-          <form id="loginForm" class="employee-form shadow-sm">
-            <div class="mb-4">
-              <label for="username" class="form-label">Username</label>
-              <input type="text" class="form-control" id="username" required>
-            </div>
-            <div class="mb-4">
-              <label for="password" class="form-label">Password</label>
-              <input type="password" class="form-control" id="password" required>
-            </div>
-            <button type="submit" class="btn btn-custom">Login</button>
-          </form>
-        </div>
+      {% block content %}
+      <!-- Intro Paragraph -->
+      <div class="intro-section">
+        <h1>Welcome to Your Employee Management & Hospitality Hub</h1>
+        <p>Streamline your hotel operations effortlessly! Manage employees, book rooms, and handle guest services with ease. Select an operation from the tabs below to begin.</p>
+      </div>
 
-        <!-- Attendance Section -->
-        <div class="attendance-section hidden" id="attendanceSection">
-          <div class="d-flex justify-content-between align-items-center attendance-header">
-            <h5 class="mb-0">Attendance Records</h5>
-            <div class="d-flex align-items-center gap-3">
-              <input type="date" id="startDate" class="form-control form-control-sm" style="width: 160px;">
-              <input type="date" id="endDate" class="form-control form-control-sm" style="width: 160px;">
-              <button class="action-btn" id="filterAttendance" data-bs-toggle="tooltip" data-bs-placement="top" title="Filter">
-                <i class="fas fa-filter"></i>
+      <div class="container mt-4 mx-auto">
+        <!-- Tabbed Content -->
+        <div class="tab-content">
+          <ul class="nav nav-tabs" id="myTab" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="employee-tab-btn" data-bs-toggle="tab" data-bs-target="#employee-tab" type="button" role="tab" aria-controls="employee-tab" aria-selected="true">
+                <i class="fas fa-users"></i> Employee Management
               </button>
-              <button class="action-btn" id="refreshAttendance" data-bs-toggle="tooltip" data-bs-placement="top" title="Refresh">
-                <i class="fas fa-sync-alt"></i>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="booking-tab-btn" data-bs-toggle="tab" data-bs-target="#booking-tab" type="button" role="tab" aria-controls="booking-tab" aria-selected="false">
+                <i class="fas fa-bed"></i> Hotel Booking
               </button>
-              <button class="action-btn" id="exportBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Export CSV">
-                <i class="fas fa-file-export"></i>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="guest-tab-btn" data-bs-toggle="tab" data-bs-target="#guest-tab" type="button" role="tab" aria-controls="guest-tab" aria-selected="false">
+                <i class="fas fa-user"></i> Guest Management
               </button>
+            </li>
+          </ul>
+
+          <div class="tab-content" id="myTabContent">
+            <!-- Employee Management Tab -->
+            <div class="tab-pane fade show active" id="employee-tab" role="tabpanel" aria-labelledby="employee-tab-btn">
+              <div class="login-section" id="employeeLoginSection">
+                <div class="section-title">Employee Authentication</div>
+                <form id="loginForm" class="employee-form shadow-sm">
+                  <div class="mb-3">
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" class="form-control" id="username" required>
+                  </div>
+                  <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" class="form-control" id="password" required>
+                  </div>
+                  <div class="d-flex justify-content-center align-items-center gap-2 mt-3">
+                    <button type="button" class="btn btn-custom" id="biometricLogin">
+                      <i class="fas fa-fingerprint me-2"></i>Biometric Login
+                    </button>
+                    <button type="submit" class="btn btn-custom">
+                      <i class="fas fa-qrcode me-2"></i>Login with QR
+                    </button>
+                  </div>
+                  <div class="qr-code-container hidden" id="qrCodeContainer"></div>
+                </form>
+              </div>
+              <div class="attendance-section hidden" id="attendanceSection">
+                <div class="d-flex justify-content-between align-items-center section-header">
+                  <div class="section-title">Employee Check-in/Out</div>
+                  <div class="d-flex align-items-center gap-3">
+                    <input type="text" id="employeeId" class="form-control form-control-sm" placeholder="Employee ID" style="width: 140px;">
+                    <input type="text" id="employeeName" class="form-control form-control-sm" placeholder="Name" style="width: 140px;">
+                    <button class="action-btn" id="checkInBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Check In">
+                      <i class="fas fa-sign-in-alt"></i>
+                    </button>
+                    <button class="action-btn" id="checkOutBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Check Out">
+                      <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center section-header attendance-records">
+                  <div class="section-title">Attendance Records</div>
+                  <div class="d-flex align-items-center gap-3">
+                    <input type="date" id="startDate" class="form-control form-control-sm" style="width: 140px;">
+                    <input type="date" id="endDate" class="form-control form-control-sm" style="width: 140px;">
+                    <button class="action-btn" id="filterAttendance" data-bs-toggle="tooltip" data-bs-placement="top" title="Filter">
+                      <i class="fas fa-filter"></i>
+                    </button>
+                    <button class="action-btn" id="refreshAttendance" data-bs-toggle="tooltip" data-bs-placement="top" title="Refresh">
+                      <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <button class="action-btn" id="exportBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Export CSV">
+                      <i class="fas fa-file-export"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="table-wrapper shadow-sm rounded">
+                  <table class="table table-striped align-middle">
+                    <thead>
+                      <tr>
+                        <th>Employee ID</th>
+                        <th>Name</th>
+                        <th>Date</th>
+                        <th>Time In</th>
+                        <th>Time Out</th>
+                      </tr>
+                    </thead>
+                    <tbody id="attendance-table-body">
+                      {% for record in records if records %}
+                      <tr>
+                        <td>{{ record[0] or 'N/A' }}</td>
+                        <td>{{ record[1] or 'N/A' }}</td>
+                        <td>{{ record[2] or 'N/A' }}</td>
+                        <td>{{ record[3] or '-' }}</td>
+                        <td>{{ record[4] or '-' }}</td>
+                      </tr>
+                      {% else %}
+                      <tr><td colspan="5">No attendance records available.</td></tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Hotel Booking Tab with Guest Authentication -->
+            <div class="tab-pane fade" id="booking-tab" role="tabpanel" aria-labelledby="booking-tab-btn">
+              <div class="booking-section">
+                <!-- Guest Authentication Section -->
+                <div class="login-section hidden" id="loginSection">
+                  <div class="section-title">Guest Authentication</div>
+                  <form id="loginForm" class="employee-form shadow-sm">
+                    <div class="mb-3">
+                      <label for="username" class="form-label">Username</label>
+                      <input type="text" class="form-control" id="username" required>
+                    </div>
+                    <div class="mb-3">
+                      <label for="password" class="form-label">Password</label>
+                      <input type="password" class="form-control" id="password" required>
+                    </div>
+                    <div class="d-flex justify-content-center align-items-center gap-2 mt-3">
+                      <button type="button" class="btn btn-custom" id="biometricLogin">
+                        <i class="fas fa-fingerprint me-2"></i>Biometric Login
+                      </button>
+                      <button type="submit" class="btn btn-custom">
+                        <i class="fas fa-qrcode me-2"></i>Login with QR
+                      </button>
+                    </div>
+                    <div class="qr-code-container hidden" id="qrCodeContainer"></div>
+                  </form>
+                </div>
+
+                <div class="section-header">
+                  <div class="section-title">Hotel Booking</div>
+                </div>
+                <form id="bookingForm" class="shadow-sm">
+                  <div class="mb-3">
+                    <label for="guestName" class="form-label">Guest Name</label>
+                    <input type="text" class="form-control" id="guestName" placeholder="Guest name" required>
+                  </div>
+                  <div class="mb-3">
+                    <label for="checkInDate" class="form-label">Check-In Date</label>
+                    <input type="date" class="form-control" id="checkInDate" required>
+                  </div>
+                  <div class="mb-3">
+                    <label for="checkOutDate" class="form-label">Check-Out Date</label>
+                    <input type="date" class="form-control" id="checkOutDate" required>
+                  </div>
+                  <div class="mb-3">
+                    <label for="roomType" class="form-label">Room Type</label>
+                    <select class="form-control" id="roomType" required>
+                      <option value="">Select Room Type</option>
+                      <option value="standard">Standard</option>
+                      <option value="deluxe">Deluxe</option>
+                      <option value="suite">Suite</option>
+                    </select>
+                  </div>
+                  <button type="submit" class="btn btn-custom">Book Room</button>
+                </form>
+                <div class="mt-3">
+                  <div class="section-title">Room Availability</div>
+                  <div id="roomAvailability" class="text-muted">Loading availability...</div>
+                  <div class="table-wrapper mt-3">
+                    <table class="table table-striped align-middle">
+                      <thead>
+                        <tr>
+                          <th>Room ID</th>
+                          <th>Type</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody id="roomStatusTable"></tbody>
+                    </table>
+                  </div>
+                </div>
+                <button class="btn btn-custom mt-3" id="generateInvoice">Generate Invoice</button>
+              </div>
+            </div>
+
+            <!-- Guest Management Tab with OTA/PMS Integration -->
+            <div class="tab-pane fade" id="guest-tab" role="tabpanel" aria-labelledby="guest-tab-btn">
+              <div class="guest-section">
+                <div class="d-flex justify-content-between align-items-center section-header">
+                  <div class="section-title">Guest Check-In/Out</div>
+                  <div class="d-flex align-items-center gap-2">
+                    <input type="text" id="guestId" class="form-control form-control-sm" placeholder="Guest ID" style="width: 140px;">
+                    <input type="text" id="guestCheckName" class="form-control form-control-sm" placeholder="Name" style="width: 140px;">
+                    <button class="action-btn" id="guestCheckInBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Guest Check-In">
+                      <i class="fas fa-sign-in-alt"></i>
+                    </button>
+                    <button class="action-btn" id="guestCheckOutBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Guest Check-Out">
+                      <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center section-header">
+                  <div class="section-title">Guest Records & Channel Sync</div>
+                  <div class="d-flex align-items-center gap-3">
+                    <button class="action-btn" id="refreshGuestRecords" data-bs-toggle="tooltip" data-bs-placement="top" title="Refresh">
+                      <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <button class="action-btn" id="syncChannels" data-bs-toggle="tooltip" data-bs-placement="top" title="Sync with OTAs/PMS">
+                      <i class="fas fa-sync"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="table-wrapper shadow-sm rounded">
+                  <table class="table table-striped align-middle">
+                    <thead>
+                      <tr>
+                        <th>Guest ID</th>
+                        <th>Name</th>
+                        <th>Room</th>
+                        <th>Check-In Date</th>
+                        <th>Check-Out Date</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody id="guest-table-body">
+                      <tr><td colspan="6">No guest records available.</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
-          <div class="table-wrapper shadow-sm rounded">
-            <table class="table table-striped align-middle">
-              <thead>
-                <tr>
-                  <th>Employee ID</th>
-                  <th>Name</th>
-                  <th>Date</th>
-                  <th>Time In</th>
-                  <th>Time Out</th>
-                </tr>
-              </thead>
-              <tbody id="attendance-table-body">
-                {% for record in records if records %}
-                <tr>
-                  <td>{{ record[0] or 'N/A' }}</td>
-                  <td>{{ record[1] or 'N/A' }}</td>
-                  <td>{{ record[2] or 'N/A' }}</td>
-                  <td>{{ record[3] or '-' }}</td>
-                  <td>{{ record[4] or '-' }}</td>
-                </tr>
-                {% else %}
-                <tr><td colspan="5">No attendance records available.</td></tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Analytics Section -->
-        <div class="mt-5 hidden" id="analyticsSection">
-          <h5 class="mb-4">Attendance Trends (Last 30 Days)</h5>
-          <canvas id="trendsChart" style="max-height: 350px;"></canvas>
         </div>
       </div>
+      {% endblock %}
 
       <!-- Toast for Notifications -->
       <div class="toast-container position-fixed bottom-0 end-0 p-4">
         <div id="attendanceToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
           <div class="toast-header">
-            <strong class="me-auto">Attendance Update</strong>
+            <strong class="me-auto">Update</strong>
             <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
           </div>
           <div class="toast-body"></div>
@@ -513,123 +762,139 @@
       </div>
 
       <footer class="footer text-center text-muted">
-        © {{ datetime.utcnow().year or 2025 }} {{ config.company_name or 'Company' }}
+        © {{ current_year or 2025 }} {{ config.company_name or 'Company' }}
       </footer>
     </div>
 
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
       const socket = io();
       const attendanceTbody = document.getElementById('attendance-table-body');
+      const guestTbody = document.getElementById('guest-table-body');
       const loginForm = document.getElementById('loginForm');
+      const bookingForm = document.getElementById('bookingForm');
       const loginSection = document.getElementById('loginSection');
+      const employeeLoginSection = document.getElementById('employeeLoginSection');
       const attendanceSection = document.getElementById('attendanceSection');
-      const analyticsSection = document.getElementById('analyticsSection');
       const logoutBtn = document.getElementById('logoutBtn');
       const sidebarLogoutBtn = document.getElementById('sidebarLogoutBtn');
-      const mobileLogoutBtn = document.getElementById('mobileLogoutBtn');
       const sidebar = document.getElementById('sidebar');
-      const mainContent = document.getElementById('mainContent');
+      const mainContent = document.getElementById('main-content');
       const menuToggle = document.getElementById('menuToggle');
       const closeSidebar = document.getElementById('closeSidebar');
       const themeToggle = document.getElementById('themeToggle');
       const sidebarThemeToggle = document.getElementById('sidebarThemeToggle');
-      const mobileThemeToggle = document.getElementById('mobileThemeToggle');
       const refreshAttendance = document.getElementById('refreshAttendance');
       const filterAttendance = document.getElementById('filterAttendance');
       const exportBtn = document.getElementById('exportBtn');
+      const checkInBtn = document.getElementById('checkInBtn');
+      const checkOutBtn = document.getElementById('checkOutBtn');
+      const guestCheckInBtn = document.getElementById('guestCheckInBtn');
+      const guestCheckOutBtn = document.getElementById('guestCheckOutBtn');
+      const refreshGuestRecords = document.getElementById('refreshGuestRecords');
+      const roomAvailability = document.getElementById('roomAvailability');
+      const roomStatusTable = document.getElementById('roomStatusTable');
+      const qrCodeContainer = document.getElementById('qrCodeContainer');
+      const biometricLogin = document.getElementById('biometricLogin');
+      const generateInvoice = document.getElementById('generateInvoice');
+      const syncChannels = document.getElementById('syncChannels');
 
-      let isAuthenticated = false;
+      let hasLoggedIn = false;
+      let userRole = 'guest';
+      let isSidebarOpen = false;
 
-      // Initialize and manage Bootstrap tooltips
+      // Initialize tooltips
       const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
       const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl, {
         trigger: 'hover'
       }));
 
-      // Sidebar toggle functionality
       function toggleSidebar() {
-        sidebar.classList.toggle('visible');
-        mainContent.classList.toggle('shifted');
+        isSidebarOpen = !isSidebarOpen;
+        sidebar.classList.toggle('visible', isSidebarOpen);
+        if (window.innerWidth >= 768) {
+          mainContent.classList.toggle('shifted', isSidebarOpen);
+        }
+        menuToggle.querySelector('i').className = isSidebarOpen ? 'fas fa-times' : 'fas fa-bars';
         tooltipList.forEach(tooltip => tooltip.hide());
       }
 
-      menuToggle.addEventListener('click', toggleSidebar);
-      closeSidebar.addEventListener('click', () => {
-        sidebar.classList.remove('visible');
-        mainContent.classList.remove('shifted');
-        tooltipList.forEach(tooltip => tooltip.hide());
-      });
-
-      function updateUI() {
-        console.log('updateUI called, isAuthenticated:', isAuthenticated);
-        if (isAuthenticated) {
-          loginSection.classList.add('hidden');
-          attendanceSection.classList.remove('hidden');
-          logoutBtn.classList.remove('hidden');
-          sidebarLogoutBtn.classList.remove('hidden');
-          mobileLogoutBtn.classList.remove('hidden');
-          menuToggle.classList.remove('hidden');
-          loadAttendance();
-          loadAnalytics();
-        } else {
-          loginSection.classList.remove('hidden');
-          attendanceSection.classList.add('hidden');
-          analyticsSection.classList.add('hidden');
-          logoutBtn.classList.add('hidden');
-          sidebarLogoutBtn.classList.add('hidden');
-          mobileLogoutBtn.classList.add('hidden');
-          sidebar.classList.remove('visible');
-          mainContent.classList.remove('shifted');
-          menuToggle.classList.add('hidden');
+      function closeSidebarIfOpen() {
+        if (isSidebarOpen) {
+          toggleSidebar();
         }
       }
 
-      function checkAuth() {
-        fetch('/check_auth', { credentials: 'include' })
-          .then(response => {
-            console.log('Check auth response:', response.status);
-            if (response.ok) {
-              isAuthenticated = true;
-            } else {
-              isAuthenticated = false;
-            }
-            updateUI();
-          })
-          .catch(error => {
-            console.error('Error checking auth:', error);
-            isAuthenticated = false;
-            updateUI();
-          });
-      }
+      menuToggle.addEventListener('click', toggleSidebar);
+      closeSidebar.addEventListener('click', toggleSidebar);
 
-      // Check auth on page load and navigation
-      window.addEventListener('load', checkAuth);
-      document.querySelectorAll('a[href], button[id^="sidebar"], button[id^="mobile"]').forEach(element => {
-        element.addEventListener('click', (e) => {
-          if (e.target.tagName === 'A' && !isAuthenticated) {
-            e.preventDefault();
-            alert('Please log in to access this page.');
-          } else if (element.id.includes('Logout')) {
-            // Handle logout
-          } else {
-            setTimeout(checkAuth, 100); // Re-check auth after navigation
-          }
-        });
+      document.addEventListener('click', (e) => {
+        if (window.innerWidth < 768 && isSidebarOpen && !sidebar.contains(e.target) && !menuToggle.contains(e.target)) {
+          closeSidebarIfOpen();
+        }
       });
 
+      window.addEventListener('resize', () => {
+        if (window.innerWidth < 768 && isSidebarOpen) {
+          mainContent.classList.remove('shifted');
+        } else if (window.innerWidth >= 768) {
+          mainContent.classList.toggle('shifted', isSidebarOpen);
+        }
+      });
+
+      function updateUI() {
+        const employeeTab = $('#myTab a[href="#employee-tab"]').parent();
+        const bookingTab = $('#myTab a[href="#booking-tab"]').parent();
+        const guestTab = $('#myTab a[href="#guest-tab"]').parent();
+
+        if (hasLoggedIn) {
+          loginSection.classList.add('hidden');
+          employeeLoginSection.classList.add('hidden');
+          logoutBtn.classList.remove('hidden');
+          sidebarLogoutBtn.classList.remove('hidden');
+          attendanceSection.classList.remove('hidden');
+          if (userRole === 'admin' || userRole === 'employee') {
+            employeeTab.removeClass('d-none');
+          } else {
+            employeeTab.addClass('d-none');
+            $('#myTab a[href="#booking-tab"]').tab('show');
+          }
+          if (userRole === 'admin') {
+            bookingTab.removeClass('d-none');
+            guestTab.removeClass('d-none');
+          } else if (userRole === 'employee') {
+            bookingTab.addClass('d-none');
+            guestTab.addClass('d-none');
+          } else if (userRole === 'guest') {
+            employeeTab.addClass('d-none');
+            bookingTab.removeClass('d-none');
+            guestTab.removeClass('d-none');
+          }
+        } else {
+          loginSection.classList.remove('hidden');
+          employeeLoginSection.classList.add('hidden');
+          logoutBtn.classList.add('hidden');
+          sidebarLogoutBtn.classList.add('hidden');
+          attendanceSection.classList.add('hidden');
+          employeeTab.removeClass('d-none');
+          bookingTab.removeClass('d-none');
+          guestTab.removeClass('d-none');
+          $('#myTab a[href="#booking-tab"]').tab('show');
+        }
+        loadAttendance();
+        loadGuestRecords();
+        checkRoomAvailability();
+      }
+
       function loadAttendance() {
+        if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'employee')) return;
         const today = new Date().toISOString().split('T')[0];
         const startDate = document.getElementById('startDate').value || today;
         const endDate = document.getElementById('endDate').value || today;
         const url = `/attendance?start_date=${startDate}&end_date=${endDate}`;
         fetch(url, { credentials: 'include' })
-          .then(response => {
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            return response.json();
-          })
+          .then(response => response.json())
           .then(data => {
             attendanceTbody.innerHTML = '';
             if (data.status === 'success' && data.records && data.records.length > 0) {
@@ -646,7 +911,6 @@
               });
             } else {
               attendanceTbody.innerHTML = '<tr><td colspan="5">No attendance records available.</td></tr>';
-              console.error('loadAttendance failed:', data.message || 'No data available');
             }
           })
           .catch(error => {
@@ -655,58 +919,109 @@
           });
       }
 
-      function loadAnalytics() {
-        fetch('/analytics', { credentials: 'include' })
-          .then(response => {
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            return response.json();
-          })
+      function loadGuestRecords() {
+        if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'guest')) return;
+        fetch('/guest_records', { credentials: 'include' })
+          .then(response => response.json())
           .then(data => {
-            if (data.status === 'success' && data.trends && data.trends.length > 0) {
-              const ctx = document.getElementById('trendsChart').getContext('2d');
-              new Chart(ctx, {
-                type: 'line',
-                data: {
-                  labels: data.trends.map(t => t.date || 'N/A'),
-                  datasets: [{
-                    label: 'Active Employees',
-                    data: data.trends.map(t => t.active_employees || 0),
-                    borderColor: '{{ config["theme"]["primary_color"] or "#007bff" }}',
-                    fill: false
-                  }]
-                },
-                options: {
-                  responsive: true,
-                  scales: { y: { beginAtZero: true } }
-                }
+            guestTbody.innerHTML = '';
+            if (data.status === 'success' && data.records && data.records.length > 0) {
+              data.records.forEach(record => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                  <td>${record.guest_id || 'N/A'}</td>
+                  <td>${record.name || 'N/A'}</td>
+                  <td>${record.room_id || 'N/A'}</td>
+                  <td>${record.check_in_date || '-'}</td>
+                  <td>${record.check_out_date || '-'}</td>
+                  <td>${record.status || 'N/A'}</td>
+                `;
+                guestTbody.appendChild(row);
               });
             } else {
-              console.error('loadAnalytics failed:', data.message || 'No data available');
+              guestTbody.innerHTML = '<tr><td colspan="6">No guest records available.</td></tr>';
             }
           })
-          .catch(error => console.error('Error in loadAnalytics:', error));
+          .catch(error => {
+            console.error('Error in loadGuestRecords:', error);
+            guestTbody.innerHTML = '<tr><td colspan="6">Error loading guest records.</td></tr>';
+          });
       }
+
+      function checkRoomAvailability() {
+        if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'guest')) return;
+        const checkInDate = document.getElementById('checkInDate').value;
+        const checkOutDate = document.getElementById('checkOutDate').value;
+        const roomType = document.getElementById('roomType').value;
+        if (!checkInDate || !checkOutDate || !roomType) {
+          roomAvailability.innerHTML = 'Please fill in all booking details.';
+          return;
+        }
+        fetch(`/room_availability?check_in=${checkInDate}&check_out=${checkOutDate}&room_type=${roomType}`, {
+          credentials: 'include'
+        })
+          .then(response => response.json())
+          .then(data => {
+            if (data.status === 'success') {
+              roomAvailability.innerHTML = data.available ? `Available: ${data.rooms} rooms` : 'No rooms available.';
+            } else {
+              roomAvailability.innerHTML = 'Error checking availability.';
+            }
+          })
+          .catch(error => {
+            console.error('Error in checkRoomAvailability:', error);
+            roomAvailability.innerHTML = 'Error checking availability.';
+          });
+      }
+
+      // Real-Time Room Availability Tracking
+      function updateRoomStatus() {
+        fetch('/room_status', { credentials: 'include' })
+          .then(response => response.json())
+          .then(data => {
+            roomStatusTable.innerHTML = '';
+            if (data.status === 'success' && data.rooms) {
+              data.rooms.forEach(room => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                  <td>${room.id}</td>
+                  <td>${room.type}</td>
+                  <td>${room.status}</td>
+                `;
+                roomStatusTable.appendChild(row);
+              });
+            }
+          })
+          .catch(error => console.error('Error updating room status:', error));
+      }
+      setInterval(updateRoomStatus, 5000);
+      socket.on('room_update', updateRoomStatus);
 
       loginForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const username = document.getElementById('username').value;
         const password = document.getElementById('password').value;
-        console.log('Attempting login with:', username);
         fetch('/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
+          body: JSON.stringify({ username, password }),
+          credentials: 'include'
         })
-          .then(response => {
-            console.log('Login response status:', response.status);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            return response.json();
-          })
+          .then(response => response.json())
           .then(data => {
-            console.log('Login response data:', data);
             if (data.status === 'success') {
               loginForm.reset();
-              isAuthenticated = true;
+              hasLoggedIn = true;
+              userRole = data.role || 'admin';
+              new QRCode(qrCodeContainer, {
+                text: `GuestID:${username}-Time:${new Date().toISOString()}`,
+                width: 128,
+                height: 128,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+              });
+              qrCodeContainer.classList.remove('hidden');
               updateUI();
             } else {
               alert(data.message || 'Login failed');
@@ -718,16 +1033,75 @@
           });
       });
 
+      biometricLogin.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (Math.random() > 0.2) { // Simulate biometric success
+          const username = prompt('Enter Username for Biometric');
+          if (username) {
+            hasLoggedIn = true;
+            userRole = 'guest';
+            new QRCode(qrCodeContainer, {
+              text: `GuestID:${username}-Time:${new Date().toISOString()}`,
+              width: 128,
+              height: 128,
+              colorDark: "#000000",
+              colorLight: "#ffffff",
+              correctLevel: QRCode.CorrectLevel.H
+            });
+            qrCodeContainer.classList.remove('hidden');
+            updateUI();
+          }
+        } else {
+          alert('Biometric verification failed. Try again or use QR login.');
+        }
+      });
+
+      bookingForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'guest')) {
+          alert('Access denied. Only admins and guests can book.');
+          return;
+        }
+        const guestName = document.getElementById('guestName').value;
+        const checkInDate = document.getElementById('checkInDate').value;
+        const checkOutDate = document.getElementById('checkOutDate').value;
+        const roomType = document.getElementById('roomType').value;
+        fetch('/book_room', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ guest_name: guestName, check_in_date: checkInDate, check_out_date: checkOutDate, room_type: roomType }),
+          credentials: 'include'
+        })
+          .then(response => response.json())
+          .then(data => {
+            if (data.status === 'success') {
+              const toast = new bootstrap.Toast(document.getElementById('attendanceToast'));
+              document.querySelector('#attendanceToast .toast-body').textContent = `Booking confirmed for ${guestName}!`;
+              toast.show();
+              bookingForm.reset();
+              loadGuestRecords();
+            } else {
+              alert(data.message || 'Booking failed');
+            }
+          })
+          .catch(error => {
+            console.error('Error during booking:', error);
+            alert('Booking failed. Check console for details.');
+          });
+      });
+
       logoutBtn.addEventListener('click', (e) => {
         e.preventDefault();
-        console.log('Logging out');
         fetch('/logout', {
           method: 'POST',
           credentials: 'include'
         })
           .then(response => {
             if (response.ok) {
-              isAuthenticated = false;
+              hasLoggedIn = false;
+              userRole = 'guest';
+              qrCodeContainer.classList.add('hidden');
+              qrCodeContainer.innerHTML = '';
               updateUI();
             }
           })
@@ -736,30 +1110,16 @@
 
       sidebarLogoutBtn.addEventListener('click', (e) => {
         e.preventDefault();
-        console.log('Logging out from sidebar');
         fetch('/logout', {
           method: 'POST',
           credentials: 'include'
         })
           .then(response => {
             if (response.ok) {
-              isAuthenticated = false;
-              updateUI();
-            }
-          })
-          .catch(error => console.error('Error during logout:', error));
-      });
-
-      mobileLogoutBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        console.log('Logging out from mobile');
-        fetch('/logout', {
-          method: 'POST',
-          credentials: 'include'
-        })
-          .then(response => {
-            if (response.ok) {
-              isAuthenticated = false;
+              hasLoggedIn = false;
+              userRole = 'guest';
+              qrCodeContainer.classList.add('hidden');
+              qrCodeContainer.innerHTML = '';
               updateUI();
             }
           })
@@ -778,6 +1138,10 @@
 
       exportBtn.addEventListener('click', async (e) => {
         e.preventDefault();
+        if (userRole !== 'admin') {
+          alert('Access denied. Admins only.');
+          return;
+        }
         try {
           const response = await fetch('/export', { credentials: 'include' });
           if (response.ok) {
@@ -799,12 +1163,136 @@
         }
       });
 
+      checkInBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'employee')) {
+          alert('Please log in as an admin or employee to perform this action.');
+          return;
+        }
+        const employeeId = document.getElementById('employeeId').value;
+        const employeeName = document.getElementById('employeeName').value;
+        try {
+          const response = await fetch('/check_in', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ employee_id: employeeId, name: employeeName }),
+            credentials: 'include'
+          });
+          const data = await response.json();
+          if (data.status === 'success') {
+            const toast = new bootstrap.Toast(document.getElementById('attendanceToast'));
+            document.querySelector('#attendanceToast .toast-body').textContent = `${employeeName} checked in successfully`;
+            toast.show();
+            loadAttendance();
+          } else {
+            alert(data.message || 'Check-in failed');
+          }
+        } catch (error) {
+          console.error('Error during check-in:', error);
+          alert('Error during check-in');
+        }
+      });
+
+      checkOutBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'employee')) {
+          alert('Please log in as an admin or employee to perform this action.');
+          return;
+        }
+        const employeeId = document.getElementById('employeeId').value;
+        try {
+          const response = await fetch('/check_out', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ employee_id: employeeId }),
+            credentials: 'include'
+          });
+          const data = await response.json();
+          if (data.status === 'success') {
+            const toast = new bootstrap.Toast(document.getElementById('attendanceToast'));
+            document.querySelector('#attendanceToast .toast-body').textContent = `Employee ${employeeId} checked out successfully`;
+            toast.show();
+            loadAttendance();
+          } else {
+            alert(data.message || 'Check-out failed');
+          }
+        } catch (error) {
+          console.error('Error during check-out:', error);
+          alert('Error during check-out');
+        }
+      });
+
+      guestCheckInBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'guest')) {
+          alert('Access denied. Only admins and guests can check in.');
+          return;
+        }
+        const guestId = document.getElementById('guestId').value;
+        const guestName = document.getElementById('guestCheckName').value;
+        try {
+          const response = await fetch('/guest_check_in', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ guest_id: guestId, name: guestName }),
+            credentials: 'include'
+          });
+          const data = await response.json();
+          if (data.status === 'success') {
+            const toast = new bootstrap.Toast(document.getElementById('attendanceToast'));
+            document.querySelector('#attendanceToast .toast-body').textContent = `${guestName} checked in successfully`;
+            toast.show();
+            loadGuestRecords();
+          } else {
+            alert(data.message || 'Guest check-in failed');
+          }
+        } catch (error) {
+          console.error('Error during guest check-in:', error);
+          alert('Error during guest check-in');
+        }
+      });
+
+      guestCheckOutBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'guest')) {
+          alert('Access denied. Only admins and guests can check out.');
+          return;
+        }
+        const guestId = document.getElementById('guestId').value;
+        try {
+          const response = await fetch('/guest_check_out', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ guest_id: guestId }),
+            credentials: 'include'
+          });
+          const data = await response.json();
+          if (data.status === 'success') {
+            const toast = new bootstrap.Toast(document.getElementById('attendanceToast'));
+            document.querySelector('#attendanceToast .toast-body').textContent = `Guest ${guestId} checked out successfully`;
+            toast.show();
+            loadGuestRecords();
+          } else {
+            alert(data.message || 'Guest check-out failed');
+          }
+        } catch (error) {
+          console.error('Error during guest check-out:', error);
+          alert('Error during guest check-out');
+        }
+      });
+
+      refreshGuestRecords.addEventListener('click', (e) => {
+        e.preventDefault();
+        loadGuestRecords();
+      });
+
       socket.on('attendance_update', (data) => {
         if (data.status === 'error') {
           alert(data.message || 'Update failed');
         } else {
           const toast = new bootstrap.Toast(document.getElementById('attendanceToast'));
-          document.querySelector('#attendanceToast .toast-body').textContent = `${data.name || 'User'} ${data.action === 'check-in' ? 'checked in' : 'checked out'} at ${data.time || 'N/A'}`;
+          const time = data.action === 'check-in' ? data.time_in : data.time_out;
+          document.querySelector('#attendanceToast .toast-body').textContent = `${data.name || 'User'} ${data.action === 'check-in' ? 'checked in' : 'checked out'} at ${time || 'N/A'}`;
           toast.show();
           const row = document.createElement('tr');
           row.innerHTML = `
@@ -818,25 +1306,32 @@
         }
       });
 
-      setInterval(() => {
-        if (isAuthenticated) {
-          loadAttendance();
+      socket.on('guest_update', (data) => {
+        if (data.status === 'error') {
+          alert(data.message || 'Error');
+        } else {
+          const toast = new bootstrap.Toast(document.getElementById('attendanceToast'));
+          document.querySelector('#attendanceToast .toast-body').textContent = `${data.name || 'Guest'} ${data.action === 'check-in' ? 'checked in' : 'checked out'}`;
+          toast.show();
+          loadGuestRecords();
         }
+      });
+
+      setInterval(() => {
+        loadAttendance();
+        loadGuestRecords();
       }, 60000);
 
       const root = document.documentElement;
       function setTheme(theme) {
-        console.log('Setting theme to:', theme);
         root.setAttribute('data-theme', theme);
         localStorage.setItem('theme', theme);
         themeToggle.querySelector('i').className = theme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
         sidebarThemeToggle.querySelector('i').className = theme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
-        mobileThemeToggle.querySelector('i').className = theme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
       }
 
       themeToggle.addEventListener('click', (e) => {
         e.preventDefault();
-        console.log('Theme toggle clicked');
         const currentTheme = root.getAttribute('data-theme');
         const newTheme = currentTheme === 'light' ? 'dark' : 'light';
         setTheme(newTheme);
@@ -844,15 +1339,6 @@
 
       sidebarThemeToggle.addEventListener('click', (e) => {
         e.preventDefault();
-        console.log('Theme toggle clicked from sidebar');
-        const currentTheme = root.getAttribute('data-theme');
-        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-        setTheme(newTheme);
-      });
-
-      mobileThemeToggle.addEventListener('click', (e) => {
-        e.preventDefault();
-        console.log('Theme toggle clicked from mobile');
         const currentTheme = root.getAttribute('data-theme');
         const newTheme = currentTheme === 'light' ? 'dark' : 'light';
         setTheme(newTheme);
@@ -861,8 +1347,82 @@
       const savedTheme = localStorage.getItem('theme') || 'light';
       setTheme(savedTheme);
 
-      // Initial auth check
-      checkAuth();
+      // Automated Billing and Invoicing
+      generateInvoice.addEventListener('click', (e) => {
+        e.preventDefault();
+        const guestName = document.getElementById('guestName').value;
+        const checkInDate = document.getElementById('checkInDate').value;
+        const checkOutDate = document.getElementById('checkOutDate').value;
+        const roomType = document.getElementById('roomType').value;
+        if (guestName && checkInDate && checkOutDate && roomType) {
+          const invoice = {
+            guestName,
+            checkInDate,
+            checkOutDate,
+            roomType,
+            amount: 100.00 // Placeholder amount
+          };
+          const toast = new bootstrap.Toast(document.getElementById('attendanceToast'));
+          document.querySelector('#attendanceToast .toast-body').textContent = `Invoice generated for ${guestName}. Amount: $${invoice.amount} (Email sent)`;
+          toast.show();
+          console.log('Invoice:', invoice); // Simulate email or storage
+        } else {
+          alert('Please fill booking details to generate invoice.');
+        }
+      });
+
+      // OTA/PMS Integration
+      syncChannels.addEventListener('click', (e) => {
+        e.preventDefault();
+        fetch('/sync_channels', { credentials: 'include' })
+          .then(response => response.json())
+          .then(data => {
+            if (data.status === 'success') {
+              const toast = new bootstrap.Toast(document.getElementById('attendanceToast'));
+              document.querySelector('#attendanceToast .toast-body').textContent = 'Channels synced with OTAs and PMS successfully.';
+              toast.show();
+            } else {
+              alert('Failed to sync channels. Check console for details.');
+            }
+          })
+          .catch(error => {
+            console.error('Error syncing channels:', error);
+            alert('Error syncing channels.');
+          });
+      });
+
+      window.jQuery || document.write('<script src="https://code.jquery.com/jquery-3.6.0.min.js"><\/script>');
+      $(document).ready(function() {
+        updateUI();
+        updateRoomStatus();
+      });
+
+      // Handle Employee Management tab click to show login form
+      $('#employee-tab-btn').on('click', function(e) {
+        e.preventDefault();
+        $('#myTab a[href="#employee-tab"]').tab('show');
+        employeeLoginSection.classList.remove('hidden');
+        attendanceSection.classList.add('hidden');
+      });
+
+      // Handle sidebar navigation for Employee Management
+      $('#sidebarEmployeeBtn').on('click', function(e) {
+        e.preventDefault();
+        $('#myTab a[href="#employee-tab"]').tab('show');
+        employeeLoginSection.classList.remove('hidden');
+        attendanceSection.classList.add('hidden');
+        closeSidebarIfOpen();
+      });
+
+      // Handle top nav button for Employee Management
+      $('#employeeBtn').on('click', function(e) {
+        e.preventDefault();
+        $('#myTab a[href="#employee-tab"]').tab('show');
+        employeeLoginSection.classList.remove('hidden');
+        attendanceSection.classList.add('hidden');
+      });
+
+      {% block scripts %}{% endblock %}
     </script>
   </body>
 </html>
