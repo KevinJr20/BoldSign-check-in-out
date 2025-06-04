@@ -16,172 +16,359 @@
     <div class="login-section" id="subscriptionSection">
       <div class="section-title">Subscription Plans</div>
       <form id="subscriptionForm" class="shadow-sm">
+        <!-- Plan Selection -->
         <div class="mb-3">
           <label for="planType" class="form-label">Select Plan</label>
           <select class="form-control" id="planType" required>
             <option value="">Choose a Plan</option>
-            <option value="basic">Basic - $10/month</option>
-            <option value="pro">Pro - $25/month</option>
-            <option value="enterprise">Enterprise - $50/month</option>
-          </select>
-        </div>
-        <div class="mb-3">
-          <label for="paymentMethod" class="form-label">Payment Method</label>
-          <select class="form-control" id="paymentMethod" required>
-            <option value="">Select Payment Method</option>
-            <option value="credit-card">Credit Card</option>
-            <option value="paypal">PayPal</option>
-            <option value="mpesa">M-Pesa</option>
+            <option value="basic">Basic - $25/month</option>
+            <option value="pro">Pro - $35/month</option>
+            <option value="enterprise">Enterprise - $65/month</option>
           </select>
         </div>
 
-        <!-- Credit Card Fields -->
-        <div id="creditCardFields" class="payment-fields hidden">
+        <!-- Payment Method Selection -->
+        <div class="mb-4">
+          <h3 class="font-weight-bold mb-2">Select Payment Method</h3>
+          <div class="d-flex flex-column gap-2">
+            <label class="d-flex align-items-center">
+              <input type="radio" name="payment_method" value="mpesa" class="me-2" checked>
+              M-Pesa
+            </label>
+            <label class="d-flex align-items-center">
+              <input type="radio" name="payment_method" value="card" class="me-2">
+              Card (Visa, Mastercard, etc.)
+            </label>
+            <label class="d-flex align-items-center">
+              <input type="radio" name="payment_method" value="paypal" class="me-2">
+              PayPal
+            </label>
+          </div>
+        </div>
+
+        <!-- M-Pesa Form -->
+        <div id="mpesa-form" class="payment-form">
           <div class="mb-3">
-            <label for="cardNumber" class="form-label">Card Number</label>
-            <input type="text" class="form-control" id="cardNumber" placeholder="1234 5678 9012 3456" maxlength="19">
+            <label for="mpesa_amount_usd" class="form-label">Amount (USD)</label>
+            <input type="number" name="amount_usd" id="mpesa_amount_usd" value="0" class="form-control" readonly>
           </div>
-          <div class="mb-3 d-flex gap-3">
-            <div class="w-50">
-              <label for="expiryDate" class="form-label">Expiry Date</label>
-              <input type="text" class="form-control" id="expiryDate" placeholder="MM/YY" maxlength="5">
-            </div>
-            <div class="w-50">
-              <label for="cvv" class="form-label">CVV</label>
-              <input type="text" class="form-control" id="cvv" placeholder="123" maxlength="3">
-            </div>
-          </div>
-        </div>
-
-        <!-- M-Pesa Fields -->
-        <div id="mpesaFields" class="payment-fields hidden">
           <div class="mb-3">
-            <label for="mpesaNumber" class="form-label">M-Pesa Phone Number</label>
-            <input type="text" class="form-control" id="mpesaNumber" placeholder="+254712345678">
+            <label for="mpesa_amount_ksh" class="form-label">Amount (KSh - Estimated)</label>
+            <input type="number" name="amount_ksh" id="mpesa_amount_ksh" value="0" class="form-control" readonly>
+            <small class="text-muted" id="exchange-rate-info">Fetching exchange rate...</small>
           </div>
-          <p class="text-muted">After submitting, you will receive a prompt on your phone to confirm the payment.</p>
+          <div class="mb-3">
+            <label for="phone_number" class="form-label">Phone Number (e.g., 2547XXXXXXXX)</label>
+            <input type="text" name="phone_number" id="phone_number" placeholder="2547XXXXXXXX" class="form-control" required>
+          </div>
+          <button type="submit" class="btn btn-custom w-100" id="mpesa-submit-btn">Pay with M-Pesa</button>
         </div>
 
-        <!-- PayPal Fields -->
-        <div id="paypalFields" class="payment-fields hidden">
-          <p class="text-muted">You will be redirected to PayPal to complete your payment securely.</p>
+        <!-- Card Form (Stripe) -->
+        <div id="card-form" class="payment-form d-none">
+          <div class="mb-3">
+            <label for="card_amount_usd" class="form-label">Amount (USD)</label>
+            <input type="number" name="amount_usd" id="card_amount_usd" value="0" class="form-control" readonly>
+          </div>
+          <div class="mb-3">
+            <label for="card_amount_ksh" class="form-label">Amount (KSh - Estimated)</label>
+            <input type="number" name="amount_ksh" id="card_amount_ksh" value="0" class="form-control" readonly>
+            <small class="text-muted" id="exchange-rate-info-card">Fetching exchange rate...</small>
+          </div>
+          <button type="submit" class="btn btn-custom w-100" id="card-submit-btn">Pay with Card</button>
         </div>
 
-        <div class="d-flex justify-content-center align-items-center gap-2 mt-3">
-          <button type="submit" class="btn btn-custom">
-            <i class="fas fa-check me-2"></i> Subscribe Now
-          </button>
+        <!-- PayPal Form -->
+        <div id="paypal-form" class="payment-form d-none">
+          <div class="mb-3">
+            <label for="paypal_amount_usd" class="form-label">Amount (USD)</label>
+            <input type="number" name="amount_usd" id="paypal_amount_usd" value="0" class="form-control" readonly>
+          </div>
+          <div class="mb-3">
+            <label for="paypal_amount_ksh" class="form-label">Amount (KSh - Estimated)</label>
+            <input type="number" name="amount_ksh" id="paypal_amount_ksh" value="0" class="form-control" readonly>
+            <small class="text-muted" id="exchange-rate-info-paypal">Fetching exchange rate...</small>
+          </div>
+          <button type="submit" class="btn btn-custom w-100" id="paypal-submit-btn" disabled>Pay with PayPal</button>
+          <div id="paypal-loading" class="d-none text-center mt-2">
+            <div class="spinner-border spinner-border-sm" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <span>Redirecting to PayPal...</span>
+          </div>
         </div>
       </form>
     </div>
   </div>
 </div>
+
+<!-- Toast for Notifications -->
+<div class="toast-container position-fixed bottom-0 end-0 p-4">
+  <div id="subscriptionToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="toast-header">
+      <strong class="me-auto">Subscription Update</strong>
+      <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+    <div class="toast-body"></div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
+<script src="https://js.stripe.com/v3/"></script>
 <script>
-  const paymentMethodSelect = document.getElementById('paymentMethod');
-  const creditCardFields = document.getElementById('creditCardFields');
-  const mpesaFields = document.getElementById('mpesaFields');
-  const paypalFields = document.getElementById('paypalFields');
-  const subscriptionForm = document.getElementById('subscriptionForm');
+  // Reinitialize theme and navigation
+  const root = document.documentElement;
+  const savedTheme = localStorage.getItem('theme') || 'light';
+  root.setAttribute('data-theme', savedTheme);
+  const themeToggle = document.getElementById('themeToggle');
+  const sidebarThemeToggle = document.getElementById('sidebarThemeToggle');
+  if (themeToggle) themeToggle.querySelector('i').className = savedTheme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+  if (sidebarThemeToggle) sidebarThemeToggle.querySelector('i').className = savedTheme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
 
-  paymentMethodSelect.addEventListener('change', () => {
-    const method = paymentMethodSelect.value;
-    creditCardFields.classList.add('hidden');
-    mpesaFields.classList.add('hidden');
-    paypalFields.classList.add('hidden');
-
-    if (method === 'credit-card') {
-      creditCardFields.classList.remove('hidden');
-    } else if (method === 'mpesa') {
-      mpesaFields.classList.remove('hidden');
-    } else if (method === 'paypal') {
-      paypalFields.classList.remove('hidden');
-    }
+  themeToggle?.addEventListener('click', (e) => {
+    e.preventDefault();
+    const currentTheme = root.getAttribute('data-theme');
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
   });
 
-  subscriptionForm.addEventListener('submit', (e) => {
+  sidebarThemeToggle?.addEventListener('click', (e) => {
     e.preventDefault();
-    const planType = document.getElementById('planType').value;
-    const paymentMethod = document.getElementById('paymentMethod').value;
+    const currentTheme = root.getAttribute('data-theme');
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+  });
 
-    if (!planType || !paymentMethod) {
-      alert('Please select a plan and payment method.');
-      return;
-    }
+  function setTheme(theme) {
+    root.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+    if (themeToggle) themeToggle.querySelector('i').className = theme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+    if (sidebarThemeToggle) sidebarThemeToggle.querySelector('i').className = theme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+  }
 
-    let paymentData = { plan_type: planType, payment_method: paymentMethod };
+  $(document).ready(function() {
+    // Reattach tab and navigation handlers
+    $('#myTab a').on('click', function (e) {
+      e.preventDefault();
+      $(this).tab('show');
+    });
 
-    if (paymentMethod === 'credit-card') {
-      const cardNumber = document.getElementById('cardNumber').value;
-      const expiryDate = document.getElementById('expiryDate').value;
-      const cvv = document.getElementById('cvv').value;
-      if (!cardNumber || !expiryDate || !cvv) {
-        alert('Please fill in all credit card details.');
+    $('#sidebarEmployeeBtn, #employeeBtn').on('click', function(e) {
+      e.preventDefault();
+      if (!hasLoggedIn) {
+        window.location.href = '/login';
         return;
       }
-      paymentData = { ...paymentData, card_number: cardNumber, expiry_date: expiryDate, cvv };
-    } else if (paymentMethod === 'mpesa') {
-      const mpesaNumber = document.getElementById('mpesaNumber').value;
-      if (!mpesaNumber) {
-        alert('Please enter your M-Pesa phone number.');
+      $('#myTab a[href="#employee-tab"]').tab('show');
+      closeSidebarIfOpen?.();
+    });
+
+    $('#sidebarBookingBtn, #bookingBtn').on('click', function(e) {
+      e.preventDefault();
+      if (!hasLoggedIn) {
+        window.location.href = '/login';
         return;
       }
-      paymentData = { ...paymentData, mpesa_number: mpesaNumber };
+      $('#myTab a[href="#booking-tab"]').tab('show');
+      closeSidebarIfOpen?.();
+    });
+
+    $('#sidebarGuestBtn, #guestBtn').on('click', function(e) {
+      e.preventDefault();
+      if (!hasLoggedIn) {
+        window.location.href = '/login';
+        return;
+      }
+      $('#myTab a[href="#guest-tab"]').tab('show');
+      closeSidebarIfOpen?.();
+    });
+
+    // Subscription-specific script
+    const planTypeSelect = document.getElementById('planType');
+    const paymentMethodRadios = document.querySelectorAll('input[name="payment_method"]');
+    const mpesaForm = document.getElementById('mpesa-form');
+    const cardForm = document.getElementById('card-form');
+    const paypalForm = document.getElementById('paypal-form');
+    const subscriptionForm = document.getElementById('subscriptionForm');
+    const mpesaAmountUsd = document.getElementById('mpesa_amount_usd');
+    const cardAmountUsd = document.getElementById('card_amount_usd');
+    const paypalAmountUsd = document.getElementById('paypal_amount_usd');
+    const mpesaAmountKsh = document.getElementById('mpesa_amount_ksh');
+    const cardAmountKsh = document.getElementById('card_amount_ksh');
+    const paypalAmountKsh = document.getElementById('paypal_amount_ksh');
+    const exchangeRateInfo = document.getElementById('exchange-rate-info');
+    const exchangeRateInfoCard = document.getElementById('exchange-rate-info-card');
+    const exchangeRateInfoPaypal = document.getElementById('exchange-rate-info-paypal');
+    const mpesaSubmitBtn = document.getElementById('mpesa-submit-btn');
+    const cardSubmitBtn = document.getElementById('card-submit-btn');
+    const paypalSubmitBtn = document.getElementById('paypal-submit-btn');
+    const paypalLoading = document.getElementById('paypal-loading');
+
+    // Plan prices in USD
+    const planPricesUsd = {
+      basic: 25,
+      pro: 35,
+      enterprise: 65
+    };
+
+    let exchangeRate = 130; // Default fallback rate
+
+    // Fetch exchange rate from API
+    async function fetchExchangeRate() {
+      try {
+        const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+        const data = await response.json();
+        exchangeRate = data.rates.KES || exchangeRate;
+        exchangeRateInfo.textContent = `Exchange rate: 1 USD = ${exchangeRate} KSh`;
+        exchangeRateInfoCard.textContent = `Exchange rate: 1 USD = ${exchangeRate} KSh`;
+        exchangeRateInfoPaypal.textContent = `Exchange rate: 1 USD = ${exchangeRate} KSh`;
+        updateAmounts();
+      } catch (error) {
+        console.error('Error fetching exchange rate:', error);
+        exchangeRateInfo.textContent = `Using fallback rate: 1 USD = ${exchangeRate} KSh`;
+        exchangeRateInfoCard.textContent = `Using fallback rate: 1 USD = ${exchangeRate} KSh`;
+        exchangeRateInfoPaypal.textContent = `Using fallback rate: 1 USD = ${exchangeRate} KSh`;
+        updateAmounts();
+      }
     }
 
-    fetch('/subscribe', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(paymentData),
-      credentials: 'include'
-    })
-      .then(response => response.json())
-      .then(data => {
+    // Update amount fields based on selected plan
+    function updateAmounts() {
+      const selectedPlan = planTypeSelect.value;
+      const amountUsd = planPricesUsd[selectedPlan] || 0;
+      const amountKsh = (amountUsd * exchangeRate).toFixed(2);
+      mpesaAmountUsd.value = amountUsd;
+      cardAmountUsd.value = amountUsd;
+      paypalAmountUsd.value = amountUsd;
+      mpesaAmountKsh.value = amountKsh;
+      cardAmountKsh.value = amountKsh;
+      paypalAmountKsh.value = amountKsh;
+    }
+
+    // Show/hide payment forms based on selected method
+    paymentMethodRadios.forEach(radio => {
+      radio.addEventListener('change', () => {
+        mpesaForm.classList.add('d-none');
+        cardForm.classList.add('d-none');
+        paypalForm.classList.add('d-none');
+        if (radio.value === 'mpesa') {
+          mpesaForm.classList.remove('d-none');
+        } else if (radio.value === 'card') {
+          cardForm.classList.remove('d-none');
+        } else if (radio.value === 'paypal') {
+          paypalForm.classList.remove('d-none');
+        }
+      });
+    });
+
+    // Update amounts when plan changes
+    planTypeSelect.addEventListener('change', updateAmounts);
+
+    // Get JWT token from cookie
+    function getCookie(name) {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop().split(';').shift();
+      return null;
+    }
+
+    // Stripe setup
+    const stripe = Stripe('{{ stripe_publishable_key }}'); // Replace with your Stripe key
+
+    subscriptionForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const planType = planTypeSelect.value;
+      const paymentMethod = document.querySelector('input[name="payment_method"]:checked').value;
+
+      if (!planType || !paymentMethod) {
+        alert('Please select a plan and payment method.');
+        return;
+      }
+
+      let paymentData = { plan_type: planType, payment_method: paymentMethod };
+
+      // Disable all submit buttons to prevent multiple submissions
+      mpesaSubmitBtn.disabled = true;
+      cardSubmitBtn.disabled = true;
+      paypalSubmitBtn.disabled = true;
+
+      if (paymentMethod === 'mpesa') {
+        const phoneNumber = document.getElementById('phone_number').value;
+        if (!phoneNumber || !phoneNumber.match(/^2547\d{8}$/)) {
+          alert('Please enter a valid phone number in the format 2547XXXXXXXX.');
+          mpesaSubmitBtn.disabled = false;
+          return;
+        }
+        paymentData = { ...paymentData, mpesa_number: phoneNumber };
+      } else if (paymentMethod === 'paypal') {
+        paypalLoading.classList.remove('d-none');
+        paypalSubmitBtn.textContent = 'Processing...';
+      }
+
+      const token = getCookie('access_token_cookie');
+      if (!token) {
+        window.location.href = '/login';
+        return;
+      }
+
+      try {
+        const response = await fetch('/subscribe', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(paymentData),
+          credentials: 'include'
+        });
+        const data = await response.json();
+
         if (data.status === 'success') {
-          const toast = new bootstrap.Toast(document.getElementById('attendanceToast'));
-          document.querySelector('#attendanceToast .toast-body').textContent = 'Subscription successful!';
+          const toast = new bootstrap.Toast(document.getElementById('subscriptionToast'));
+          document.querySelector('#subscriptionToast .toast-body').textContent = 'Subscription successful!';
           toast.show();
-          if (paymentMethod === 'paypal') {
-            // Simulate PayPal redirect
-            alert('Redirecting to PayPal...');
-            window.location.href = 'https://www.paypal.com';
+
+          if (paymentMethod === 'paypal' && data.redirect_url) {
+            setTimeout(() => {
+              window.location.href = data.redirect_url;
+            }, 1000); // Delay for user to see the toast
+          } else if (paymentMethod === 'card' && data.session_id) {
+            stripe.redirectToCheckout({ sessionId: data.session_id });
           }
         } else {
-          alert(data.message || 'Subscription failed.');
+          throw new Error(data.message || 'Subscription failed.');
         }
-      })
-      .catch(error => {
+      } catch (error) {
         console.error('Error during subscription:', error);
-        alert('Subscription failed. Check console for details.');
-      });
-  });
+        if (error.message.includes('401') || error.message.includes('403')) {
+          window.location.href = '/login';
+        } else {
+          alert(error.message || 'Subscription failed. Check console for details.');
+        }
+      } finally {
+        // Re-enable buttons
+        mpesaSubmitBtn.disabled = false;
+        cardSubmitBtn.disabled = false;
+        paypalSubmitBtn.disabled = false;
+        if (paymentMethod === 'paypal') {
+          paypalLoading.classList.add('d-none');
+          paypalSubmitBtn.textContent = 'Pay with PayPal';
+        }
+      }
+    });
 
-  // Format card number input (adds spaces every 4 digits)
-  document.getElementById('cardNumber')?.addEventListener('input', (e) => {
-    let value = e.target.value.replace(/\D/g, '');
-    value = value.match(/.{1,4}/g)?.join(' ') || value;
-    e.target.value = value;
-  });
+    // Restrict M-Pesa number to numbers only and enforce format
+    document.getElementById('phone_number')?.addEventListener('input', (e) => {
+      e.target.value = e.target.value.replace(/[^0-9]/g, '');
+      if (e.target.value.length > 12) {
+        e.target.value = e.target.value.slice(0, 12);
+      }
+    });
 
-  // Format expiry date input (MM/YY)
-  document.getElementById('expiryDate')?.addEventListener('input', (e) => {
-    let value = e.target.value.replace(/\D/g, '');
-    if (value.length > 2) {
-      value = value.substring(0, 2) + '/' + value.substring(2, 4);
-    }
-    e.target.value = value;
-  });
-
-  // Restrict CVV to numbers only
-  document.getElementById('cvv')?.addEventListener('input', (e) => {
-    e.target.value = e.target.value.replace(/\D/g, '');
-  });
-
-  // Restrict M-Pesa number to numbers and + only
-  document.getElementById('mpesaNumber')?.addEventListener('input', (e) => {
-    e.target.value = e.target.value.replace(/[^0-9+]/g, '');
+    // Initial setup
+    fetchExchangeRate();
+    updateAmounts();
   });
 </script>
 {% endblock %}

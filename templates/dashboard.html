@@ -2,13 +2,15 @@
 <html lang="en" data-theme="light">
   <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="{{ config.company_name or 'Hospitality' }} Dashboard for managing employees, bookings, and guests.">
+    <meta name="robots" content="noindex, nofollow">
     <title>{% block title %}{{ config.company_name or 'Hospitality Dashboard' }} Dashboard{% endblock %}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg==" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" integrity="sha512-dPXYcDub/aa+j59BHo7f5V5A60JGO9hCyJHLfIu3yEDyKEI91H5B6FNaXbcYb6I8HCrC+EdO2d4y47L/EMOWaw==" crossorigin="anonymous">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js" integrity="sha256-Cx1o6x84pT18W4kABW3fCrXSD7N4H1/S4Wmc6RlsUD8=" crossorigin="anonymous"></script>
     {% block extra_head %}{% endblock %}
     <style>
       :root[data-theme='light'] {
@@ -21,13 +23,13 @@
         --table-header-text: #fff;
         --button-bg: {{ config['theme']['primary_color'] or '#007bff' }};
         --button-text: #fff;
-        --modal-bg: rgba(255, 255, 255, 0.9);
+        --modal-bg: rgba(255, 255, 255, 0.95);
         --modal-text: #212529;
         --upgrade-btn-bg: linear-gradient(90deg, #007bff, #00c4ff);
         --dropdown-bg: #fff;
         --dropdown-border: #ced4da;
         --dropdown-hover-bg: #e9ecef;
-        --sidebar-bg: rgba(255, 255, 255, 0.9);
+        --sidebar-bg: rgba(255, 255, 255, 0.95);
         --sidebar-text: #212529;
         --sidebar-hover-bg: rgba(200, 200, 200, 0.2);
       }
@@ -41,13 +43,13 @@
         --table-header-text: #e0e0e0;
         --button-bg: {{ config['theme']['primary_color'] or '#007bff' }};
         --button-text: #fff;
-        --modal-bg: rgba(42, 42, 42, 0.9);
+        --modal-bg: rgba(42, 42, 42, 0.95);
         --modal-text: #e0e0e0;
         --upgrade-btn-bg: linear-gradient(90deg, #0056b3, #00aaff);
         --dropdown-bg: #444;
         --dropdown-border: #666;
         --dropdown-hover-bg: #555;
-        --sidebar-bg: rgba(30, 30, 30, 0.9);
+        --sidebar-bg: rgba(30, 30, 30, 0.95);
         --sidebar-text: #e0e0e0;
         --sidebar-hover-bg: rgba(255, 255, 255, 0.1);
       }
@@ -60,29 +62,31 @@
         font-family: 'Poppins', sans-serif;
         display: flex;
         min-height: 100vh;
+        overflow-x: hidden;
       }
       .header {
         background-color: var(--header-bg);
         color: var(--header-text);
-        padding: 20px;
+        padding: 1.5rem;
         text-align: center;
         position: sticky;
         top: 0;
         z-index: 1000;
         width: 100%;
         box-sizing: border-box;
-        margin-bottom: 20px;
+        margin-bottom: 1.25rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       }
       .logo {
         max-height: 60px;
-        margin-bottom: 10px;
+        margin-bottom: 0.625rem;
       }
       .table-wrapper {
         max-height: 50vh;
         overflow-y: auto;
         background-color: var(--table-bg);
-        padding: 15px;
-        border-radius: 10px;
+        padding: 1rem;
+        border-radius: 0.625rem;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         border: 1px solid var(--dropdown-border);
       }
@@ -90,6 +94,7 @@
         width: 100%;
         border-collapse: separate;
         border-spacing: 0;
+        margin-bottom: 0;
       }
       table thead {
         background-color: var(--table-header-bg);
@@ -99,14 +104,14 @@
         z-index: 1;
       }
       table th, table td {
-        padding: 10px 12px;
+        padding: 0.625rem 0.75rem;
         text-align: left;
         border-bottom: 1px solid var(--dropdown-border);
       }
       table th {
         font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.03125rem;
       }
       table tr:hover {
         background-color: var(--dropdown-hover-bg);
@@ -119,8 +124,8 @@
         background: var(--upgrade-btn-bg);
         color: #fff;
         border: none;
-        border-radius: 25px;
-        padding: 10px 25px;
+        border-radius: 1.5625rem;
+        padding: 0.625rem 1.5625rem;
         font-weight: 600;
         transition: transform 0.2s, box-shadow 0.3s;
         box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
@@ -140,18 +145,19 @@
       }
       .footer {
         font-size: 0.85rem;
-        margin-top: 40px;
+        margin-top: 2.5rem;
         text-align: center;
         width: 100%;
         box-sizing: border-box;
-        padding-bottom: 20px;
+        padding-bottom: 1.25rem;
+        color: var(--text-color);
       }
       .nav-buttons {
         position: absolute;
-        top: 20px;
-        right: 20px;
+        top: 1.25rem;
+        right: 1.25rem;
         display: flex;
-        gap: 15px;
+        gap: 0.9375rem;
       }
       .nav-btn {
         color: var(--header-text);
@@ -159,22 +165,26 @@
         cursor: pointer;
         background: rgba(255, 255, 255, 0.1);
         border: none;
-        padding: 8px;
+        padding: 0.5rem;
         border-radius: 50%;
         transition: transform 0.2s, background 0.2s;
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 40px;
-        height: 40px;
+        width: 2.5rem;
+        height: 2.5rem;
       }
       .nav-btn:hover {
         transform: scale(1.1);
         background: rgba(255, 255, 255, 0.2);
       }
       .login-section {
-        max-width: 450px;
-        margin: 20px auto;
+        max-width: 28.125rem;
+        margin: 1.25rem auto;
+        padding: 1.25rem;
+        background: var(--table-bg);
+        border-radius: 0.625rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
       }
       .action-btn {
         font-size: 1.2rem;
@@ -182,7 +192,7 @@
         background: none;
         border: none;
         color: var(--text-color);
-        padding: 8px;
+        padding: 0.5rem;
         transition: transform 0.2s;
       }
       .action-btn:hover {
@@ -190,18 +200,19 @@
       }
       .attendance-records .action-btn {
         font-size: 1rem;
-        padding: 6px;
+        padding: 0.375rem;
       }
-      .hidden { display: none; }
+      .hidden { display: none !important; }
       .tab-content {
         width: 90%;
-        max-width: 1000px;
+        max-width: 62.5rem;
+        padding: 0 1rem;
       }
       #myTabContent {
-        margin-top: 2rem;
+        margin-top: 1.5rem;
       }
       .section-header {
-        margin-bottom: 20px;
+        margin-bottom: 1.25rem;
       }
       .section-title {
         font-size: 1.1rem;
@@ -209,20 +220,20 @@
         margin-bottom: 0;
       }
       .gap-3 {
-        gap: 15px !important;
+        gap: 0.9375rem !important;
       }
       .gap-2 {
-        gap: 10px !important;
+        gap: 0.625rem !important;
       }
       .sidebar {
-        width: 250px;
+        width: 15.625rem;
         background: var(--sidebar-bg);
-        border-radius: 0 15px 15px 0;
-        padding: 20px;
+        border-radius: 0 0.9375rem 0.9375rem 0;
+        padding: 1.25rem;
         box-shadow: 2px 0 15px rgba(0, 0, 0, 0.2);
         position: fixed;
         top: 0;
-        left: -250px;
+        left: -15.625rem;
         height: 100%;
         transition: left 0.3s ease;
         z-index: 2000;
@@ -235,8 +246,8 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 20px;
-        padding: 0 10px;
+        margin-bottom: 1.25rem;
+        padding: 0 0.625rem;
       }
       .sidebar-header h4 {
         margin: 0;
@@ -250,18 +261,18 @@
         font-size: 1.4rem;
         cursor: pointer;
         transition: transform 0.2s;
-        padding: 5px;
+        padding: 0.3125rem;
       }
       .sidebar-btn:hover {
         transform: scale(1.1);
       }
       .sidebar-nav {
         list-style: none;
-        padding: 0 10px;
+        padding: 0 0.625rem;
         margin: 0;
       }
       .sidebar-nav li {
-        margin-bottom: 10px;
+        margin-bottom: 0.625rem;
       }
       .sidebar-nav a, .sidebar-nav button {
         background: transparent;
@@ -270,35 +281,34 @@
         font-size: 1rem;
         display: flex;
         align-items: center;
-        gap: 10px;
-        padding: 10px;
+        gap: 0.625rem;
+        padding: 0.625rem;
         width: 100%;
         text-align: left;
-        border-radius: 8px;
+        border-radius: 0.5rem;
         text-decoration: none;
         transition: background 0.2s, transform 0.2s;
         font-weight: 600;
       }
       .sidebar-nav a:hover, .sidebar-nav button:hover {
         background: var(--sidebar-hover-bg);
-        transform: translateX(5px);
+        transform: translateX(0.3125rem);
       }
       .main-content.shifted {
-        margin-left: 250px;
+        margin-left: 15.625rem;
       }
       .menu-toggle {
         position: fixed;
-        top: 15px;
-        left: 15px;
+        top: 0.9375rem;
+        left: 0.9375rem;
         background: rgba(0, 0, 0, 0.5);
         border: none;
         color: #fff;
         font-size: 1.4rem;
         z-index: 1100;
-        padding: 8px;
-        border-radius: 5px;
+        padding: 0.5rem;
+        border-radius: 0.3125rem;
         transition: transform 0.2s, background 0.2s;
-        display: block;
       }
       .menu-toggle:hover {
         transform: scale(1.1);
@@ -308,14 +318,14 @@
         background: linear-gradient(135deg, var(--header-bg), rgba(255, 255, 255, 0.1));
         color: var(--header-text);
         border: none;
-        border-radius: 8px;
-        padding: 10px 20px;
-        margin-right: 10px;
+        border-radius: 0.5rem;
+        padding: 0.625rem 1.25rem;
+        margin-right: 0.625rem;
         font-weight: 600;
         transition: background 0.3s, transform 0.2s;
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 0.5rem;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       }
       .nav-tabs .nav-link.active {
@@ -325,12 +335,19 @@
       }
       .nav-tabs .nav-link:hover {
         background: linear-gradient(135deg, var(--header-bg), rgba(255, 255, 255, 0.2));
-        transform: translateY(-2px);
+        transform: translateY(-0.125rem);
+      }
+      .form-control:focus {
+        box-shadow: 0 0 0 0.25rem rgba(var(--button-bg), 0.25);
+        border-color: var(--button-bg);
+      }
+      .toast-container {
+        z-index: 1055;
       }
       @media (max-width: 767px) {
         .sidebar {
-          left: -250px;
-          width: 200px;
+          left: -15.625rem;
+          width: 12.5rem;
         }
         .sidebar.visible {
           left: 0;
@@ -342,12 +359,12 @@
           margin-left: 0;
         }
         .header {
-          padding: 15px;
+          padding: 1rem;
         }
         .nav-buttons {
-          top: 15px;
-          right: 15px;
-          gap: 10px;
+          top: 1rem;
+          right: 1rem;
+          gap: 0.625rem;
         }
         .nav-buttons.d-md-flex {
           display: none !important;
@@ -357,20 +374,20 @@
         }
         .table-wrapper {
           max-height: 40vh;
-          padding: 10px;
+          padding: 0.625rem;
         }
         table th, table td {
-          padding: 8px 10px;
+          padding: 0.5rem 0.625rem;
           font-size: 0.9rem;
         }
         .btn-custom {
-          padding: 8px 20px;
+          padding: 0.5rem 1.25rem;
           font-size: 0.9rem;
         }
         .nav-tabs .nav-link {
-          padding: 8px 15px;
+          padding: 0.5rem 0.9375rem;
           margin-right: 0;
-          margin-bottom: 10px;
+          margin-bottom: 0.625rem;
           width: 100%;
         }
         .nav-tabs .nav-item {
@@ -383,10 +400,14 @@
         .menu-toggle {
           display: block;
         }
+        .login-section {
+          margin: 0.625rem auto;
+          padding: 0.9375rem;
+        }
       }
       @media (min-width: 768px) {
         .sidebar {
-          left: -250px;
+          left: -15.625rem;
         }
         .sidebar.visible {
           left: 0;
@@ -395,14 +416,14 @@
           margin-left: 0;
         }
         .main-content.shifted {
-          margin-left: 250px;
+          margin-left: 15.625rem;
         }
         .nav-buttons.d-md-flex {
           display: flex !important;
         }
         .nav-tabs {
           flex-direction: row;
-          gap: 10px;
+          gap: 0.625rem;
           justify-content: center;
         }
         .menu-toggle {
@@ -410,327 +431,350 @@
         }
       }
       .qr-code-container {
-        margin-top: 20px;
+        margin-top: 1.25rem;
         text-align: center;
       }
-      /* Intro Paragraph Styles */
       .intro-section {
         text-align: center;
-        padding: 20px 15px;
-        max-width: 800px;
-        margin: 0 auto 40px auto;
+        padding: 1.25rem 0.9375rem;
+        max-width: 50rem;
+        margin: 0 auto 2.5rem auto;
         color: var(--text-color);
         font-size: 1.2rem;
       }
       @media (max-width: 767px) {
         .intro-section {
           font-size: 1rem;
-          padding: 15px;
+          padding: 0.9375rem;
         }
+      }
+      [aria-hidden="true"] {
+        display: none !important;
       }
     </style>
   </head>
   <body>
-    <button class="menu-toggle" id="menuToggle">
-      <i class="fas fa-bars"></i>
+    <button class="menu-toggle" id="menuToggle" aria-label="Toggle Menu" aria-expanded="false">
+      <i class="fas fa-bars" aria-hidden="true"></i>
     </button>
 
-    <div class="sidebar" id="sidebar">
+    <nav class="sidebar" id="sidebar" aria-label="Main Navigation">
       <div class="sidebar-header">
         <h4>Menu</h4>
-        <button class="sidebar-btn" id="closeSidebar">
-          <i class="fas fa-times"></i>
+        <button class="sidebar-btn" id="closeSidebar" aria-label="Close Sidebar">
+          <i class="fas fa-times" aria-hidden="true"></i>
         </button>
       </div>
       <ul class="sidebar-nav">
         <li>
-          <a href="/" id="sidebarHomeBtn">
-            <i class="fas fa-home"></i> Home
+          <a href="{{ url_for('dashboard') }}" id="sidebarHomeBtn" aria-label="Home">
+            <i class="fas fa-home" aria-hidden="true"></i> Home
           </a>
         </li>
-        <li>
-          <a href="#employee-tab" id="sidebarEmployeeBtn">
-            <i class="fas fa-users"></i> Employees
+        <li class="auth-required {% if not hasLoggedIn or (organization_type != 'hotel' and organization_type != 'school') %}hidden{% endif %}">
+          <a href="#employee-tab" id="sidebarEmployeeBtn" aria-label="Employees">
+            <i class="fas fa-users" aria-hidden="true"></i> Employees
           </a>
         </li>
-        <li>
-          <a href="#booking-tab" id="sidebarBookingBtn">
-            <i class="fas fa-bed"></i> Booking
+        <li class="auth-required {% if not hasLoggedIn or organization_type != 'hotel' %}hidden{% endif %}">
+          <a href="#booking-tab" id="sidebarBookingBtn" aria-label="Booking">
+            <i class="fas fa-bed" aria-hidden="true"></i> Booking
           </a>
         </li>
-        <li>
-          <a href="#guest-tab" id="sidebarGuestBtn">
-            <i class="fas fa-user"></i> Guests
+        <li class="auth-required {% if not hasLoggedIn or organization_type != 'hotel' %}hidden{% endif %}">
+          <a href="#guest-tab" id="sidebarGuestBtn" aria-label="Guests">
+            <i class="fas fa-user" aria-hidden="true"></i> Guests
           </a>
         </li>
-        <li>
-          <a href="/subscribe" id="sidebarSubscribeBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Subscribe">
-            <i class="bi bi-credit-card"></i> Subscribe
+        <li class="no-auth {% if hasLoggedIn %}hidden{% endif %}">
+          <a href="{{ url_for('register') }}" id="sidebarRegisterBtn" aria-label="Register">
+            <i class="fas fa-user-plus" aria-hidden="true"></i> Register
           </a>
         </li>
-        <li>
-          <button class="hidden" id="sidebarLogoutBtn">
-            <i class="fas fa-sign-out-alt"></i> Logout
+        <li class="auth-required {% if not hasLoggedIn %}hidden{% endif %}">
+          <a href="{{ url_for('subscribe') }}" id="sidebarSubscribeBtn" aria-label="Subscribe">
+            <i class="bi bi-credit-card" aria-hidden="true"></i> Subscribe
+          </a>
+        </li>
+        <li class="auth-required {% if not hasLoggedIn %}hidden{% endif %}">
+          <button id="sidebarLogoutBtn" aria-label="Logout">
+            <i class="fas fa-sign-out-alt" aria-hidden="true"></i> Logout
           </button>
         </li>
         <li>
-          <button id="sidebarThemeToggle">
-            <i class="fas fa-moon"></i> Theme
+          <button id="sidebarThemeToggle" aria-label="Toggle Theme">
+            <i class="fas fa-moon" aria-hidden="true"></i> Theme
           </button>
         </li>
       </ul>
-    </div>
+    </nav>
 
-    <div class="main-content">
-      <div class="header">
-        <a href="/" style="text-decoration: none; color: inherit;">
-          <img src="{{ config.logo_url or '/static/default-logo.png' }}" alt="{{ config.company_name or 'Company' }}" class="logo">
-          <h2>🏨 {{ config.company_name or 'Hospitality' }} Dashboard</h2>
+    <div class="main-content" id="main-content">
+      <header class="header" role="banner">
+        <a href="{{ url_for('dashboard') }}" class="text-decoration-none text-reset">
+          <img src="{{ config.logo_url or '/static/photos/logo.png' }}" alt="{{ config.company_name or 'Company' }} Logo" class="logo">
+          <h1 class="h2 mb-0">🏨 {{ config.company_name or 'Hospitality' }} Dashboard</h1>
         </a>
-        <p class="mb-0">Manage employees, bookings, and guests efficiently</p>
-        <div class="nav-buttons d-md-flex" id="navMenu">
-          <a href="/" class="nav-btn" id="homeBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Home">
-            <i class="fas fa-home"></i>
+        <p class="mb-0" id="userStatus">{% if hasLoggedIn %}Logged in as: {{ username or 'User' }}{% else %}Manage employees, bookings, and guests efficiently{% endif %}</p>
+        <div class="nav-buttons d-md-flex" id="navMenu" aria-label="Quick Navigation">
+          <a href="{{ url_for('dashboard') }}" class="nav-btn" id="homeBtn" aria-label="Home">
+            <i class="fas fa-home" aria-hidden="true"></i>
           </a>
-          <a class="nav-btn" href="#employee-tab" id="employeeBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Employee Management">
-            <i class="fas fa-users"></i>
+          <a href="#employee-tab" class="nav-btn auth-required {% if not hasLoggedIn or (organization_type != 'hotel' and organization_type != 'school') %}hidden{% endif %}" id="employeeBtn" aria-label="Employee Management">
+            <i class="fas fa-users" aria-hidden="true"></i>
           </a>
-          <a class="nav-btn" href="#booking-tab" id="bookingBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Hotel Booking">
-            <i class="fas fa-bed"></i>
+          <a href="#booking-tab" class="nav-btn auth-required {% if not hasLoggedIn or organization_type != 'hotel' %}hidden{% endif %}" id="bookingBtn" aria-label="Hotel Booking">
+            <i class="fas fa-bed" aria-hidden="true"></i>
           </a>
-          <a class="nav-btn" href="#guest-tab" id="guestBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Guest Management">
-            <i class="fas fa-user"></i>
+          <a href="#guest-tab" class="nav-btn auth-required {% if not hasLoggedIn or organization_type != 'hotel' %}hidden{% endif %}" id="guestBtn" aria-label="Guest Management">
+            <i class="fas fa-user" aria-hidden="true"></i>
           </a>
-          <a href="/subscribe" class="nav-btn" id="subscribeBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Subscribe">
-            <i class="bi bi-credit-card"></i>
+          <a href="{{ url_for('register') }}" class="nav-btn no-auth {% if hasLoggedIn %}hidden{% endif %}" id="registerBtn" aria-label="Register">
+            <i class="fas fa-user-plus" aria-hidden="true"></i>
           </a>
-          <button class="nav-btn hidden" id="logoutBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Logout">
-            <i class="fas fa-sign-out-alt"></i>
+          <a href="{{ url_for('subscribe') }}" class="nav-btn auth-required {% if not hasLoggedIn %}hidden{% endif %}" id="subscribeBtn" aria-label="Subscribe">
+            <i class="bi bi-credit-card" aria-hidden="true"></i>
+          </a>
+          <button class="nav-btn auth-required {% if not hasLoggedIn %}hidden{% endif %}" id="logoutBtn" aria-label="Logout">
+            <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
           </button>
-          <button class="nav-btn" id="themeToggle" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Theme">
-            <i class="fas fa-moon"></i>
+          <button class="nav-btn" id="themeToggle" aria-label="Toggle Theme">
+            <i class="fas fa-moon" aria-hidden="true"></i>
           </button>
         </div>
-      </div>
+      </header>
 
       {% block content %}
-      <!-- Intro Paragraph -->
-      <div class="intro-section">
-        <h1>Welcome to Your Employee Management & Hospitality Hub</h1>
-        <p>Streamline your hotel operations effortlessly! Manage employees, book rooms, and handle guest services with ease. Select an operation from the tabs below to begin.</p>
-      </div>
+      <section class="intro-section" aria-labelledby="intro-heading">
+        <h2 id="intro-heading" class="h1">Welcome to Your Employee Management & Hospitality Hub</h2>
+        <p>{% if not hasLoggedIn %}Please log in or register to access your dashboard and manage employees, book rooms, and handle guest services.{% else %}Efficiently manage your organization's employees, bookings, and guest services.{% endif %}</p>
+      </section>
 
       <div class="container mt-4 mx-auto">
-        <!-- Tabbed Content -->
-        <div class="tab-content">
-          <ul class="nav nav-tabs" id="myTab" role="tablist">
-            <li class="nav-item" role="presentation">
+        <div class="tab-content" role="tablist">
+          <ul class="nav nav-tabs justify-content-center" id="myTab" role="tablist">
+            <li class="nav-item {% if not hasLoggedIn or (organization_type != 'hotel' and organization_type != 'school') %}d-none{% endif %}" role="presentation">
               <button class="nav-link active" id="employee-tab-btn" data-bs-toggle="tab" data-bs-target="#employee-tab" type="button" role="tab" aria-controls="employee-tab" aria-selected="true">
-                <i class="fas fa-users"></i> Employee Management
+                <i class="fas fa-users" aria-hidden="true"></i> Employee Management
               </button>
             </li>
-            <li class="nav-item" role="presentation">
-              <button class="nav-link" id="booking-tab-btn" data-bs-toggle="tab" data-bs-target="#booking-tab" type="button" role="tab" aria-controls="booking-tab" aria-selected="false">
-                <i class="fas fa-bed"></i> Hotel Booking
+            <li class="nav-item {% if not hasLoggedIn or organization_type != 'hotel' %}d-none{% endif %}" role="presentation">
+              <button class="nav-link {% if hasLoggedIn and organization_type == 'hotel' %}active{% endif %}" id="booking-tab-btn" data-bs-toggle="tab" data-bs-target="#booking-tab" type="button" role="tab" aria-controls="booking-tab" aria-selected="{% if hasLoggedIn and organization_type == 'hotel' %}true{% else %}false{% endif %}">
+                <i class="fas fa-bed" aria-hidden="true"></i> Hotel Booking
               </button>
             </li>
-            <li class="nav-item" role="presentation">
+            <li class="nav-item {% if not hasLoggedIn or organization_type != 'hotel' %}d-none{% endif %}" role="presentation">
               <button class="nav-link" id="guest-tab-btn" data-bs-toggle="tab" data-bs-target="#guest-tab" type="button" role="tab" aria-controls="guest-tab" aria-selected="false">
-                <i class="fas fa-user"></i> Guest Management
+                <i class="fas fa-user" aria-hidden="true"></i> Guest Management
               </button>
             </li>
           </ul>
 
           <div class="tab-content" id="myTabContent">
-            <!-- Employee Management Tab -->
-            <div class="tab-pane fade show active" id="employee-tab" role="tabpanel" aria-labelledby="employee-tab-btn">
-              <div class="login-section" id="employeeLoginSection">
-                <div class="section-title">Employee Authentication</div>
-                <form id="loginForm" class="employee-form shadow-sm">
+            <div class="tab-pane fade {% if not hasLoggedIn or (organization_type != 'hotel' and organization_type != 'school') %}show active{% endif %}" id="employee-tab" role="tabpanel" aria-labelledby="employee-tab-btn">
+              <section class="login-section {% if hasLoggedIn %}hidden{% endif %}" id="employeeLoginSection" aria-labelledby="employee-login-title">
+                <h3 class="section-title" id="employee-login-title">Employee Authentication</h3>
+                <form id="employeeLoginForm" class="employee-form shadow-sm" method="POST" action="{{ url_for('login') }}">
+                  <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                   <div class="mb-3">
-                    <label for="username" class="form-label">Username</label>
-                    <input type="text" class="form-control" id="username" required>
+                    <label for="employeeUsername" class="form-label">Username</label>
+                    <input type="text" class="form-control" id="employeeUsername" name="username" required aria-describedby="employeeUsernameHelp">
+                    <div id="employeeUsernameHelp" class="form-text">Enter your registered username.</div>
                   </div>
                   <div class="mb-3">
-                    <label for="password" class="form-label">Password</label>
-                    <input type="password" class="form-control" id="password" required>
+                    <label for="employeePassword" class="form-label">Password</label>
+                    <input type="password" class="form-control" id="employeePassword" name="password" required aria-describedby="employeePasswordHelp">
+                    <div id="employeePasswordHelp" class="form-text">Enter your secure password.</div>
                   </div>
                   <div class="d-flex justify-content-center align-items-center gap-2 mt-3">
-                    <button type="button" class="btn btn-custom" id="biometricLogin">
-                      <i class="fas fa-fingerprint me-2"></i>Biometric Login
+                    <button type="button" class="btn btn-custom" id="employeeBiometricLogin" aria-label="Biometric Login">
+                      <i class="fas fa-fingerprint me-2" aria-hidden="true"></i>Biometric Login
                     </button>
-                    <button type="submit" class="btn btn-custom">
-                      <i class="fas fa-qrcode me-2"></i>Login with QR
+                    <button type="submit" class="btn btn-custom" id="employeeQrLogin" aria-label="Login with QR">
+                      <i class="fas fa-qrcode me-2" aria-hidden="true"></i>Login with QR code
                     </button>
                   </div>
-                  <div class="qr-code-container hidden" id="qrCodeContainer"></div>
+                  <div>
+                <div class="employee-form-content qr-code-container hidden" id="employeeQrCodeContainer" aria-hidden="true"></div>
                 </form>
-              </div>
-              <div class="attendance-section hidden" id="attendanceSection">
+              </section>
+              <section class="attendance-section {% if not hasLoggedIn %}hidden{% endif %}" id="attendanceSection" aria-labelledby="attendance-title">
                 <div class="d-flex justify-content-between align-items-center section-header">
-                  <div class="section-title">Employee Check-in/Out</div>
+                  <h3 class="section-title" id="attendance-title">Employee Check-In/Out</h3>
                   <div class="d-flex align-items-center gap-3">
-                    <input type="text" id="employeeId" class="form-control form-control-sm" placeholder="Employee ID" style="width: 140px;">
-                    <input type="text" id="employeeName" class="form-control form-control-sm" placeholder="Name" style="width: 140px;">
-                    <button class="action-btn" id="checkInBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Check In">
-                      <i class="fas fa-sign-in-alt"></i>
+                    <input type="text" id="employeeId" name="employee_id" class="form-control form-control-sm" placeholder="Employee ID" aria-label="Employee ID" style="width: 8.75rem;" required>
+                    <label for="employeeId" class="visually-hidden">Employee ID</label>
+                    <input type="employeeName" id="employeeName" name="name" class="form-control form-control-sm" placeholder="Name" aria-label="Employee Name" style="width: 8.75rem;" required>
+                    <label for="employeeName" class="visually-hidden">Employee Name</label>
+                    <button class="submit-btn action-btn" id="checkInBtn" type="submit" form-data="checkInForm" aria-label="Check In">
+                      <i class="fas fa-sign-in-alt" aria-hidden="true"></i>
                     </button>
-                    <button class="action-btn" id="checkOutBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Check Out">
-                      <i class="fas fa-sign-out-alt"></i>
+                    <button class="submit-btn action-btn" id="checkOutBtn" type="submit" form-data="checkOutForm" aria-label="Check Out">
+                      <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
                     </button>
                   </div>
                 </div>
                 <div class="d-flex justify-content-between align-items-center section-header attendance-records">
-                  <div class="section-title">Attendance Records</div>
+                  <h3 class="section-title">Attendance Records</h3>
                   <div class="d-flex align-items-center gap-3">
-                    <input type="date" id="startDate" class="form-control form-control-sm" style="width: 140px;">
-                    <input type="date" id="endDate" class="form-control form-control-sm" style="width: 140px;">
-                    <button class="action-btn" id="filterAttendance" data-bs-toggle="tooltip" data-bs-placement="top" title="Filter">
-                      <i class="fas fa-filter"></i>
+                    <input type="date" id="startDate" class="form-control form-control-sm" aria-label="Start Date" style="width: 8.75rem;">
+                    <label for="startDate" class="visually-hidden">Start Date</label>
+                    <input type="date" id="endDate" class="form-control form-control-sm" aria-label="End Date" style="width: 8.75rem;">
+                    <label for="endDate" class="visually-hidden">End Date</label>
+                    <button class="action-btn" id="filterAttendance" aria-label="Filter Records">
+                      <i class="bi bi-filter" aria-hidden="true"></i>
                     </button>
-                    <button class="action-btn" id="refreshAttendance" data-bs-toggle="tooltip" data-bs-placement="top" title="Refresh">
-                      <i class="fas fa-sync-alt"></i>
+                    <button class="action-btn" id="refreshAttendance" aria-label="Refresh Records">
+                      <i class="fas fa-sync-alt" aria-hidden="true"></i>
                     </button>
-                    <button class="action-btn" id="exportBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Export CSV">
-                      <i class="fas fa-file-export"></i>
+                    <button class="submit-btn action-btn" id="exportBtn" form-data="exportForm" aria-label="Export to CSV">
+                      <i class="fas fa-file-export" aria-hidden="true"></i>
                     </button>
                   </div>
                 </div>
                 <div class="table-wrapper shadow-sm rounded">
-                  <table class="table table-striped align-middle">
+                  <table class="table table-striped align-middle" id="attendanceTable" aria-describedby="attendance-title">
                     <thead>
                       <tr>
-                        <th>Employee ID</th>
-                        <th>Name</th>
-                        <th>Date</th>
-                        <th>Time In</th>
-                        <th>Time Out</th>
+                        <th scope="col">Employee ID</th>
+                        <th scope="col">Name</th>
+                        <th scope="col">Date</th>
+                        <th scope="col">Time In</th>
+                        <th scope="col">Time Out</th>
                       </tr>
                     </thead>
                     <tbody id="attendance-table-body">
                       {% for record in records if records %}
                       <tr>
-                        <td>{{ record[0] or 'N/A' }}</td>
-                        <td>{{ record[1] or 'N/A' }}</td>
-                        <td>{{ record[2] or 'N/A' }}</td>
-                        <td>{{ record[3] or '-' }}</td>
-                        <td>{{ record[4] or '-' }}</td>
+                        <td>{{ record.employee_id || 'N/A' }}</td>
+                        <td>{{ record.name || 'N/A' }}</td>
+                        <td>{{ record.date || 'N/A' }}</td>
+                        <td>{{ record.time_in || '-' }}</td>
+                        <td>{{ record.time_out || '-' }}</td>
                       </tr>
                       {% else %}
-                      <tr><td colspan="5">No attendance records available.</td></tr>
-                      {% endfor %}
+                      <tr>
+                        <td colspan="5" class="text-center">No attendance records available.</td>
+                      </tr>
+                      {% endif %}
                     </tbody>
                   </table>
                 </div>
-              </div>
+              </section>
             </div>
 
-            <!-- Hotel Booking Tab with Guest Authentication -->
-            <div class="tab-pane fade" id="booking-tab" role="tabpanel" aria-labelledby="booking-tab-btn">
-              <div class="booking-section">
-                <!-- Guest Authentication Section -->
-                <div class="login-section hidden" id="loginSection">
-                  <div class="section-title">Guest Authentication</div>
-                  <form id="loginForm" class="employee-form shadow-sm">
+            <div class="tab-pane fade {% if hasLoggedIn and organization_type == 'hotel' %}show active{% endif %}" id="booking-tab" role="tabpanel" aria-labelledby="booking-tab-btn">
+              <section class="booking-section" id="loginSection" aria-labelledby="booking-section-title">
+                <div class="{% if hasLoggedIn %}hidden{% endif %}" login-section>
+                  <h3 class="section-title" id="booking-section-title">Guest Authentication</h3>
+                  <form id="guestLoginForm" class="employee-form shadow-sm" method="POST" action="{{ url_for('login') }}">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
-                      <label for="username" class="form-label">Username</label>
-                      <input type="text" class="form-control" id="username" required>
-                    </div>
+                      <label for="guestUsername" class="form-label">Username</label>
+                      <input type="text" class="form-control" id="guestUsername" name="username" required aria-describedby="guestUsernameHelp">
+                      <div id="guestUsernameHelp" class="form-text">Enter your registered username.</div>
+                      </div>
                     <div class="mb-3">
-                      <label for="password" class="form-label">Password</label>
-                      <input type="password" class="form-control" id="password" required>
-                    </div>
+                      <label for="guestPassword" class="form-label">Password</label>
+                      <input type="password" class="form-control" id="guestPassword" name="password" required aria-describedby="guestPasswordHelp">
+                      <div id="guestPasswordHelp" class="form-text">Enter your secure password.</div>
+                      </div>
                     <div class="d-flex justify-content-center align-items-center gap-2 mt-3">
-                      <button type="button" class="btn btn-custom" id="biometricLogin">
-                        <i class="fas fa-fingerprint me-2"></i>Biometric Login
+                      <button type="submit-btn" class="btn btn-custom" id="guestBiometricLogin" aria-label="Biometric Login">
+                        <i class="fas fa-fingerprint me-2" aria-hidden="true"></i>Biometric Login
                       </button>
-                      <button type="submit" class="btn btn-custom">
-                        <i class="fas fa-qrcode me-2"></i>Login with QR
+                      <button type="submit" class="btn btn-custom" id="guestQrLogin" aria-label="Login with QR">
+                        <i class="fas fa-qrcode me-2" aria-hidden="true"></i>Login with QR code
                       </button>
                     </div>
-                    <div class="qr-code-container hidden" id="qrCodeContainer"></div>
+                    <div class="qr-code-container hidden" id="guestQrCode" aria-hidden="true"></div>
+                    </div>
                   </form>
                 </div>
 
                 <div class="section-header">
-                  <div class="section-title">Hotel Booking</div>
+                  <h3 class="section-title">Hotel Room Booking</h3>
                 </div>
-                <form id="bookingForm" class="shadow-sm">
-                  <div class="mb-3">
-                    <label for="guestName" class="form-label">Guest Name</label>
-                    <input type="text" class="form-control" id="guestName" placeholder="Guest name" required>
-                  </div>
-                  <div class="mb-3">
-                    <label for="checkInDate" class="form-label">Check-In Date</label>
-                    <input type="date" class="form-control" id="checkInDate" required>
-                  </div>
-                  <div class="mb-3">
-                    <label for="checkOutDate" class="form-label">Check-Out Date</label>
-                    <input type="date" class="form-control" id="checkOutDate" required>
-                  </div>
-                  <div class="mb-3">
-                    <label for="roomType" class="form-label">Room Type</label>
-                    <select class="form-control" id="roomType" required>
-                      <option value="">Select Room Type</option>
-                      <option value="standard">Standard</option>
-                      <option value="deluxe">Deluxe</option>
-                      <option value="suite">Suite</option>
-                    </select>
-                  </div>
-                  <button type="submit" class="btn btn-custom">Book Room</button>
+                <form id="bookingForm" class="shadow-sm {% if not hasLoggedIn %}hidden{% endif %}" method="POST" action="{{ url_for('book_room') }}">
+                  <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+                    <div class="form-group mb-3">
+                      <label for="guestName" class="form-label">Guest Name</label>
+                      <input type="text" class="form-control" id="guestName" name="guest_name" placeholder="Enter guest name" name required aria-describedby="guestNameHelp">
+                      <div id="guestNameHelp" class="form-text">Full name of the guest.</div>
+                      </div>
+                    <div class="form-group mb-3">
+                      <label for="checkInDate" class="form-label">Check-In Date</label>
+                      <input type="date" class="form-control" id="checkInDate" name="check_in_date" required aria-label="Check-In Date">
+                      </div>
+                    <div class="form-group mb-3">
+                      <label for="checkOutDate" class="form-label">Check-Out Date</label>
+                      <input type="date" class="form-control" id="checkOutDate" name="check_out_date" required aria-label="Check-Out Date">
+                      </div>
+                      <div class="form-group mb-3">
+                      <label for="roomType" class="form-label">Room Type</label>
+                      <select class="form-control" id="roomType" name="room_type" required aria-label="Room Type">
+                        <option value="" disabled="" selected="">Select Room Type</option>
+                        <option value="standard">Standard</option>
+                        <option value="deluxe">Deluxe</option>
+                        <option value="suite">Suite</option>
+                      </select>
+                      </div>
+                  <button type="submit" class="btn btn-custom" aria-label="Book Room">Book Room</button>
                 </form>
-                <div class="mt-3">
-                  <div class="section-title">Room Availability</div>
-                  <div id="roomAvailability" class="text-muted">Loading availability...</div>
+                <div class="mt-3 {% if not hasLoggedIn %}hidden{% endif %}">
+                  <h3 class="section-title">Room Availability</h3>
+                  <div id="roomAvailability" class="text-muted" aria-live="polite">Loading availability...</div>
                   <div class="table-wrapper mt-3">
-                    <table class="table table-striped align-middle">
+                    <table class="table table-striped align-middle" id="roomStatusTable" aria-describedby="roomAvailability">
                       <thead>
                         <tr>
-                          <th>Room ID</th>
-                          <th>Type</th>
-                          <th>Status</th>
+                          <th scope="col">Room ID</th>
+                          <th scope="col">Type</th>
+                          <th scope="col">Status</th>
                         </tr>
                       </thead>
-                      <tbody id="roomStatusTable"></tbody>
+                      <tbody id="room-status-body">
+                        <tr><td colspan="3">No room data available.</td></tr>
+                      </tbody>
                     </table>
                   </div>
                 </div>
-                <button class="btn btn-custom mt-3" id="generateInvoice">Generate Invoice</button>
-              </div>
+                <button class="btn btn-custom mt-3 {% if not hasLoggedIn %}hidden{% endif %}}" id="generateInvoiceBtn" aria-label="Generate Invoice">Generate Invoice</button>
+              </section>
             </div>
 
-            <!-- Guest Management Tab with OTA/PMS Integration -->
             <div class="tab-pane fade" id="guest-tab" role="tabpanel" aria-labelledby="guest-tab-btn">
-              <div class="guest-section">
+              <section class="guest-section {% if not hasLoggedIn %}hidden{% endif %}}" id="guest-management" aria-labelledby="guest-management-title">
                 <div class="d-flex justify-content-between align-items-center section-header">
-                  <div class="section-title">Guest Check-In/Out</div>
+                  <h3 class="section-title" id="guest-management-title">Guest Check-In/Out</h3>
                   <div class="d-flex align-items-center gap-2">
-                    <input type="text" id="guestId" class="form-control form-control-sm" placeholder="Guest ID" style="width: 140px;">
-                    <input type="text" id="guestCheckName" class="form-control form-control-sm" placeholder="Name" style="width: 140px;">
-                    <button class="action-btn" id="guestCheckInBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Guest Check-In">
-                      <i class="fas fa-sign-in-alt"></i>
+                    <input type="text" id="guestId" class="form-control form-control-sm" placeholder="Guest ID" name="form-control-sm" type="text" id="guest_id" aria-label="Guest ID" style="width: 8.75rem;" required>
+                      <label for="guestId" class="visually-hidden">Guest ID</label>
+                      <input type="text" id="guestCheckName" class="form-control form-control-sm" placeholder="Name" name="form-control-sm" type="text" id="check_name" name="action" aria-label="Action" style="width: 8.75rem;" required>
+                      <label for="action" class="visually-hidden">Action</label>                    <button class="submit-btn action-btn" id="guestCheckInBtn" form-data="guestCheckInForm" aria-label="Guest Check-In">
+                      <i class="fas fa-sign-in-alt" aria-hidden="true"></i>
                     </button>
-                    <button class="action-btn" id="guestCheckOutBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Guest Check-Out">
-                      <i class="fas fa-sign-out-alt"></i>
+                    <button class="submit-btn action-btn" id="guestCheckOutBtn" form-data="guestCheckOutForm" aria-label="Guest Check-Out">
+                      <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
                     </button>
                   </div>
                 </div>
                 <div class="d-flex justify-content-between align-items-center section-header">
-                  <div class="section-title">Guest Records & Channel Sync</div>
+                  <h3 class="section-title">Guest Records & Channel Sync</h3>
                   <div class="d-flex align-items-center gap-3">
-                    <button class="action-btn" id="refreshGuestRecords" data-bs-toggle="tooltip" data-bs-placement="top" title="Refresh">
-                      <i class="fas fa-sync-alt"></i>
+                    <button class="action-btn" id="refreshGuestRecords" aria-label="Refresh Guest Records">
+                      <i class="fas fa-sync-alt" aria-hidden="true"></i>
                     </button>
-                    <button class="action-btn" id="syncChannels" data-bs-toggle="tooltip" data-bs-placement="top" title="Sync with OTAs/PMS">
-                      <i class="fas fa-sync"></i>
+                    <button class="submit-btn action-btn" id="syncChannels" href="{{ url_for('sync_channels') }}" aria-label="Sync with OTAs/PMS">
+                      <i class="fas fa-sync" aria-hidden="true"></i>
                     </button>
                   </div>
                 </div>
                 <div class="table-wrapper shadow-sm rounded">
-                  <table class="table table-striped align-middle">
+                  <table class="table table-striped align-middle" id="guestTable" aria-describedby="guest-management-title">
                     <thead>
                       <tr>
-                        <th>Guest ID</th>
+                        <th scope="col">Guest ID</th>
                         <th>Name</th>
                         <th>Room</th>
                         <th>Check-In Date</th>
@@ -743,72 +787,77 @@
                     </tbody>
                   </table>
                 </div>
-              </div>
+              </section>
             </div>
           </div>
         </div>
       </div>
       {% endblock %}
 
-      <!-- Toast for Notifications -->
-      <div class="toast-container position-fixed bottom-0 end-0 p-4">
-        <div id="attendanceToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="toast-session" class="toast" role="alert" aria-live="assertive" data-bs-autohide="true" data-bs-delay="5000">
           <div class="toast-header">
-            <strong class="me-auto">Update</strong>
-            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            <strong class="me-auto">Notification</strong>
+            <button type="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
           </div>
           <div class="toast-body"></div>
         </div>
       </div>
 
-      <footer class="footer text-center text-muted">
-        © {{ current_year or 2025 }} {{ config.company_name or 'Company' }}
+      <footer class="footer" role="contentinfo">
+        <p>&copy; {{ current_year or '2025' }} {{ config.company_name or 'Company' }}. All rights reserved.</p>
       </footer>
     </div>
 
-    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" integrity="sha512-t3rh0N4IAqREUme4kblO3+5xJhKMLl2/BNkCz3rBtrt2L5qTdt/5KKeRS8cUjZv0qly9ejg3WFKkp6n0fH/OP0Q==" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
     <script>
-      const socket = io();
-      const attendanceTbody = document.getElementById('attendance-table-body');
-      const guestTbody = document.getElementById('guest-table-body');
-      const loginForm = document.getElementById('loginForm');
-      const bookingForm = document.getElementById('bookingForm');
-      const loginSection = document.getElementById('loginSection');
-      const employeeLoginSection = document.getElementById('employeeLoginSection');
-      const attendanceSection = document.getElementById('attendanceSection');
-      const logoutBtn = document.getElementById('logoutBtn');
-      const sidebarLogoutBtn = document.getElementById('sidebarLogoutBtn');
-      const sidebar = document.getElementById('sidebar');
-      const mainContent = document.getElementById('main-content');
-      const menuToggle = document.getElementById('menuToggle');
-      const closeSidebar = document.getElementById('closeSidebar');
-      const themeToggle = document.getElementById('themeToggle');
-      const sidebarThemeToggle = document.getElementById('sidebarThemeToggle');
-      const refreshAttendance = document.getElementById('refreshAttendance');
-      const filterAttendance = document.getElementById('filterAttendance');
-      const exportBtn = document.getElementById('exportBtn');
-      const checkInBtn = document.getElementById('checkInBtn');
-      const checkOutBtn = document.getElementById('checkOutBtn');
-      const guestCheckInBtn = document.getElementById('guestCheckInBtn');
-      const guestCheckOutBtn = document.getElementById('guestCheckOutBtn');
-      const refreshGuestRecords = document.getElementById('refreshGuestRecords');
-      const roomAvailability = document.getElementById('roomAvailability');
-      const roomStatusTable = document.getElementById('roomStatusTable');
-      const qrCodeContainer = document.getElementById('qrCodeContainer');
-      const biometricLogin = document.getElementById('biometricLogin');
-      const generateInvoice = document.getElementById('generateInvoice');
-      const syncChannels = document.getElementById('syncChannels');
+      const socket = io({ transports: ['websocket'], upgrade: false });
+      const attendanceTbody = document.querySelector('#attendance-table-body');
+      const guestTbody = document.querySelector('#guest-table-body');
+      const employeeLoginForm = document.querySelector('#employeeLoginForm');
+      const guestLoginForm = document.querySelector('#guestLoginForm');
+      const bookingForm = document.querySelector('#bookingForm');
+      const loginSection = document.querySelector('#loginSection');
+      const employeeLoginSection = document.querySelector('#employeeLoginSection');
+      const attendanceSection = document.querySelector('#attendanceSection');
+      const logoutBtn = document.querySelector('#logoutBtn');
+      const sidebarLogoutBtn = document.querySelector('#sidebarLogoutBtn');
+      const sidebar = document.querySelector('#sidebar');
+      const mainContent = document.querySelector('#main-content');
+      const menuToggle = document.querySelector('#menuToggle');
+      const closeSidebar = document.querySelector('#closeSidebar');
+      const themeToggle = document.querySelector('#themeToggle');
+      const sidebarThemeToggle = document.querySelector('#sidebarThemeToggle');
+      const refreshAttendance = document.querySelector('#refreshAttendance');
+      const filterAttendance = document.querySelector('#filterAttendance');
+      const exportBtn = document.querySelector('#exportBtn');
+      const checkInBtn = document.querySelector('#checkInBtn');
+      const checkOutBtn = document.querySelector('#checkOutBtn');
+      const guestCheckInBtn = document.querySelector('#guestCheckInBtn');
+      const guestCheckOutBtn = document.querySelector('#guestCheckOutBtn');
+      const refreshGuestRecords = document.querySelector('#refreshGuestRecords');
+      const roomAvailability = document.querySelector('#roomAvailability');
+      const roomStatusTable = document.querySelector('#roomStatusTable');
+      const employeeQrCodeContainer = document.querySelector('#employeeQrCodeContainer');
+      const guestQrCodeContainer = document.querySelector('#guestQrCode');
+      const employeeBiometricLogin = document.querySelector('#employeeBiometricLogin');
+      const guestBiometricLogin = document.querySelector('#guestBiometricLogin');
+      const generateInvoiceBtn = document.querySelector('#generateInvoiceBtn');
+      const syncChannels = document.querySelector('#syncChannels');
+      const toast = new bootstrap.Toast(document.querySelector('#toast-session'));
+      const toastBody = document.querySelector('#toast-session .toast-body');
 
-      let hasLoggedIn = false;
-      let userRole = 'guest';
+      let hasLoggedIn = {{ 'true' if hasLoggedIn else 'false' }};
+      let userRole = '{{ 'admin' if username == 'admin' else 'employee' if organization_type in ['hotel', 'school'] else 'guest' }}';
       let isSidebarOpen = false;
+      let username = '{{ username or '' }}';
+      let organizationType = '{{ organization_type or '' }}';
 
       // Initialize tooltips
       const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-      const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl, {
-        trigger: 'hover'
-      }));
+      [...tooltipTriggerList].forEach(el => new bootstrap.Tooltip(el, { trigger: 'hover' }));
 
       function toggleSidebar() {
         isSidebarOpen = !isSidebarOpen;
@@ -817,7 +866,8 @@
           mainContent.classList.toggle('shifted', isSidebarOpen);
         }
         menuToggle.querySelector('i').className = isSidebarOpen ? 'fas fa-times' : 'fas fa-bars';
-        tooltipList.forEach(tooltip => tooltip.hide());
+        menuToggle.setAttribute('aria-expanded', isSidebarOpen);
+        bootstrap.Tooltip.getInstance(menuToggle)?.hide();
       }
 
       function closeSidebarIfOpen() {
@@ -843,287 +893,345 @@
         }
       });
 
+      async function checkAuthStatus() {
+        try {
+          const response = await fetch('{{ url_for('check_auth') }}', {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' },
+            credentials: 'include'
+          });
+          const data = await response.json();
+          if (data.status === 'success') {
+            hasLoggedIn = true;
+            const dashboardResponse = await fetch('{{ url_for('dashboard') }}', {
+              headers: { 'Accept': 'application/json' },
+              credentials: 'include'
+            });
+            const dashboardData = await dashboardResponse.json();
+            if (dashboardData.status === 'success') {
+              userRole = dashboardData.role || 'guest';
+              username = dashboardData.username || '';
+              organizationType = dashboardData.organization_type || '';
+              document.querySelector('#userStatus').textContent = `Logged in as: ${username}`;
+            }
+          } else {
+            hasLoggedIn = false;
+            userRole = 'guest';
+            username = '';
+            organizationType = '';
+            document.cookie = 'access_token_cookie=; Max-Age=0; path=/';
+            window.location.href = '{{ url_for('login') }}';
+          }
+          updateUI();
+        } catch (error) {
+          console.error('Auth check failed:', error);
+          hasLoggedIn = true;
+          userRole = 'guest';
+          userName = '';
+          organizationType = '';
+          document.cookie = 'access_token_cookie=; Max-Age=0; path=/';
+          window.location.href = '{{ url_for('login') }}';
+        }
+      }
+
       function updateUI() {
-        const employeeTab = $('#myTab a[href="#employee-tab"]').parent();
-        const bookingTab = $('#myTab a[href="#booking-tab"]').parent();
-        const guestTab = $('#myTab a[href="#guest-tab"]').parent();
+        const employeeTab = document.querySelector('#myTab a[href="#employee-tab"]').parentElement;
+        const bookingTab = document.querySelector('#myTab a[href="#booking-tab"]').parentElement;
+        const guestTab = document.querySelector('#myTab a[href="#guest-tab"]').parentElement;
+        const authRequiredElements = document.querySelectorAll('.auth-required');
+        const noAuthElements = document.querySelectorAll('.no-auth');
+        const guestSection = document.querySelector('.guest-section');
 
         if (hasLoggedIn) {
           loginSection.classList.add('hidden');
           employeeLoginSection.classList.add('hidden');
-          logoutBtn.classList.remove('hidden');
-          sidebarLogoutBtn.classList.remove('hidden');
           attendanceSection.classList.remove('hidden');
+          bookingForm.classList.remove('hidden');
+          roomAvailability.parentElement.classList.remove('hidden');
+          generateInvoiceBtn.classList.remove('hidden');
+          guestSection.classList.remove('hidden');
+          authRequiredElements.forEach(el => {
+            if (el.classList.contains('employee-organization') && organizationType !== 'hotel' && organizationType !== 'school') return;
+            if (el.classList.contains('hotel-only') && organizationType !== 'hotel') return;
+            el.classList.remove('hidden');
+          });
+          noAuthElements.forEach(el => el.classList.add('hidden'));
           if (userRole === 'admin' || userRole === 'employee') {
-            employeeTab.removeClass('d-none');
-          } else {
-            employeeTab.addClass('d-none');
-            $('#myTab a[href="#booking-tab"]').tab('show');
-          }
-          if (userRole === 'admin') {
-            bookingTab.removeClass('d-none');
-            guestTab.removeClass('d-none');
-          } else if (userRole === 'employee') {
-            bookingTab.addClass('d-none');
-            guestTab.addClass('d-none');
+            employeeTab.classList.remove('d-none');
+            if (organizationType === 'hotel') {
+              bookingTab.classList.remove('d-none');
+              guestTab.classList.remove('d-none');
+            } else {
+              bookingTab.classList.add('d-none');
+              guestTab.classList.add('d-none');
+              $('#myTab a[href="#employee-tab"]').tab('show');
+            }
           } else if (userRole === 'guest') {
-            employeeTab.addClass('d-none');
-            bookingTab.removeClass('d-none');
-            guestTab.removeClass('d-none');
+            employeeTab.classList.add('d-none');
+            bookingTab.classList.remove('d-none');
+            guestTab.classList.remove('d-none');
+            $('#myTab a[href="#booking-tab"]').tab('show');
           }
         } else {
           loginSection.classList.remove('hidden');
-          employeeLoginSection.classList.add('hidden');
-          logoutBtn.classList.add('hidden');
-          sidebarLogoutBtn.classList.add('hidden');
+          employeeLoginSection.classList.remove('hidden');
           attendanceSection.classList.add('hidden');
-          employeeTab.removeClass('d-none');
-          bookingTab.removeClass('d-none');
-          guestTab.removeClass('d-none');
+          bookingForm.classList.add('hidden');
+          roomAvailability.parentElement.classList.add('hidden');
+          generateInvoiceBtn.classList.add('hidden');
+          guestSection.classList.add('hidden');
+          authRequiredElements.forEach(el => el.classList.add('hidden'));
+          noAuthElements.forEach(el => el.classList.remove('hidden'));
+          employeeTab.classList.remove('d-none');
+          bookingTab.classList.remove('d-none');
+          guestTab.classList.remove('d-none');
           $('#myTab a[href="#booking-tab"]').tab('show');
         }
         loadAttendance();
         loadGuestRecords();
-        checkRoomAvailability();
+        updateRoomStatus();
       }
 
-      function loadAttendance() {
+      async function loadAttendance() {
         if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'employee')) return;
         const today = new Date().toISOString().split('T')[0];
-        const startDate = document.getElementById('startDate').value || today;
-        const endDate = document.getElementById('endDate').value || today;
-        const url = `/attendance?start_date=${startDate}&end_date=${endDate}`;
-        fetch(url, { credentials: 'include' })
-          .then(response => response.json())
-          .then(data => {
-            attendanceTbody.innerHTML = '';
-            if (data.status === 'success' && data.records && data.records.length > 0) {
-              data.records.forEach(record => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                  <td>${record.employee_id || 'N/A'}</td>
-                  <td>${record.name || 'N/A'}</td>
-                  <td>${record.date || 'N/A'}</td>
-                  <td>${record.time_in || '-'}</td>
-                  <td>${record.time_out || '-'}</td>
-                `;
-                attendanceTbody.appendChild(row);
-              });
-            } else {
-              attendanceTbody.innerHTML = '<tr><td colspan="5">No attendance records available.</td></tr>';
-            }
-          })
-          .catch(error => {
-            console.error('Error in loadAttendance:', error);
-            attendanceTbody.innerHTML = '<tr><td colspan="5">Error loading attendance records.</td></tr>';
+        const startDate = document.querySelector('#startDate').value || today;
+        const endDate = document.querySelector('#endDate').value || today;
+        try {
+          const response = await fetch(`/attendance?start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`, {
+            credentials: 'include'
           });
-      }
-
-      function loadGuestRecords() {
-        if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'guest')) return;
-        fetch('/guest_records', { credentials: 'include' })
-          .then(response => response.json())
-          .then(data => {
-            guestTbody.innerHTML = '';
-            if (data.status === 'success' && data.records && data.records.length > 0) {
-              data.records.forEach(record => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                  <td>${record.guest_id || 'N/A'}</td>
-                  <td>${record.name || 'N/A'}</td>
-                  <td>${record.room_id || 'N/A'}</td>
-                  <td>${record.check_in_date || '-'}</td>
-                  <td>${record.check_out_date || '-'}</td>
-                  <td>${record.status || 'N/A'}</td>
-                `;
-                guestTbody.appendChild(row);
-              });
-            } else {
-              guestTbody.innerHTML = '<tr><td colspan="6">No guest records available.</td></tr>';
-            }
-          })
-          .catch(error => {
-            console.error('Error in loadGuestRecords:', error);
-            guestTbody.innerHTML = '<tr><td colspan="6">Error loading guest records.</td></tr>';
-          });
-      }
-
-      function checkRoomAvailability() {
-        if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'guest')) return;
-        const checkInDate = document.getElementById('checkInDate').value;
-        const checkOutDate = document.getElementById('checkOutDate').value;
-        const roomType = document.getElementById('roomType').value;
-        if (!checkInDate || !checkOutDate || !roomType) {
-          roomAvailability.innerHTML = 'Please fill in all booking details.';
-          return;
-        }
-        fetch(`/room_availability?check_in=${checkInDate}&check_out=${checkOutDate}&room_type=${roomType}`, {
-          credentials: 'include'
-        })
-          .then(response => response.json())
-          .then(data => {
-            if (data.status === 'success') {
-              roomAvailability.innerHTML = data.available ? `Available: ${data.rooms} rooms` : 'No rooms available.';
-            } else {
-              roomAvailability.innerHTML = 'Error checking availability.';
-            }
-          })
-          .catch(error => {
-            console.error('Error in checkRoomAvailability:', error);
-            roomAvailability.innerHTML = 'Error checking availability.';
-          });
-      }
-
-      // Real-Time Room Availability Tracking
-      function updateRoomStatus() {
-        fetch('/room_status', { credentials: 'include' })
-          .then(response => response.json())
-          .then(data => {
-            roomStatusTable.innerHTML = '';
-            if (data.status === 'success' && data.rooms) {
-              data.rooms.forEach(room => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                  <td>${room.id}</td>
-                  <td>${room.type}</td>
-                  <td>${room.status}</td>
-                `;
-                roomStatusTable.appendChild(row);
-              });
-            }
-          })
-          .catch(error => console.error('Error updating room status:', error));
-      }
-      setInterval(updateRoomStatus, 5000);
-      socket.on('room_update', updateRoomStatus);
-
-      loginForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
-        fetch('/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password }),
-          credentials: 'include'
-        })
-          .then(response => response.json())
-          .then(data => {
-            if (data.status === 'success') {
-              loginForm.reset();
-              hasLoggedIn = true;
-              userRole = data.role || 'admin';
-              new QRCode(qrCodeContainer, {
-                text: `GuestID:${username}-Time:${new Date().toISOString()}`,
-                width: 128,
-                height: 128,
-                colorDark: "#000000",
-                colorLight: "#ffffff",
-                correctLevel: QRCode.CorrectLevel.H
-              });
-              qrCodeContainer.classList.remove('hidden');
-              updateUI();
-            } else {
-              alert(data.message || 'Login failed');
-            }
-          })
-          .catch(error => {
-            console.error('Error during login:', error);
-            alert('Login failed. Check console for details.');
-          });
-      });
-
-      biometricLogin.addEventListener('click', (e) => {
-        e.preventDefault();
-        if (Math.random() > 0.2) { // Simulate biometric success
-          const username = prompt('Enter Username for Biometric');
-          if (username) {
-            hasLoggedIn = true;
-            userRole = 'guest';
-            new QRCode(qrCodeContainer, {
-              text: `GuestID:${username}-Time:${new Date().toISOString()}`,
-              width: 128,
-              height: 128,
-              colorDark: "#000000",
-              colorLight: "#ffffff",
-              correctLevel: QRCode.CorrectLevel.H
+          const data = await response.json();
+          attendanceTbody.innerHTML = '';
+          if (data.status === 'success' && data.records?.length) {
+            data.records.forEach(record => {
+              const row = document.createElement('tr');
+              row.innerHTML = `
+                <td>${record.employee_id || 'N/A'}</td>
+                <td>${record.name || 'N/A'}</td>
+                <td>${record.date || 'N/A'}</td>
+                <td>${record.time_in || '-'}</td>
+                <td>${record.time_out || '-'}</td>
+              `;
+              attendanceTbody.appendChild(row);
             });
-            qrCodeContainer.classList.remove('hidden');
-            updateUI();
+          } else {
+            attendanceTbody.innerHTML = '<tr><td colspan="5" class="text-center">No attendance records available.</td></tr>';
           }
-        } else {
-          alert('Biometric verification failed. Try again or use QR login.');
+        } catch (error) {
+          console.error('Error loading attendance:', error);
+          attendanceTbody.innerHTML = '<tr><td colspan="5" class="text-center">Error loading attendance records.</td></tr>';
+        }
+      }
+
+      async function loadGuestRecords() {
+        if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'guest')) return;
+        try {
+          const response = await fetch('/guest_records', { credentials: 'include' });
+          const data = await response.json();
+          guestTbody.innerHTML = '';
+          if (data.status === 'success' && data.records?.length) {
+            data.records.forEach(record => {
+              const row = document.createElement('tr');
+              row.innerHTML = `
+                <td>${record.guest_id || 'N/A'}</td>
+                <td>${record.name || 'N/A'}</td>
+                <td>${record.room_id || 'N/A'}</td>
+                <td>${record.check_in_date || '-'}</td>
+                <td>${record.check_out_date || '-'}</td>
+                <td>${record.status || 'N/A'}</td>
+              `;
+              guestTbody.appendChild(row);
+            });
+          } else {
+            guestTbody.innerHTML = '<tr><td colspan="6" class="text-center">No guest records available.</td></tr>';
+          }
+        } catch (error) {
+          console.error('Error loading guest records:', error);
+          guestTbody.innerHTML = '<tr><td colspan="6" class="text-center">Error loading guest records.</td></tr>';
+        }
+      }
+
+      async function updateRoomStatus() {
+        if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'guest')) return;
+        try {
+          const response = await fetch('/room_status', { credentials: 'include' });
+          const data = await response.json();
+          roomStatusTable.querySelector('tbody').innerHTML = '';
+          if (data.status === 'success' && data.rooms?.length) {
+            data.rooms.forEach(room => {
+              const row = document.createElement('tr');
+              row.innerHTML = `
+                <td>${room.id || 'N/A'}</td>
+                <td>${room.type || 'N/A'}</td>
+                <td>${room.status || 'N/A'}</td>
+              `;
+              roomStatusTable.querySelector('tbody').appendChild(row);
+            });
+            roomAvailability.textContent = data.rooms.length ? 'Room status updated.' : 'No rooms available.';
+          } else {
+            roomStatusTable.querySelector('tbody').innerHTML = '<tr><td colspan="3" class="text-center">No room data available.</td></tr>';
+            roomAvailability.textContent = 'No rooms available.';
+          }
+        } catch (error) {
+          console.error('Error updating room status:', error);
+          roomAvailability.textContent = 'Error checking availability.';
+        }
+      }
+
+      function showToast(message) {
+        toastBody.textContent = message;
+        toast.show();
+      }
+
+      [employeeLoginForm, guestLoginForm].forEach(form => {
+        if (form) {
+          form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(form);
+            const username = formData.get('username');
+            const password = formData.get('password');
+            try {
+              const response = await fetch('{{ url_for('login') }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password }),
+                credentials: 'include'
+              });
+              const data = await response.json();
+              if (data.status === 'success') {
+                form.reset();
+                hasLoggedIn = true;
+                userRole = data.role || 'guest';
+                username = username || '';
+                const qrCodeContainer = form.id === 'employeeLoginForm' ? employeeQrCodeContainer : guestQrCodeContainer;
+                new QRCode(qrCodeContainer, {
+                  text: `UserID:${username}-Time:${new Date().toISOString()}`,
+                  width: 128,
+                  height: 128,
+                  colorDark: '#000000',
+                  colorLight: '#ffffff',
+                  correctLevel: QRCode.CorrectLevel.H
+                });
+                qrCodeContainer.classList.remove('hidden');
+                qrCodeContainer.removeAttribute('aria-hidden');
+                showToast('Login successful!');
+                checkAuthStatus();
+              } else {
+                showToast(data.message || 'Login failed.');
+              }
+            } catch (error) {
+              console.error('Login error:', error);
+              showToast('Login failed. Please try again.');
+            }
+          });
         }
       });
 
-      bookingForm.addEventListener('submit', (e) => {
+      [employeeBiometricLogin, guestBiometricLogin].forEach(btn => {
+        if (btn) {
+          btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const username = prompt('Enter Username for Biometric Authentication');
+            if (!username) return;
+            try {
+              const response = await fetch('{{ url_for('biometric_scan') }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ employee_id: username, scan_data: 'mock-biometric-data' }),
+                credentials: 'include'
+              });
+              const data = await response.json();
+              if (data.status === 'success') {
+                hasLoggedIn = true;
+                userRole = 'guest';
+                username = username;
+                const qrCodeContainer = btn.id === 'employeeBiometricLogin' ? employeeQrCodeContainer : guestQrCodeContainer;
+                new QRCode(qrCodeContainer, {
+                  text: `UserID:${username}-Time:${new Date().toISOString()}`,
+                  width: 128,
+                  height: 128,
+                  colorDark: '#000000',
+                  colorLight: '#ffffff',
+                  correctLevel: QRCode.CorrectLevel.H
+                });
+                qrCodeContainer.classList.remove('hidden');
+                qrCodeContainer.removeAttribute('aria-hidden');
+                showToast('Biometric login successful!');
+                checkAuthStatus();
+              } else {
+                showToast('Biometric verification failed.');
+              }
+            } catch (error) {
+              console.error('Biometric login error:', error);
+              showToast('Biometric login failed.');
+            }
+          });
+        }
+      });
+
+      bookingForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'guest')) {
-          alert('Access denied. Only admins and guests can book.');
+          showToast('Access denied. Only admins and guests can book rooms.');
           return;
         }
-        const guestName = document.getElementById('guestName').value;
-        const checkInDate = document.getElementById('checkInDate').value;
-        const checkOutDate = document.getElementById('checkOutDate').value;
-        const roomType = document.getElementById('roomType').value;
-        fetch('/book_room', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ guest_name: guestName, check_in_date: checkInDate, check_out_date: checkOutDate, room_type: roomType }),
-          credentials: 'include'
-        })
-          .then(response => response.json())
-          .then(data => {
-            if (data.status === 'success') {
-              const toast = new bootstrap.Toast(document.getElementById('attendanceToast'));
-              document.querySelector('#attendanceToast .toast-body').textContent = `Booking confirmed for ${guestName}!`;
-              toast.show();
-              bookingForm.reset();
-              loadGuestRecords();
-            } else {
-              alert(data.message || 'Booking failed');
-            }
-          })
-          .catch(error => {
-            console.error('Error during booking:', error);
-            alert('Booking failed. Check console for details.');
+        const formData = new FormData(bookingForm);
+        const payload = Object.fromEntries(formData);
+        try {
+          const response = await fetch('{{ url_for('book_room') }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+            credentials: 'include'
           });
+          const data = await response.json();
+          if (data.status === 'success') {
+            showToast(`Booking confirmed for ${payload.guest_name}!`);
+            bookingForm.reset();
+            loadGuestRecords();
+            updateRoomStatus();
+          } else {
+            showToast(data.message || 'Booking failed.');
+          }
+        } catch (error) {
+          console.error('Booking error:', error);
+          showToast('Booking failed. Please try again.');
+        }
       });
 
-      logoutBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        fetch('/logout', {
-          method: 'POST',
-          credentials: 'include'
-        })
-          .then(response => {
-            if (response.ok) {
+      [logoutBtn, sidebarLogoutBtn].forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          try {
+            const response = await fetch('{{ url_for('logout') }}', {
+              method: 'POST',
+              credentials: 'include'
+            });
+            const data = await response.json();
+            if (data.status === 'success') {
               hasLoggedIn = false;
               userRole = 'guest';
-              qrCodeContainer.classList.add('hidden');
-              qrCodeContainer.innerHTML = '';
-              updateUI();
+              username = '';
+              organizationType = '';
+              [employeeQrCodeContainer, guestQrCodeContainer].forEach(container => {
+                if (container) {
+                  container.classList.add('hidden');
+                  container.setAttribute('aria-hidden', 'true');
+                  container.innerHTML = '';
+                }
+              });
+              document.cookie = 'access_token_cookie=; Max-Age=0; path=/';
+              showToast('Logged out successfully.');
+              window.location.href = '{{ url_for('login') }}';
+            } else {
+              showToast(data.message || 'Logout failed.');
             }
-          })
-          .catch(error => console.error('Error during logout:', error));
-      });
-
-      sidebarLogoutBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        fetch('/logout', {
-          method: 'POST',
-          credentials: 'include'
-        })
-          .then(response => {
-            if (response.ok) {
-              hasLoggedIn = false;
-              userRole = 'guest';
-              qrCodeContainer.classList.add('hidden');
-              qrCodeContainer.innerHTML = '';
-              updateUI();
-            }
-          })
-          .catch(error => console.error('Error during logout:', error));
+          } catch (error) {
+            console.error('Logout error:', error);
+            showToast('Logout failed. Please try again.');
+          }
+        });
       });
 
       refreshAttendance.addEventListener('click', (e) => {
@@ -1139,11 +1247,11 @@
       exportBtn.addEventListener('click', async (e) => {
         e.preventDefault();
         if (userRole !== 'admin') {
-          alert('Access denied. Admins only.');
+          showToast('Access denied. Admins only.');
           return;
         }
         try {
-          const response = await fetch('/export', { credentials: 'include' });
+          const response = await fetch('{{ url_for('export_attendance') }}', { credentials: 'include' });
           if (response.ok) {
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
@@ -1154,25 +1262,31 @@
             a.click();
             a.remove();
             window.URL.revokeObjectURL(url);
+            showToast('Attendance exported successfully.');
           } else {
             const data = await response.json();
-            alert(data.message || 'Failed to export CSV.');
+            showToast(data.message || 'Failed to export CSV.');
           }
-        } catch (err) {
-          alert('Error exporting CSV: ' + err.message);
+        } catch (error) {
+          console.error('Export error:', error);
+          showToast('Error exporting CSV.');
         }
       });
 
       checkInBtn.addEventListener('click', async (e) => {
         e.preventDefault();
         if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'employee')) {
-          alert('Please log in as an admin or employee to perform this action.');
+          showToast('Access denied. Please log in as an admin or employee.');
           return;
         }
-        const employeeId = document.getElementById('employeeId').value;
-        const employeeName = document.getElementById('employeeName').value;
+        const employeeId = document.querySelector('#employeeId').value;
+        const employeeName = document.querySelector('#employeeName').value;
+        if (!employeeId || !employeeName) {
+          showToast('Employee ID and Name are required.');
+          return;
+        }
         try {
-          const response = await fetch('/check_in', {
+          const response = await fetch('{{ url_for('check_in') }}', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ employee_id: employeeId, name: employeeName }),
@@ -1180,28 +1294,30 @@
           });
           const data = await response.json();
           if (data.status === 'success') {
-            const toast = new bootstrap.Toast(document.getElementById('attendanceToast'));
-            document.querySelector('#attendanceToast .toast-body').textContent = `${employeeName} checked in successfully`;
-            toast.show();
+            showToast(`${employeeName} checked in successfully.`);
             loadAttendance();
           } else {
-            alert(data.message || 'Check-in failed');
+            showToast(data.message || 'Check-in failed.');
           }
         } catch (error) {
-          console.error('Error during check-in:', error);
-          alert('Error during check-in');
+          console.error('Check-in error:', error);
+          showToast('Error during check-in.');
         }
       });
 
       checkOutBtn.addEventListener('click', async (e) => {
         e.preventDefault();
         if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'employee')) {
-          alert('Please log in as an admin or employee to perform this action.');
+          showToast('Access denied. Please log in as an admin or employee.');
           return;
         }
-        const employeeId = document.getElementById('employeeId').value;
+        const employeeId = document.querySelector('#employeeId').value;
+        if (!employeeId) {
+          showToast('Employee ID is required.');
+          return;
+        }
         try {
-          const response = await fetch('/check_out', {
+          const response = await fetch('{{ url_for('check_out') }}', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ employee_id: employeeId }),
@@ -1209,27 +1325,29 @@
           });
           const data = await response.json();
           if (data.status === 'success') {
-            const toast = new bootstrap.Toast(document.getElementById('attendanceToast'));
-            document.querySelector('#attendanceToast .toast-body').textContent = `Employee ${employeeId} checked out successfully`;
-            toast.show();
+            showToast(`Employee ${employeeId} checked out successfully.`);
             loadAttendance();
           } else {
-            alert(data.message || 'Check-out failed');
+            showToast(data.message || 'Check-out failed.');
           }
         } catch (error) {
-          console.error('Error during check-out:', error);
-          alert('Error during check-out');
+          console.error('Check-out error:', error);
+          showToast('Error during check-out.');
         }
       });
 
       guestCheckInBtn.addEventListener('click', async (e) => {
         e.preventDefault();
         if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'guest')) {
-          alert('Access denied. Only admins and guests can check in.');
+          showToast('Access denied. Only admins and guests can check in.');
           return;
         }
-        const guestId = document.getElementById('guestId').value;
-        const guestName = document.getElementById('guestCheckName').value;
+        const guestId = document.querySelector('#guestId').value;
+        const guestName = document.querySelector('#guestCheckName').value;
+        if (!guestId || !guestName) {
+          showToast('Guest ID and Name are required.');
+          return;
+        }
         try {
           const response = await fetch('/guest_check_in', {
             method: 'POST',
@@ -1239,26 +1357,28 @@
           });
           const data = await response.json();
           if (data.status === 'success') {
-            const toast = new bootstrap.Toast(document.getElementById('attendanceToast'));
-            document.querySelector('#attendanceToast .toast-body').textContent = `${guestName} checked in successfully`;
-            toast.show();
+            showToast(`${guestName} checked in successfully.`);
             loadGuestRecords();
           } else {
-            alert(data.message || 'Guest check-in failed');
+            showToast(data.message || 'Guest check-in failed.');
           }
         } catch (error) {
-          console.error('Error during guest check-in:', error);
-          alert('Error during guest check-in');
+          console.error('Guest check-in error:', error);
+          showToast('Error during guest check-in.');
         }
       });
 
       guestCheckOutBtn.addEventListener('click', async (e) => {
         e.preventDefault();
         if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'guest')) {
-          alert('Access denied. Only admins and guests can check out.');
+          showToast('Access denied. Only admins and guests can check out.');
           return;
         }
-        const guestId = document.getElementById('guestId').value;
+        const guestId = document.querySelector('#guestId').value;
+        if (!guestId) {
+          showToast('Guest ID is required.');
+          return;
+        }
         try {
           const response = await fetch('/guest_check_out', {
             method: 'POST',
@@ -1268,16 +1388,14 @@
           });
           const data = await response.json();
           if (data.status === 'success') {
-            const toast = new bootstrap.Toast(document.getElementById('attendanceToast'));
-            document.querySelector('#attendanceToast .toast-body').textContent = `Guest ${guestId} checked out successfully`;
-            toast.show();
+            showToast(`Guest ${guestId} checked out successfully.`);
             loadGuestRecords();
           } else {
-            alert(data.message || 'Guest check-out failed');
+            showToast(data.message || 'Guest check-out failed.');
           }
         } catch (error) {
-          console.error('Error during guest check-out:', error);
-          alert('Error during guest check-out');
+          console.error('Guest check-out error:', error);
+          showToast('Error during guest check-out.');
         }
       });
 
@@ -1288,141 +1406,141 @@
 
       socket.on('attendance_update', (data) => {
         if (data.status === 'error') {
-          alert(data.message || 'Update failed');
+          showToast(data.message || 'Update failed.');
         } else {
-          const toast = new bootstrap.Toast(document.getElementById('attendanceToast'));
-          const time = data.action === 'check-in' ? data.time_in : data.time_out;
-          document.querySelector('#attendanceToast .toast-body').textContent = `${data.name || 'User'} ${data.action === 'check-in' ? 'checked in' : 'checked out'} at ${time || 'N/A'}`;
-          toast.show();
-          const row = document.createElement('tr');
-          row.innerHTML = `
-            <td>${data.employee_id || 'N/A'}</td>
-            <td>${data.name || 'N/A'}</td>
-            <td>${data.date || 'N/A'}</td>
-            <td>${data.time_in || '-'}</td>
-            <td>${data.time_out || '-'}</td>
-          `;
-          attendanceTbody.prepend(row);
+          showToast(`${data.name || 'User'} ${data.action === 'check-in' ? 'checked in' : 'checked out'} at ${data.time_in || data.time_out || 'N/A'}.`);
+          if (attendanceTbody) {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td>${data.employee_id || 'N/A'}</td>
+              <td>${data.name || 'N/A'}</td>
+              <td>${data.date || 'N/A'}</td>
+              <td>${data.time_in || '-'}</td>
+              <td>${data.time_out || '-'}</td>
+            `;
+            attendanceTbody.prepend(row);
+          }
         }
       });
 
       socket.on('guest_update', (data) => {
         if (data.status === 'error') {
-          alert(data.message || 'Error');
+          showToast(data.message || 'Update failed.');
         } else {
-          const toast = new bootstrap.Toast(document.getElementById('attendanceToast'));
-          document.querySelector('#attendanceToast .toast-body').textContent = `${data.name || 'Guest'} ${data.action === 'check-in' ? 'checked in' : 'checked out'}`;
-          toast.show();
+          showToast(`${data.name || 'Guest'} ${data.action === 'check-in' ? 'checked in' : 'checked out'}.`);
           loadGuestRecords();
         }
       });
 
-      setInterval(() => {
-        loadAttendance();
-        loadGuestRecords();
-      }, 60000);
+      socket.on('room_update', updateRoomStatus);
 
-      const root = document.documentElement;
+      generateInvoiceBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'guest')) {
+          showToast('Access denied. Only admins and guests can generate invoices.');
+          return;
+        }
+        const guestName = document.querySelector('#guestName').value;
+        const checkInDate = document.querySelector('#checkInDate').value;
+        const checkOutDate = document.querySelector('#checkOutDate').value;
+        const roomType = document.querySelector('#roomType').value;
+        if (!guestName || !checkInDate || !checkOutDate || !roomType) {
+          showToast('Please fill in all booking details to generate an invoice.');
+          return;
+        }
+        try {
+          const response = await fetch('/generate_invoice', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ guest_name: guestName, check_in_date: checkInDate, check_out_date: checkOutDate, room_type: roomType }),
+            credentials: 'include'
+          });
+          const data = await response.json();
+          if (data.status === 'success') {
+            showToast(`Invoice generated for ${guestName}. Amount: $${data.amount}. Check your email.`);
+          } else {
+            showToast(data.message || 'Failed to generate invoice.');
+          }
+        } catch (error) {
+          console.error('Invoice generation error:', error);
+          showToast('Error generating invoice.');
+        }
+      });
+
+      syncChannels.addEventListener('click', async (e) => {
+        e.preventDefault();
+        if (!hasLoggedIn || userRole !== 'admin') {
+          showToast('Access denied. Admins only.');
+          return;
+        }
+        try {
+          const response = await fetch('{{ url_for('sync_channels') }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include'
+          });
+          const data = await response.json();
+          if (data.status === 'success') {
+            showToast('Channels synced with OTAs and PMS successfully.');
+            loadGuestRecords();
+          } else {
+            showToast(data.message || 'Failed to sync channels.');
+          }
+        } catch (error) {
+          console.error('Sync channels error:', error);
+          showToast('Error syncing channels.');
+        }
+      });
+
       function setTheme(theme) {
-        root.setAttribute('data-theme', theme);
+        document.documentElement.setAttribute('data-theme', theme);
         localStorage.setItem('theme', theme);
-        themeToggle.querySelector('i').className = theme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
-        sidebarThemeToggle.querySelector('i').className = theme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+        const icon = theme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+        themeToggle.querySelector('i').className = icon;
+        sidebarThemeToggle.querySelector('i').className = icon;
       }
 
       themeToggle.addEventListener('click', (e) => {
         e.preventDefault();
-        const currentTheme = root.getAttribute('data-theme');
-        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-        setTheme(newTheme);
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        setTheme(currentTheme === 'light' ? 'dark' : 'light');
       });
 
       sidebarThemeToggle.addEventListener('click', (e) => {
         e.preventDefault();
-        const currentTheme = root.getAttribute('data-theme');
-        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-        setTheme(newTheme);
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        setTheme(currentTheme === 'light' ? 'dark' : 'light');
       });
 
       const savedTheme = localStorage.getItem('theme') || 'light';
       setTheme(savedTheme);
 
-      // Automated Billing and Invoicing
-      generateInvoice.addEventListener('click', (e) => {
-        e.preventDefault();
-        const guestName = document.getElementById('guestName').value;
-        const checkInDate = document.getElementById('checkInDate').value;
-        const checkOutDate = document.getElementById('checkOutDate').value;
-        const roomType = document.getElementById('roomType').value;
-        if (guestName && checkInDate && checkOutDate && roomType) {
-          const invoice = {
-            guestName,
-            checkInDate,
-            checkOutDate,
-            roomType,
-            amount: 100.00 // Placeholder amount
-          };
-          const toast = new bootstrap.Toast(document.getElementById('attendanceToast'));
-          document.querySelector('#attendanceToast .toast-body').textContent = `Invoice generated for ${guestName}. Amount: $${invoice.amount} (Email sent)`;
-          toast.show();
-          console.log('Invoice:', invoice); // Simulate email or storage
-        } else {
-          alert('Please fill booking details to generate invoice.');
-        }
-      });
-
-      // OTA/PMS Integration
-      syncChannels.addEventListener('click', (e) => {
-        e.preventDefault();
-        fetch('/sync_channels', { credentials: 'include' })
-          .then(response => response.json())
-          .then(data => {
-            if (data.status === 'success') {
-              const toast = new bootstrap.Toast(document.getElementById('attendanceToast'));
-              document.querySelector('#attendanceToast .toast-body').textContent = 'Channels synced with OTAs and PMS successfully.';
-              toast.show();
-            } else {
-              alert('Failed to sync channels. Check console for details.');
+      $(document).ready(() => {
+        checkAuthStatus();
+        $('#myTab a').on('click', function (e) {
+          e.preventDefault();
+          $(this).tab('show');
+        });
+        ['#sidebarEmployeeBtn', '#employeeBtn', '#sidebarBookingBtn', '#bookingBtn', '#sidebarGuestBtn', '#guestBtn'].forEach(selector => {
+          $(selector).on('click', function (e) {
+            e.preventDefault();
+            if (!hasLoggedIn) {
+              window.location.href = '{{ url_for('login') }}';
+              return;
             }
-          })
-          .catch(error => {
-            console.error('Error syncing channels:', error);
-            alert('Error syncing channels.');
+            const target = selector.includes('Employee') ? '#employee-tab' : selector.includes('Booking') ? '#booking-tab' : '#guest-tab';
+            $(`#myTab a[href="${target}"]`).tab('show');
+            closeSidebarIfOpen();
           });
+        });
       });
 
-      window.jQuery || document.write('<script src="https://code.jquery.com/jquery-3.6.0.min.js"><\/script>');
-      $(document).ready(function() {
-        updateUI();
+      setInterval(() => {
+        loadAttendance();
+        loadGuestRecords();
         updateRoomStatus();
-      });
-
-      // Handle Employee Management tab click to show login form
-      $('#employee-tab-btn').on('click', function(e) {
-        e.preventDefault();
-        $('#myTab a[href="#employee-tab"]').tab('show');
-        employeeLoginSection.classList.remove('hidden');
-        attendanceSection.classList.add('hidden');
-      });
-
-      // Handle sidebar navigation for Employee Management
-      $('#sidebarEmployeeBtn').on('click', function(e) {
-        e.preventDefault();
-        $('#myTab a[href="#employee-tab"]').tab('show');
-        employeeLoginSection.classList.remove('hidden');
-        attendanceSection.classList.add('hidden');
-        closeSidebarIfOpen();
-      });
-
-      // Handle top nav button for Employee Management
-      $('#employeeBtn').on('click', function(e) {
-        e.preventDefault();
-        $('#myTab a[href="#employee-tab"]').tab('show');
-        employeeLoginSection.classList.remove('hidden');
-        attendanceSection.classList.add('hidden');
-      });
-
-      {% block scripts %}{% endblock %}
+      }, 60000);
     </script>
+    {% block scripts %}{% endblock %}
   </body>
 </html>

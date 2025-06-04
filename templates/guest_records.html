@@ -1,0 +1,48 @@
+{% extends "dashboard.html" %}
+
+{% block title %}Guest Records - {{ config.company_name or 'Hospitality Dashboard' }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mx-auto">
+    <div class="tab-content">
+        <div class="guest-section">
+            <div class="d-flex justify-content-between align-items-center section-header">
+                <div class="section-title">Guest Records</div>
+                <div class="d-flex align-items-center gap-3">
+                    <a href="/sync_channels" class="action-btn" data-bs-toggle="tooltip" data-bs-placement="top" title="Sync with OTAs/PMS">
+                        <i class="fas fa-sync"></i>
+                    </a>
+                </div>
+            </div>
+            <div class="table-wrapper shadow-sm rounded">
+                <table class="table table-striped align-middle">
+                    <thead>
+                        <tr>
+                            <th>Guest ID</th>
+                            <th>Name</th>
+                            <th>Room</th>
+                            <th>Check-In Date</th>
+                            <th>Check-Out Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="guest-table-body">
+                        {% for record in records %}
+                        <tr>
+                            <td>{{ record.guest_id or 'N/A' }}</td>
+                            <td>{{ record.name or 'N/A' }}</td>
+                            <td>{{ record.room_id or 'N/A' }}</td>
+                            <td>{{ record.check_in_date or '-' }}</td>
+                            <td>{{ record.check_out_date or '-' }}</td>
+                            <td>{{ record.status or 'N/A' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="6">No guest records available.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

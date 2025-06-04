@@ -1,0 +1,15 @@
+{% extends "dashboard.html" %}
+
+{% block title %}Payment Success - {{ config.company_name or 'Hospitality Dashboard' }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mx-auto">
+    <div class="tab-content">
+        <div class="text-center">
+            <h1 class="text-success">Success!</h1>
+            <p>{{ message }}</p>
+            <a href="/" class="btn btn-custom">Back to Dashboard</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

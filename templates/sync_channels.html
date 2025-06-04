@@ -1,0 +1,18 @@
+{% extends "dashboard.html" %}
+
+{% block title %}Sync Channels - {{ config.company_name or 'Hospitality Dashboard' }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mx-auto">
+    <div class="tab-content">
+        <div class="sync-section">
+            <div class="section-header">
+                <div class="section-title">Sync Channels</div>
+            </div>
+            <button id="syncButton" class="btn btn-custom">
+                <i class="fas fa-sync me-2"></i>Sync with OTAs and PMS
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
