@@ -9,7 +9,19 @@
   <div class="tab-content">
     <div class="login-section">
       <h2 class="mb-4">Register</h2>
-      <form id="registerForm" method="POST" class="shadow-sm p-4">
+      <!-- Display flash messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+      <form id="registerForm" method="POST" action="{{ url_for('register') }}" class="shadow-sm p-4">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <div class="mb-3">
           <label for="username" class="form-label">Username</label>
           <input type="text" class="form-control" id="username" name="username" placeholder="Username" required>
@@ -56,43 +68,36 @@
   const registerMessage = document.getElementById('registerMessage');
   const registerToast = new bootstrap.Toast(document.getElementById('registerToast'));
 
-  registerForm.addEventListener('submit', async (e) => {
+  registerForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    const username = document.getElementById('username').value;
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    const organization_type = document.getElementById('organization_type').value;
-
-    try {
-      const response = await fetch('/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, email, password, organization_type }),
-        credentials: 'include'
-      });
-      const data = await response.json();
-
-      if (data.status === 'success') {
-        registerMessage.textContent = 'Registration successful! Redirecting to login...';
-        registerMessage.style.color = 'green';
-        document.querySelector('#registerToast .toast-body').textContent = 'Registration successful!';
-        registerToast.show();
-        setTimeout(() => {
-          window.location.href = '/login';
-        }, 2000); // Redirect after 2 seconds
+    const formData = new FormData(registerForm);
+    fetch('/register', {
+      method: 'POST',
+      body: formData,
+      credentials: 'include'
+    })
+    .then(response => {
+      if (response.redirected) {
+        window.location.href = response.url; // Follow the redirect to /login
       } else {
+        return response.json();
+      }
+    })
+    .then(data => {
+      if (data) {
         registerMessage.textContent = data.message || 'Registration failed';
         registerMessage.style.color = 'red';
         document.querySelector('#registerToast .toast-body').textContent = data.message || 'Registration failed';
         registerToast.show();
       }
-    } catch (error) {
+    })
+    .catch(error => {
       console.error('Error during registration:', error);
       registerMessage.textContent = 'An error occurred. Please try again.';
       registerMessage.style.color = 'red';
       document.querySelector('#registerToast .toast-body').textContent = 'An error occurred. Please try again.';
       registerToast.show();
-    }
+    });
   });
 </script>
 {% endblock %}

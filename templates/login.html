@@ -1,29 +1,86 @@
 {% extends "dashboard.html" %}
 
-{% block title %}Login - {{ config.company_name or 'Hospitality Dashboard' }}{% endblock %}
+{% block title %}
+{{ config.company_name or 'Hospitality Dashboard' }} - Login
+{% endblock %}
 
 {% block content %}
 <div class="container mt-4 mx-auto">
-    <div class="tab-content">
-        <div class="login-section">
-            <div class="section-title">Admin Login</div>
-            <form id="loginForm" class="employee-form shadow-sm">
-                <div class="mb-3">
-                    <label for="username" class="form-label">Username</label>
-                    <input type="text" class="form-control" id="username" required>
-                </div>
-                <div class="mb-3">
-                    <label for="password" class="form-label">Password</label>
-                    <input type="password" class="form-control" id="password" required>
-                </div>
-                <div class="d-flex justify-content-center align-items-center gap-2 mt-3">
-                    <button type="submit" class="btn btn-custom">
-                        <i class="fas fa-sign-in-alt me-2"></i>Login
-                    </button>
-                </div>
-            </form>
-            <p class="mt-3 text-center">Don't have an account? <a href="/register">Register</a></p>
+  <div class="tab-content">
+    <div class="login-section">
+      <h2 class="mb-4">Login</h2>
+      <!-- Display flash messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+      <form id="loginForm" method="POST" action="{{ url_for('login') }}" class="shadow-sm p-4">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="mb-3">
+          <label for="username" class="form-label">Username</label>
+          <input type="text" class="form-control" id="username" name="username" placeholder="Username" required>
         </div>
+        <div class="mb-3">
+          <label for="password" class="form-label">Password</label>
+          <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
+        </div>
+        <button type="submit" class="btn btn-custom w-100">Login</button>
+      </form>
+      <p class="text-center mt-3">Don't have an account? <a href="/register">Register</a></p>
+      <div id="loginMessage" class="mt-3 text-center"></div>
     </div>
+  </div>
 </div>
+
+<!-- Toast for Notifications -->
+<div class="toast-container position-fixed bottom-0 end-0 p-4">
+  <div id="loginToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="toast-header">
+      <strong class="me-auto">Login Status</strong>
+      <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+    <div class="toast-body"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const loginForm = document.getElementById('loginForm');
+  const loginMessage = document.getElementById('loginMessage');
+  const loginToast = new bootstrap.Toast(document.getElementById('loginToast'));
+
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(loginForm);
+    try {
+      const response = await fetch('/login', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+      });
+      if (response.redirected) {
+        window.location.href = response.url; // Follow the redirect to /dashboard
+      } else {
+        const data = await response.json();
+        loginMessage.textContent = data.message || 'Login failed';
+        loginMessage.style.color = 'red';
+        document.querySelector('#loginToast .toast-body').textContent = data.message || 'Login failed';
+        loginToast.show();
+      }
+    } catch (error) {
+      console.error('Error during login:', error);
+      loginMessage.textContent = 'An error occurred. Please try again.';
+      loginMessage.style.color = 'red';
+      document.querySelector('#loginToast .toast-body').textContent = 'An error occurred. Please try again.';
+      loginToast.show();
+    }
+  });
+</script>
 {% endblock %}
