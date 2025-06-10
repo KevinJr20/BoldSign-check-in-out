@@ -70,6 +70,15 @@ app.config['JWT_ACCESS_COOKIE_PATH'] = '/'
 app.config['JWT_COOKIE_SAMESITE'] = 'Lax'
 app.config['WTF_CSRF_ENABLED'] = True
 
+
+UPLOAD_FOLDER = os.path.join(os.getcwd(), 'static', 'uploads')
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 socketio = SocketIO(app)
 csrf = CSRFProtect(app)
 limiter = Limiter(
@@ -126,8 +135,12 @@ def init_db():
             CREATE TABLE IF NOT EXISTS employees (
                 employee_id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
-                fingerprint_template TEXT NOT NULL,
-                photo_url TEXT
+                email TEXT,
+                role TEXT,
+                organization_id TEXT,
+                fingerprint_template TEXT,
+                photo_url TEXT,
+                FOREIGN KEY (organization_id) REFERENCES users (username)
             )
         ''')
         cursor.execute('''
@@ -146,6 +159,7 @@ def init_db():
             CREATE TABLE IF NOT EXISTS users (
                 username TEXT PRIMARY KEY,
                 email TEXT NOT NULL,
+                name TEXT,
                 password_hash TEXT NOT NULL,
                 organization_type TEXT NOT NULL
             )
@@ -175,7 +189,7 @@ def init_db():
                 room_id TEXT,
                 check_in_date TEXT NOT NULL,
                 check_out_date TEXT NOT NULL,
-                status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'checked_in', 'checked_out', 'cancelled')),
+                status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'checked_in', 'completed', 'cancelled')),
                 payment_status TEXT DEFAULT 'pending' CHECK (payment_status IN ('pending', 'completed', 'failed')),
                 FOREIGN KEY (room_id) REFERENCES rooms (room_id)
             )
@@ -187,7 +201,7 @@ def init_db():
                 check_in_date TEXT,
                 check_out_date TEXT,
                 room_id TEXT,
-                status TEXT DEFAULT 'checked_out' CHECK (status IN ('checked_in', 'checked_out')),
+                status TEXT DEFAULT 'completed' CHECK OUT OF,
                 FOREIGN KEY (room_id) REFERENCES rooms (room_id)
             )
         ''')
@@ -196,7 +210,7 @@ def init_db():
                 transaction_id TEXT PRIMARY KEY,
                 username TEXT,
                 plan TEXT,
-                status TEXT,
+                status TEXT NOT NULL,
                 created_at TEXT,
                 FOREIGN KEY (username) REFERENCES users (username)
             )
@@ -205,9 +219,10 @@ def init_db():
         if not cursor.fetchone():
             logger.info("Creating default admin user")
             password_hash = bcrypt.hash('admin123')
-            cursor.execute('INSERT OR IGNORE INTO users (username, email, password_hash, organization_type) VALUES (?, ?, ?, ?)', ('admin', 'admin@example.com', password_hash, 'hotel'))
+            cursor.execute('INSERT OR IGNORE INTO users (username, email, name, password_hash, organization_type) VALUES (?, ?, ?, ?, ?)',
+                          ('admin', 'admin@example.com', 'Admin User', password_hash, 'hotel'))
             cursor.execute('INSERT OR IGNORE INTO subscriptions (organization_id, plan, employee_limit, start_date) VALUES (?, ?, ?, ?)',
-                           ('admin', 'starter', 50, date.today().isoformat()))
+                          ('admin', 'starter', 50, date.today().isoformat()))
             cursor.execute('INSERT OR IGNORE INTO rooms (room_id, room_type) VALUES (?, ?)', ('R001', 'standard'))
             cursor.execute('INSERT OR IGNORE INTO rooms (room_id, room_type) VALUES (?, ?)', ('R002', 'deluxe'))
             conn.commit()
@@ -217,9 +232,10 @@ def init_db():
             if not cursor.fetchone():
                 logger.info("No subscription found for admin, creating default subscription")
                 cursor.execute('INSERT INTO subscriptions (organization_id, plan, employee_limit, start_date) VALUES (?, ?, ?, ?)',
-                               ('admin', 'starter', 50, date.today().isoformat()))
+                             ('admin', 'starter', 50, date.today().isoformat()))
                 conn.commit()
                 logger.info("Default subscription for admin created")
+                
 
 @app.cli.command("init-db")
 @with_appcontext
@@ -270,33 +286,20 @@ def validate_mpesa_signature(data):
 def verify_subscription_feature(username, feature):
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        try:
-            cursor.execute('SELECT plan, organization_type FROM subscriptions s JOIN users u ON s.organization_id = u.username WHERE organization_id = ?', (username,))
-            subscription = cursor.fetchone()
-            if not subscription:
-                return False, jsonify({'status': 'error', 'message': 'No subscription found'}), 403
-            plan, org_type = subscription['plan'], subscription['organization_type']
-            available_features = ORGANIZATION_TYPES.get(org_type, {}).get('features', []) + SUBSCRIPTION_TIERS.get(plan, {}).get('features', [])
-            if feature not in available_features:
-                return False, jsonify({'status': 'error', 'message': f'Feature "{feature}" not available for your plan ({plan}). Please upgrade.'}), 403
+        cursor.execute('SELECT plan FROM subscriptions WHERE organization_id = ?', (username,))
+        plan = cursor.fetchone()['plan']
+        if feature == 'employee_management' and plan in SUBSCRIPTION_TIERS:
             return True, None, None
-        except sqlite3.OperationalError as e:
-            logger.error(f"Database error in verify_subscription_feature: {e}")
-            return False, jsonify({'status': 'error', 'message': 'Database error, please contact support'}), 500
+        return False, jsonify({'status': 'error', 'message': f'{feature} not available for your plan.'}), 403
 
 def verify_employee_limit(username):
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute('SELECT plan, employee_limit FROM subscriptions WHERE organization_id = ?', (username,))
-        subscription = cursor.fetchone()
-        if not subscription:
-            return False, jsonify({'status': 'error', 'message': 'No subscription found'}), 403
-        plan, employee_limit = subscription['plan'], subscription['employee_limit']
-        cursor.execute('SELECT COUNT(*) FROM employees')
-        employee_count = cursor.fetchone()[0]
-        if employee_count >= employee_limit:
-            return False, jsonify({'status': 'error', 'message': f'Employee limit ({employee_limit}) reached for your plan ({plan}). Please upgrade.'}), 403
-        return True, None, None
+        cursor.execute('SELECT employee_limit FROM subscriptions WHERE organization_id = ?', (username,))
+        employee_limit = cursor.fetchone()['employee_limit']
+        cursor.execute('SELECT COUNT(*) as count FROM employees WHERE organization_id = ?', (username,))
+        current_count = cursor.fetchone()['count']
+        return current_count < employee_limit, jsonify({'status': 'error', 'message': 'Employee limit reached. Please upgrade.'}), current_count
 
 # Input sanitization helper
 def sanitize_input(value):
@@ -375,7 +378,7 @@ def login():
     return render_template('login.html', config=app.config, current_year=datetime.now(timezone.utc).year, hasLoggedIn=False, username='', userRole='', csrf_token=generate_csrf())
 
 @app.route('/logout', methods=['POST'])
-@jwt_required()
+#@jwt_required()
 def logout():
     response = make_response(redirect(url_for('login')))
     unset_jwt_cookies(response)
@@ -426,7 +429,13 @@ def register():
 @app.route('/subscribe', methods=['GET', 'POST'])
 @jwt_required()
 def subscribe():
+    """
+    Handle subscription management for the organization.
+    GET: Display current subscription or assign default plan.
+    POST: Process subscription upgrades with payment methods (Stripe, PayPal, M-Pesa).
+    """
     username = get_jwt_identity()
+    hasLoggedIn = True
     with get_db_connection() as conn:
         cursor = conn.cursor()
         if request.method == 'GET':
@@ -442,19 +451,24 @@ def subscribe():
                 conn.commit()
                 cursor.execute('SELECT plan, employee_limit, start_date, end_date FROM subscriptions WHERE organization_id = ?', (username,))
                 subscription = cursor.fetchone()
+            transaction_id = str(uuid.uuid4())  # Generate transaction_id for form
             return render_template(
                 'subscribe.html',
                 config=app.config,
                 subscription=dict(subscription),
+                subscription_tiers=SUBSCRIPTION_TIERS,
                 stripe_publishable_key=STRIPE_PUBLISHABLE_KEY,
                 username=username,
-                current_year=datetime.now(timezone.utc).year
+                current_year=datetime.now(timezone.utc).year,
+                hasLoggedIn=hasLoggedIn,
+                transaction_id=transaction_id
             )
         elif request.method == 'POST':
             plan_type = sanitize_input(request.form.get('plan_type'))
             payment_method = sanitize_input(request.form.get('payment_method'))
-            if not plan_type or not payment_method:
-                flash('Plan type and payment method are required.', 'danger')
+            transaction_id = sanitize_input(request.form.get('transaction_id'))
+            if not plan_type or not payment_method or not transaction_id:
+                flash('Plan type, payment method, and transaction ID are required.', 'danger')
                 return redirect(url_for('subscribe'))
             if plan_type not in SUBSCRIPTION_TIERS:
                 flash('Invalid plan selected.', 'danger')
@@ -464,86 +478,86 @@ def subscribe():
                 return redirect(url_for('subscribe'))
             amount = SUBSCRIPTION_TIERS[plan_type]['price']
             employee_limit = SUBSCRIPTION_TIERS[plan_type]['employee_limit']
-            if amount == 0:
-                cursor.execute('UPDATE subscriptions SET plan = ?, employee_limit = ?, start_date = ? WHERE organization_id = ?',
-                               (plan_type, employee_limit, date.today().isoformat(), username))
-                conn.commit()
-                flash(f'Subscription upgraded to {plan_type}.', 'success')
-                return redirect(url_for('dashboard'))
-            transaction_id = str(uuid.uuid4())
             cursor.execute('INSERT INTO transactions (transaction_id, username, plan, status, created_at) VALUES (?, ?, ?, ?, ?)',
                            (transaction_id, username, plan_type, 'pending', nairobi_tz.localize(datetime.now()).isoformat()))
             conn.commit()
-            base_url = request.host_url if request.host_url else f"http://{os.getenv('APP_HOST', 'localhost')}:5000"
-            if payment_method == 'stripe':
-                try:
-                    session = stripe.checkout.Session.create(
-                        payment_method_types=['card'],
-                        line_items=[{
-                            'price_data': {
-                                'currency': 'usd',
-                                'product_data': {'name': f'{plan_type.capitalize()} Plan Subscription'},
-                                'unit_amount': int(amount * 100),
-                            },
-                            'quantity': 1,
-                        }],
-                        mode='payment',
-                        success_url=f"{base_url}subscribe/success?session_id={{CHECKOUT_SESSION_ID}}&plan={plan_type}",
-                        cancel_url=f"{base_url}subscribe/cancel",
+            if amount == 0:
+                cursor.execute('UPDATE subscriptions SET plan = ?, employee_limit = ?, start_date = ?, end_date = ? WHERE organization_id = ?',
+                               (plan_type, employee_limit, date.today().isoformat(), None, username))
+                cursor.execute('UPDATE transactions SET status = ? WHERE transaction_id = ?',
+                               ('completed', transaction_id))
+                conn.commit()
+                flash(f'Subscription upgraded to {plan_type}.', 'success')
+                return redirect(url_for('dashboard'))
+            try:
+                if payment_method == 'stripe':
+                    payment_method_id = request.form.get('payment_method_id')
+                    if not payment_method_id:
+                        flash('Card details are required.', 'danger')
+                        return redirect(url_for('subscribe'))
+                    intent = stripe.PaymentIntent.create(
+                        amount=int(amount * 100),
+                        currency='usd',
+                        payment_method=payment_method_id,
+                        confirmation_method='manual',
+                        confirm=True,
                         metadata={'username': username, 'transaction_id': transaction_id}
                     )
-                    return redirect(session.url)
-                except Exception as e:
-                    logger.error(f"Stripe error: {str(e)}")
-                    flash(f'Payment failed: {str(e)}', 'danger')
-                    return redirect(url_for('subscribe'))
-            elif payment_method == 'paypal':
-                payment = paypalrestsdk.Payment({
-                    "intent": "sale",
-                    "payer": {"payment_method": "paypal"},
-                    "redirect_urls": {
-                        "return_url": f"{base_url}subscribe/paypal/success?plan={plan_type}&transaction_id={transaction_id}",
-                        "cancel_url": f"{base_url}subscribe/paypal/cancel"
-                    },
-                    "transactions": [{
-                        "amount": {"total": f"{amount:.2f}", "currency": "USD"},
-                        "description": f"Subscription to {plan_type} plan"
-                    }]
-                })
-                if payment.create():
-                    approval_url = next(link.href for link in payment.links if link.rel == "approval_url")
-                    return redirect(approval_url)
-                else:
-                    logger.error(f"PayPal error: {payment.error}")
-                    flash(f'Payment failed: {payment.error}', 'danger')
-                    return redirect(url_for('subscribe'))
-            elif payment_method == 'mpesa':
-                mpesa_number = sanitize_input(request.form.get('mpesa_number'))
-                if not mpesa_number:
-                    flash('M-Pesa phone number is required.', 'danger')
-                    return redirect(url_for('subscribe'))
-                access_token = get_mpesa_access_token()
-                if not access_token:
-                    flash('Failed to get M-Pesa access token.', 'danger')
-                    return redirect(url_for('subscribe'))
-                timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-                password = base64.b64encode(f"{MPESA_SHORTCODE}{MPESA_PASSKEY}{timestamp}".encode()).decode()
-                api_url = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest" if os.getenv('FLASK_ENV') != 'production' else "https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
-                headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
-                payload = {
-                    "BusinessShortCode": MPESA_SHORTCODE,
-                    "Password": password,
-                    "Timestamp": timestamp,
-                    "TransactionType": "CustomerPayBillOnline",
-                    "Amount": amount,
-                    "PartyA": mpesa_number,
-                    "PartyB": MPESA_SHORTCODE,
-                    "PhoneNumber": mpesa_number,
-                    "CallBackURL": f"{base_url}subscribe/mpesa/callback",
-                    "AccountReference": f"Sub-{username}-{plan_type}-{transaction_id}",
-                    "TransactionDesc": f"Subscription to {plan_type} plan"
-                }
-                try:
+                    if intent.status == 'succeeded':
+                        cursor.execute('UPDATE subscriptions SET plan = ?, employee_limit = ?, start_date = ?, end_date = ? WHERE organization_id = ?',
+                                       (plan_type, employee_limit, date.today().isoformat(), (nairobi_tz.localize(datetime.now()) + timedelta(days=30)).strftime('%Y-%m-%d'), username))
+                        cursor.execute('UPDATE transactions SET status = ? WHERE transaction_id = ?',
+                                       ('completed', transaction_id))
+                        conn.commit()
+                        flash(f'Subscription upgraded to {plan_type}.', 'success')
+                        return redirect(url_for('dashboard'))
+                    else:
+                        flash('Payment requires additional action.', 'warning')
+                        return redirect(url_for('subscribe'))
+                elif payment_method == 'paypal':
+                    paypal_order_id = request.form.get('paypal_order_id')
+                    if not paypal_order_id:
+                        flash('PayPal order ID is required.', 'danger')
+                        return redirect(url_for('subscribe'))
+                    payment = paypalrestsdk.Order.find(paypal_order_id)
+                    if payment.capture():
+                        cursor.execute('UPDATE subscriptions SET plan = ?, employee_limit = ?, start_date = ?, end_date = ? WHERE organization_id = ?',
+                                       (plan_type, employee_limit, date.today().isoformat(), (nairobi_tz.localize(datetime.now()) + timedelta(days=30)).strftime('%Y-%m-%d'), username))
+                        cursor.execute('UPDATE transactions SET status = ? WHERE transaction_id = ?',
+                                       ('completed', transaction_id))
+                        conn.commit()
+                        flash(f'Subscription upgraded to {plan_type}.', 'success')
+                        return redirect(url_for('dashboard'))
+                    else:
+                        flash(f'PayPal payment failed: {payment.error}', 'danger')
+                        return redirect(url_for('subscribe'))
+                elif payment_method == 'mpesa':
+                    mpesa_number = sanitize_input(request.form.get('mpesa_number'))
+                    if not mpesa_number:
+                        flash('M-Pesa phone number is required.', 'danger')
+                        return redirect(url_for('subscribe'))
+                    access_token = get_mpesa_access_token()
+                    if not access_token:
+                        flash('Failed to get M-Pesa access token.', 'danger')
+                        return redirect(url_for('subscribe'))
+                    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+                    password = base64.b64encode(f"{MPESA_SHORTCODE}{MPESA_PASSKEY}{timestamp}".encode()).decode()
+                    api_url = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest" if os.getenv('FLASK_ENV') != 'production' else "https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
+                    headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
+                    base_url = request.host_url if request.host_url else f"http://{os.getenv('APP_HOST', 'localhost')}:5000"
+                    payload = {
+                        "BusinessShortCode": MPESA_SHORTCODE,
+                        "Password": password,
+                        "Timestamp": timestamp,
+                        "TransactionType": "CustomerPayBillOnline",
+                        "Amount": amount,
+                        "PartyA": mpesa_number,
+                        "PartyB": MPESA_SHORTCODE,
+                        "PhoneNumber": mpesa_number,
+                        "CallBackURL": f"{base_url}subscribe/mpesa/callback",
+                        "AccountReference": f"Sub-{username}-{plan_type}-{transaction_id}",
+                        "TransactionDesc": f"Subscription to {plan_type} plan"
+                    }
                     response = requests.post(api_url, json=payload, headers=headers, timeout=10)
                     result = response.json()
                     if response.status_code == 200 and result.get('ResponseCode') == '0':
@@ -552,90 +566,99 @@ def subscribe():
                     else:
                         flash(result.get('errorMessage', 'Failed to initiate M-Pesa payment'), 'danger')
                         return redirect(url_for('subscribe'))
-                except requests.RequestException as e:
-                    logger.error(f"M-Pesa error: {str(e)}")
-                    flash(f'Payment failed: {str(e)}', 'danger')
-                    return redirect(url_for('subscribe'))
+            except stripe.error.StripeError as e:
+                logger.error(f"Stripe error: {str(e)}")
+                flash(f'Payment failed: {str(e)}', 'danger')
+                return redirect(url_for('subscribe'))
+            except paypalrestsdk.exceptions.ResourceNotFound:
+                flash('Invalid PayPal order ID.', 'danger')
+                return redirect(url_for('subscribe'))
+            except Exception as e:
+                logger.error(f"Payment error: {str(e)}")
+                flash(f'Payment failed: {str(e)}', 'danger')
+                return redirect(url_for('subscribe'))
 
 @app.route('/subscribe/success')
 @jwt_required()
 def subscribe_success():
+    """
+    Handle successful Stripe payment.
+    """
+    username = get_jwt_identity()
     session_id = request.args.get('session_id')
     plan = request.args.get('plan')
-    username = get_jwt_identity()
-    try:
-        session = stripe.checkout.Session.retrieve(session_id)
-        if session.payment_status == 'paid':
-            transaction_id = session.metadata.get('transaction_id')
-            with get_db_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute('SELECT status FROM transactions WHERE transaction_id = ?', (transaction_id,))
-                transaction = cursor.fetchone()
-                if not transaction or transaction['status'] == 'completed':
-                    flash('Invalid or already processed transaction.', 'danger')
-                    return redirect(url_for('dashboard'))
-                start_date = nairobi_tz.localize(datetime.now()).strftime('%Y-%m-%d')
-                end_date = (nairobi_tz.localize(datetime.now()) + timedelta(days=30)).strftime('%Y-%m-%d')
-                employee_limit = SUBSCRIPTION_TIERS[plan]['employee_limit']
-                cursor.execute('INSERT OR REPLACE INTO subscriptions (organization_id, plan, employee_limit, start_date, end_date) VALUES (?, ?, ?, ?, ?)',
-                               (username, plan, employee_limit, start_date, end_date))
-                cursor.execute('UPDATE transactions SET status = ? WHERE transaction_id = ?', ('completed', transaction_id))
-                conn.commit()
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        try:
+            cursor.execute('SELECT status FROM transactions WHERE transaction_id = ?', (session_id,))
+            transaction = cursor.fetchone()
+            if not transaction or transaction['status'] == 'completed':
+                flash('Invalid or already processed transaction.', 'danger')
+                return redirect(url_for('dashboard'))
+            cursor.execute('UPDATE transactions SET status = ? WHERE transaction_id = ?',
+                          ('completed', session_id))
+            cursor.execute('UPDATE subscriptions SET plan = ?, employee_limit = ?, start_date = ?, end_date = ? WHERE organization_id = ?',
+                          (plan, SUBSCRIPTION_TIERS[plan]['employee_limit'], date.today().isoformat(), (nairobi_tz.localize(datetime.now()) + timedelta(days=30)).strftime('%Y-%m-%d'), username))
+            conn.commit()
             flash(f'Subscription upgraded to {plan}.', 'success')
             return redirect(url_for('dashboard'))
-        else:
-            flash('Payment not completed.', 'danger')
+        except sqlite3.Error as e:
+            logger.error(f"Stripe success error: {str(e)}")
+            flash('Error processing payment.', 'danger')
             return redirect(url_for('dashboard'))
-    except Exception as e:
-        logger.error(f"Stripe success error: {str(e)}")
-        flash(f'Error processing payment: {str(e)}', 'danger')
-        return redirect(url_for('dashboard'))
 
 @app.route('/subscribe/cancel')
 @jwt_required()
 def subscribe_cancel():
+    """
+    Handle cancelled Stripe payment.
+    """
     flash('Payment cancelled.', 'info')
-    return redirect(url_for('dashboard'))
+    return redirect(url_for('subscribe'))
 
 @app.route('/subscribe/paypal/success')
 @jwt_required()
 def subscribe_paypal_success():
-    payment_id = request.args.get('paymentId')
-    payer_id = request.args.get('PayerID')
+    """
+    Handle successful PayPal payment.
+    """
+    username = get_jwt_identity()
     plan = request.args.get('plan')
     transaction_id = request.args.get('transaction_id')
-    username = get_jwt_identity()
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute('SELECT status FROM transactions WHERE transaction_id = ?', (transaction_id,))
-        transaction = cursor.fetchone()
-        if not transaction or transaction['status'] == 'completed':
-            flash('Invalid or already processed transaction.', 'danger')
-            return redirect(url_for('dashboard'))
-        payment = paypalrestsdk.Payment.find(payment_id)
-        if payment.execute({"payer_id": payer_id}):
-            start_date = nairobi_tz.localize(datetime.now()).strftime('%Y-%m-%d')
-            end_date = (nairobi_tz.localize(datetime.now()) + timedelta(days=30)).strftime('%Y-%m-%d')
-            employee_limit = SUBSCRIPTION_TIERS[plan]['employee_limit']
-            cursor.execute('INSERT OR REPLACE INTO subscriptions (organization_id, plan, employee_limit, start_date, end_date) VALUES (?, ?, ?, ?, ?)',
-                           (username, plan, employee_limit, start_date, end_date))
-            cursor.execute('UPDATE transactions SET status = ? WHERE transaction_id = ?', ('completed', transaction_id))
+        try:
+            cursor.execute('SELECT status FROM transactions WHERE transaction_id = ?', (transaction_id,))
+            transaction = cursor.fetchone()
+            if not transaction or transaction['status'] == 'completed':
+                flash('Invalid or already processed transaction.', 'danger')
+                return redirect(url_for('dashboard'))
+            cursor.execute('UPDATE transactions SET status = ? WHERE transaction_id = ?',
+                          ('completed', transaction_id))
+            cursor.execute('UPDATE subscriptions SET plan = ?, employee_limit = ?, start_date = ?, end_date = ? WHERE organization_id = ?',
+                          (plan, SUBSCRIPTION_TIERS[plan]['employee_limit'], date.today().isoformat(), (nairobi_tz.localize(datetime.now()) + timedelta(days=30)).strftime('%Y-%m-%d'), username))
             conn.commit()
             flash(f'Subscription upgraded to {plan}.', 'success')
             return redirect(url_for('dashboard'))
-        else:
-            logger.error(f"PayPal success error: {payment.error}")
-            flash(f'Payment failed: {payment.error}', 'danger')
+        except sqlite3.Error as e:
+            logger.error(f"PayPal success error: {str(e)}")
+            flash('Error processing payment.', 'danger')
             return redirect(url_for('dashboard'))
 
 @app.route('/subscribe/paypal/cancel')
 @jwt_required()
 def subscribe_paypal_cancel():
+    """
+    Handle cancelled PayPal payment.
+    """
     flash('PayPal payment cancelled.', 'info')
-    return redirect(url_for('dashboard'))
+    return redirect(url_for('subscribe'))
 
 @app.route('/subscribe/mpesa/callback', methods=['POST'])
 def subscribe_mpesa_callback():
+    """
+    Handle M-Pesa callback to update transaction status.
+    """
     data = request.get_json()
     if not validate_mpesa_signature(data):
         return jsonify({'status': 'error', 'message': 'Invalid signature'}), 403
@@ -643,20 +666,17 @@ def subscribe_mpesa_callback():
         if data['Body']['stkCallback']['ResultCode'] == 0:
             callback_data = data['Body']['stkCallback']['CallbackMetadata']['Item']
             account_reference = next(item['Value'] for item in callback_data if item['Name'] == 'AccountReference')
-            _, _, transaction_id, _, _ = account_reference.split('-')
+            _, username, plan, transaction_id = account_reference.split('-')
             with get_db_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute('SELECT username, plan, status FROM transactions WHERE transaction_id = ? AND status = ?', (transaction_id, 'pending'))
+                cursor.execute('SELECT status FROM transactions WHERE transaction_id = ? AND status = ?', (transaction_id, 'pending'))
                 transaction = cursor.fetchone()
                 if not transaction:
                     return jsonify({'status': 'error', 'message': 'Invalid or already processed transaction'}), 400
-                username, plan = transaction['username'], transaction['plan']
-                start_date = nairobi_tz.localize(datetime.now()).strftime('%Y-%m-%d')
-                end_date = (nairobi_tz.localize(datetime.now()) + timedelta(days=30)).strftime('%Y-%m-%d')
-                employee_limit = SUBSCRIPTION_TIERS[plan]['employee_limit']
-                cursor.execute('INSERT OR REPLACE INTO subscriptions (organization_id, plan, employee_limit, start_date, end_date) VALUES (?, ?, ?, ?, ?)',
-                               (username, plan, employee_limit, start_date, end_date))
-                cursor.execute('UPDATE transactions SET status = ? WHERE transaction_id = ?', ('completed', transaction_id))
+                cursor.execute('UPDATE transactions SET status = ? WHERE transaction_id = ?',
+                              ('completed', transaction_id))
+                cursor.execute('UPDATE subscriptions SET plan = ?, employee_limit = ?, start_date = ?, end_date = ? WHERE organization_id = ?',
+                              (plan, SUBSCRIPTION_TIERS[plan]['employee_limit'], date.today().isoformat(), (nairobi_tz.localize(datetime.now()) + timedelta(days=30)).strftime('%Y-%m-%d'), username))
                 conn.commit()
             return jsonify({'status': 'success', 'message': 'M-Pesa payment successful'})
         else:
@@ -687,150 +707,248 @@ def get_attendance():
             logger.error(f"Error fetching records records: {e}")
             return jsonify({'status': 'error', 'message': 'Failed to retrieve records records'}), 500
 
-@app.route('/employees', methods=['GET', 'POST'])
+@app.route('/employees/api')
 @jwt_required()
-def employees():
+def manage_employees():
+    """
+    Render the employees management page and list all employees for the organization.
+    GET: Returns the employees.html template.
+    """
     username = get_jwt_identity()
     role = 'admin' if username == 'admin' else 'employee'
     if role != 'admin':
-        return jsonify({'status': 'error', 'message': 'Access denied'}), 403
-    has_access, error_response, message = verify_subscription_feature(username, 'employee_management')
+        return jsonify({'status': 'error', 'message': 'Access denied. Admins only.'}), 403
+    has_access, error_response, _ = verify_subscription_feature(username, 'employee_management')
     if not has_access:
-        return error_response, message
-    if request.method == 'POST':
-        limit_ok, limit_error, message = verify_employee_limit(username)
-        if not limit_ok:
-            return limit_error, message
-        data = request.form
-        employee_id = sanitize_input(data.get('employee_id'))
-        name = sanitize_input(data.get('name'))
-        fingerprint_template = sanitize_input(data.get('fingerprint_template'))
-        photo = request.files.get('photo')
-        photo_url = None
-        if photo:
-            photo_path = os.path.join('static', 'uploads', f"{employee_id}.jpg")
-            os.makedirs(os.path.dirname(photo_path), exist_ok=True)
-            photo.save(photo_path)
-            photo_url = f"/static/uploads/{employee_id}.jpg"
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            try:
-                cursor.execute('INSERT OR REPLACE INTO employees (employee_id, name, fingerprint_template, photo_url) VALUES (?, ?, ?, ?)',
-                               (employee_id, name, fingerprint_template, photo_url))
-                conn.commit()
-                return jsonify({'status': 'success', 'message': 'Employee added successfully'})
-            except sqlite3.Error as e:
-                logger.error(f"Error adding employee: {e}")
-                return jsonify({'status': 'error', 'message': 'Failed to add employee'}), 500
-    else:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            try:
-                cursor.execute('SELECT employee_id, name, fingerprint_template, photo_url FROM sessions')
-                records = cursor.fetchall()
-                return jsonify({'status': 'success', 'employees': [dict(record) for record in records]})
-            except sqlite3.Error as e:
-                logger.error(f"Error retrieving employees: {e}")
-                return jsonify({'status': 'error', 'message': 'Failed to retrieve employee records'}), 500
-
-@app.route('/employees/<employee_id>', methods=['PUT', 'DELETE'])
-@jwt_required()
-def update_delete_employee(employee_id):
-    username = get_jwt_identity()
-    role = 'admin' if username == 'admin' else 'employee'
-    if role != 'admin':
-        return jsonify({'status': 'error', 'message': 'Access denied'}), 403
-    has_access, error_response, message = verify_subscription_feature(username, 'employee_management')
-    if not has_access:
-        return error_response, message
-    employee_id = sanitize_input(employee_id)
+        return error_response
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        try:
-            if request.method == 'PUT':
-                data = request.form
-                name = sanitize_input(data.get('name'))
-                fingerprint_template = sanitize_input(data.get('fingerprint_template'))
-                photo = request.files.get('photo')
-                photo_url = None
-                if photo:
-                    photo_path = os.path.join('static', 'uploads', f"{employee_id}.jpg")
-                    os.makedirs(os.path.dirname(photo_path), exist_ok=True)
-                    photo.save(photo_path)
-                    photo_url = f"/static/uploads/{employee_id}.jpg"
-                cursor.execute('SELECT photo_url FROM employees WHERE employee_id = ?', (employee_id,))
-                existing = cursor.fetchone()
-                photo_url = photo_url or (existing['photo_url'] if existing else None)
-                cursor.execute('UPDATE employees SET name = ?, fingerprint_template = ?, photo_url = ? WHERE employee_id = ?',
-                               (name, fingerprint_template, photo_url, employee_id))
-                conn.commit()
-                return jsonify({'status': 'success', 'message': 'Employee updated successfully'})
-            else:  # DELETE
-                cursor.execute('DELETE FROM employees WHERE employee_id = ?', (employee_id,))
-                cursor.execute('DELETE FROM attendance WHERE employee_id = ?', (employee_id,))
-                conn.commit()
-                return jsonify({'status': 'success', 'message': 'Employee deleted successfully'})
-        except sqlite3.Error as e:
-            logger.error(f"Error in update/delete operation: {e}")
-            return jsonify({'status': 'error', 'message': 'Operation failed due to database error'}), 500
+        cursor.execute('SELECT employee_id, name, email, role, fingerprint_template, photo_url FROM employees WHERE organization_id = ?', (username,))
+        employees = cursor.fetchall()
+        return render_template('employees.html', employees=employees, hasLoggedIn=True, username=username, userRole=role)
+
+
+@app.route('/employees/api', methods=['GET'])
+@jwt_required()
+def get_employees():
+    """
+    API to list all employees for the organization.
+    GET: Returns a JSON list of employees.
+    """
+    username = get_jwt_identity()
+    role = 'admin' if username == 'admin' else 'employee'
+    if role != 'admin':
+        return jsonify({'status': 'error', 'message': 'Access denied. Admins only.'}), 403
+    has_access, error_response, _ = verify_subscription_feature(username, 'employee_management')
+    if not has_access:
+        return error_response
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT employee_id, name, email, role, fingerprint_template, photo_url FROM employees WHERE organization_id = ?', (username,))
+        employees = cursor.fetchall()
+        return jsonify({
+            'status': 'success',
+            'employees': [dict(emp) for emp in employees]
+        })
+        
+
+
+@app.route('/employees/api', methods=['POST'])
+@jwt_required()
+def add_employee():
+    """
+    API to add a new employee.
+    POST: Accepts employee_id, name, fingerprint_template, and optional photo.
+    """
+    username = get_jwt_identity()
+    role = 'admin' if username == 'admin' else 'employee'
+    if role != 'admin':
+        return jsonify({'status': 'error', 'message': 'Access denied. Admins only.'}), 403
+    has_access, error_response, _ = verify_subscription_feature(username, 'employee_management')
+    if not has_access:
+        return error_response
+    limit_ok, limit_error, _ = verify_employee_limit(username)
+    if not limit_ok:
+        return limit_error
+    employee_id = sanitize_input(request.form.get('employee_id'))
+    name = sanitize_input(request.form.get('name'))
+    email = sanitize_input(request.form.get('email', ''))
+    role_field = sanitize_input(request.form.get('role', 'employee'))
+    fingerprint_template = sanitize_input(request.form.get('fingerprint_template'))
+    photo = request.files.get('photo')
+    photo_url = None
+    if not all([employee_id, name, fingerprint_template]):
+        return jsonify({'status': 'error', 'message': 'Employee ID, name, and fingerprint template are required.'}), 400
+    if photo and allowed_file(photo.filename):
+        filename = secure_filename(f"{employee_id}_{photo.filename}")
+        photo_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        photo.save(photo_path)
+        photo_url = f"/static/uploads/{filename}"
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT employee_id FROM employees WHERE employee_id = ?', (employee_id,))
+        if cursor.fetchone():
+            return jsonify({'status': 'error', 'message': 'Employee ID already exists.'}), 400
+        cursor.execute('''
+            INSERT INTO employees (employee_id, name, email, role, fingerprint_template, photo_url, organization_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (employee_id, name, email, role_field, fingerprint_template, photo_url, username))
+        conn.commit()
+        return jsonify({'status': 'success', 'message': 'Employee added successfully.'})
+        
+
+
+@app.route('/employees/api/<employee_id>', methods=['PUT'])
+@jwt_required()
+def edit_employee(employee_id):
+    """
+    API to update an existing employee.
+    PUT: Updates name, email, role, fingerprint_template, and optional photo.
+    """
+    username = get_jwt_identity()
+    role = 'admin' if username == 'admin' else 'employee'
+    if role != 'admin':
+        return jsonify({'status': 'error', 'message': 'Access denied. Admins only.'}), 403
+    has_access, error_response, _ = verify_subscription_feature(username, 'employee_management')
+    if not has_access:
+        return error_response
+    name = sanitize_input(request.form.get('name'))
+    email = sanitize_input(request.form.get('email', ''))
+    role_field = sanitize_input(request.form.get('role', 'employee'))
+    fingerprint_template = sanitize_input(request.form.get('fingerprint_template'))
+    photo = request.files.get('photo')
+    photo_url = None
+    if not all([name, fingerprint_template]):
+        return jsonify({'status': 'error', 'message': 'Name and fingerprint template are required.'}), 400
+    if photo and allowed_file(photo.filename):
+        filename = secure_filename(f"{employee_id}_{photo.filename}")
+        photo_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        photo.save(photo_path)
+        photo_url = f"/static/uploads/{filename}"
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT photo_url FROM employees WHERE employee_id = ? AND organization_id = ?', (employee_id, username))
+        existing = cursor.fetchone()
+        if not existing:
+            return jsonify({'status': 'error', 'message': 'Employee not found.'}), 404
+        update_query = 'UPDATE employees SET name = ?, email = ?, role = ?, fingerprint_template = ?'
+        params = [name, email, role_field, fingerprint_template]
+        if photo_url:
+            update_query += ', photo_url = ?'
+            params.append(photo_url)
+        update_query += ' WHERE employee_id = ? AND organization_id = ?'
+        params.extend([employee_id, username])
+        cursor.execute(update_query, params)
+        conn.commit()
+        return jsonify({'status': 'success', 'message': 'Employee updated successfully.'})
+        
+
+@app.route('/employees/api/<employee_id>', methods=['DELETE'])
+@jwt_required()
+def delete_employee(employee_id):
+    """
+    API to delete an employee.
+    DELETE: Removes employee and associated attendance records.
+    """
+    username = get_jwt_identity()
+    role = 'admin' if username == 'admin' else 'employee'
+    if role != 'admin':
+        return jsonify({'status': 'error', 'message': 'Access denied. Admins only.'}), 403
+    has_access, error_response, _ = verify_subscription_feature(username, 'employee_management')
+    if not has_access:
+        return error_response
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT employee_id FROM employees WHERE employee_id = ? AND organization_id = ?', (employee_id, username))
+        if not cursor.fetchone():
+            return jsonify({'status': 'error', 'message': 'Employee not found.'}), 404
+        cursor.execute('DELETE FROM employees WHERE employee_id = ? AND organization_id = ?', (employee_id, username))
+        cursor.execute('DELETE FROM attendance WHERE employee_id = ?', (employee_id,))
+        conn.commit()
+        return jsonify({'status': 'success', 'message': 'Employee deleted successfully.'})
 
 @app.route('/employees/bulk_import', methods=['POST'])
 @jwt_required()
-def bulk_import():
+def bulk_import_employees():
+    """
+    API to bulk import employees from a CSV file.
+    POST: Accepts a CSV with employee_id, name, fingerprint_template, and optional email, role.
+    """
     username = get_jwt_identity()
     role = 'admin' if username == 'admin' else 'employee'
     if role != 'admin':
-        return jsonify({'status': 'error', 'message': 'Access denied'}), 403
-    has_access, error_response, message = verify_subscription_feature(username, 'bulk_operations')
+        return jsonify({'status': 'error', 'message': 'Access denied. Admins only.'}), 403
+    has_access, error_response, _ = verify_subscription_feature(username, 'employee_management')
     if not has_access:
-        return error_response, message
-    limit_ok, limit_error, message = verify_employee_limit(username)
+        return error_response
+    limit_ok, limit_error, current_count = verify_employee_limit(username)
     if not limit_ok:
-        return limit_error, message
-    if 'file' not in request.files:
-        return jsonify({'status': 'error', 'message': 'No file uploaded'}), 400
-    file = request.files['file']
-    if not file.filename.endswith('.csv'):
-        return jsonify({'status': 'error', 'message': 'File must be a CSV'}), 400
+        return limit_error
+    file = request.files.get('file')
+    if not file or not file.filename.endswith('.csv'):
+        return jsonify({'status': 'error', 'message': 'CSV file required.'}), 400
     try:
         df = pd.read_csv(file)
         required_columns = ['employee_id', 'name', 'fingerprint_template']
         if not all(col in df.columns for col in required_columns):
-            return jsonify({'status': 'error', 'message': 'CSV must contain employee_id, name, and fingerprint_template columns'}), 400
+            return jsonify({'status': 'error', 'message': 'CSV missing required columns: employee_id, name, fingerprint_template'}), 400
         with get_db_connection() as conn:
             cursor = conn.cursor()
+            cursor.execute('SELECT employee_limit FROM subscriptions WHERE organization_id = ?', (username,))
+            employee_limit = cursor.fetchone()['employee_limit']
+            if current_count + len(df) > employee_limit:
+                return jsonify({'status': 'error', 'message': 'Bulk import would exceed employee limit.'}), 403
+            cursor.execute('SELECT employee_id FROM employees WHERE organization_id = ?', (username,))
+            existing_ids = {row['employee_id'] for row in cursor.fetchall()}
+            count = 0
             for _, row in df.iterrows():
-                cursor.execute('INSERT OR REPLACE INTO employees (employee_id, name, fingerprint_template) VALUES (?, ?, ?)',
-                               (sanitize_input(row['employee_id']), sanitize_input(row['name']), sanitize_input(row['fingerprint_template'])))
+                employee_id = str(row['employee_id']).strip()
+                if employee_id in existing_ids:
+                    continue
+                name = sanitize_input(str(row['name']).strip())
+                fingerprint_template = sanitize_input(str(row['fingerprint_template']).strip())
+                email = sanitize_input(str(row.get('email', '')).strip())
+                role_field = sanitize_input(str(row.get('role', 'employee')).strip())
+                cursor.execute('''
+                    INSERT INTO employees (employee_id, name, email, role, fingerprint_template, organization_id)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', (employee_id, name, email, role_field, fingerprint_template, username))
+                count += 1
             conn.commit()
-        return jsonify({'status': 'success', 'message': 'Employees imported successfully'})
+            return jsonify({'status': 'success', 'message': f'{count} employees imported successfully.'})
     except Exception as e:
         logger.error(f"Bulk import error: {str(e)}")
-        return jsonify({'status': 'error', 'message': f'Import failed: {str(e)}'}), 500
+        return jsonify({'error': f'Failed to import employees: {str(e)}'}), 500
 
 @app.route('/employees/bulk_delete', methods=['POST'])
 @jwt_required()
-def bulk_delete():
+def bulk_delete_employees():
+    """
+    API to bulk delete multiple employees.
+    POST: Accepts a JSON array of employee_ids.
+    """
     username = get_jwt_identity()
     role = 'admin' if username == 'admin' else 'employee'
     if role != 'admin':
-        return jsonify({'status': 'error', 'message': 'Access denied'}), 403
-    has_access, error_response, message = verify_subscription_feature(username, 'bulk_operations')
+        return jsonify({'status': 'error', 'message': 'Access denied. Admins only.'}), 403
+    has_access, error_response, _ = verify_subscription_feature(username, 'employee_management')
     if not has_access:
-        return error_response, message
+        return error_response
     data = request.get_json()
-    employee_ids = [sanitize_input(eid) for eid in data.get('employee_ids', [])]
+    employee_ids = data.get('employee_ids', [])
+    if not employee_ids:
+        return jsonify({'status': 'error', 'message': 'No employee IDs provided.'}), 400
     with get_db_connection() as conn:
         cursor = conn.cursor()
-        try:
-            for employee_id in employee_ids:
-                cursor.execute('DELETE FROM employees WHERE employee_id = ?', (employee_id,))
-                cursor.execute('DELETE FROM attendance WHERE employee_id = ?', (employee_id,))
-            conn.commit()
-            return jsonify({'status': 'success', 'message': 'Employees deleted successfully'})
-        except sqlite3.Error as e:
-            logger.error(f"Bulk delete error: {e}")
-            return jsonify({'status': 'error', 'message': 'Delete operation failed'}), 500
+        placeholders = ','.join('?' * len(employee_ids))
+        cursor.execute(f'SELECT employee_id FROM employees WHERE employee_id IN ({placeholders}) AND organization_id = ?', (*employee_ids, username))
+        valid_ids = {row['employee_id'] for row in cursor.fetchall()}
+        if not valid_ids:
+            return jsonify({'status': 'error', 'message': 'No valid employees found.'}), 404
+        cursor.execute(f'DELETE FROM employees WHERE employee_id IN ({placeholders}) AND organization_id = ?', (*employee_ids, username))
+        cursor.execute(f'DELETE FROM attendance WHERE employee_id IN ({placeholders})', employee_ids)
+        conn.commit()
+        return jsonify({'status': 'success', 'message': f'{len(valid_ids)} employees deleted successfully.'})
 
 @app.route('/users', methods=['GET'])
 @jwt_required()

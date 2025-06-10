@@ -1,234 +1,479 @@
 {% extends "dashboard.html" %}
 
-{% block title %}
-{{ config.company_name or 'Hospitality Dashboard' }} - Subscribe
+{% block title %}{{ config.company_name or 'Dashboard' }} - Subscribe{% endblock %}
+
+{% block extra_head %}
+<!-- Stripe SDK -->
+<script src="https://js.stripe.com/v3/"></script>
+<!-- PayPal SDK -->
+<script src="https://www.paypal.com/sdk/js?client-id={{ config.PAYPAL_CLIENT_ID }}&currency=USD"></script>
+<style>
+  .subscription-section {
+    max-width: 600px;
+    margin: 40px auto;
+    padding: 25px;
+    background: var(--card-bg);
+    border-radius: 15px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--dropdown-border);
+  }
+  .subscription-header {
+    text-align: center;
+    margin-bottom: 25px;
+  }
+  .subscription-header h1 {
+    font-size: clamp(1.5rem, 4vw, 1.8rem);
+    font-weight: bold;
+    color: var(--text-color);
+  }
+  .current-plan {
+    background: var(--dropdown-bg);
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 25px;
+  }
+  .current-plan h2 {
+    font-size: clamp(1rem, 3vw, 1.2rem);
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: var(--text-color);
+  }
+  .current-plan p {
+    margin: 5px 0;
+    font-size: clamp(0.85rem, 2.5vw, 0.9rem);
+    color: var(--text-color);
+  }
+  .subscription-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+  .payment-methods {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
+    margin: 25px 0;
+  }
+  .payment-option {
+    flex: 1 1 100px;
+    max-width: 150px;
+    padding: 15px;
+    background: var(--dropdown-bg);
+    border: 2px solid var(--dropdown-border);
+    border-radius: 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.2s, border-color 0.3s, box-shadow 0.3s;
+  }
+  .payment-option:hover {
+    transform: translateY(-2px);
+    border-color: var(--button-bg);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  }
+  .payment-option input {
+    display: none;
+  }
+  .payment-option label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    font-size: clamp(0.85rem, 2.5vw, 0.9rem);
+    font-weight: 600;
+    color: var(--text-color);
+    cursor: pointer;
+    margin: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .payment-option i {
+    font-size: clamp(1.25rem, 3.5vw, 1.5rem);
+    color: var(--button-bg);
+  }
+  .payment-option input:checked + label {
+    background: var(--sidebar-hover-bg);
+    border-radius: 8px;
+    padding: 5px;
+  }
+  #card-element {
+    background: var(--dropdown-bg);
+    color: var(--text-color);
+    border: 1px solid var(--dropdown-border);
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 10px;
+  }
+  #card-errors {
+    color: #dc3545;
+    font-size: clamp(0.8rem, 2vw, 0.85rem);
+    margin-top: 8px;
+    text-align: center;
+  }
+  @media (max-width: 767px) {
+    .subscription-section {
+      margin: 20px 10px;
+      padding: 15px;
+    }
+    .subscription-header h1 {
+      font-size: 1.5rem;
+    }
+    .current-plan h2 {
+      font-size: 1.1rem;
+    }
+    .payment-methods {
+      flex-direction: column;
+      align-items: center;
+    }
+    .payment-option {
+      max-width: 100%;
+      width: 100%;
+    }
+  }
+</style>
 {% endblock %}
 
 {% block content %}
-<!-- Intro Paragraph -->
-<div class="intro-section">
-  <h1>Upgrade Your Plan</h1>
-  <p>Unlock premium features to enhance your hospitality management experience. Choose a plan and payment method below to get started.</p>
-</div>
-
-<div class="container mt-4 mx-auto">
-  <div class="tab-content">
-    <div class="login-section" id="subscriptionSection">
-      <div class="section-title">Subscription Plans</div>
-      <form id="subscriptionForm" method="POST" class="shadow-sm" action="{{ url_for('subscribe') }}">
-        {{ form.hidden_tag() if form else '' }} <!-- CSRF token -->
-        <!-- Plan Selection -->
-        <div class="mb-3">
-          <label for="planType" class="form-label">Select Plan</label>
-          <select class="form-control" id="planType" name="plan_type" required>
-            <option value="">Choose a Plan</option>
-            <option value="starter">Starter - $25/month</option>
-            <option value="pro">Pro - $35/month</option>
-            <option value="enterprise">Enterprise - $99/month</option>
-          </select>
-        </div>
-
-        <!-- Payment Method Selection -->
-        <div class="mb-4">
-          <h3 class="font-weight-bold mb-2">Select Payment Method</h3>
-          <div class="d-flex flex-column gap-2">
-            <label class="d-flex align-items-center">
-              <input type="radio" name="payment_method" value="mpesa" class="me-2" checked>
-              M-Pesa
-            </label>
-            <label class="d-flex align-items-center">
-              <input type="radio" name="payment_method" value="stripe" class="me-2">
-              Card (Visa, Mastercard, etc.)
-            </label>
-            <label class="d-flex align-items-center">
-              <input type="radio" name="payment_method" value="paypal" class="me-2">
-              PayPal
-            </label>
-          </div>
-        </div>
-
-        <!-- M-Pesa Form -->
-        <div id="mpesa-form" class="payment-form">
-          <div class="mb-3">
-            <label for="mpesa_number" class="form-label">Phone Number (e.g., 254712345678)</label>
-            <input type="text" name="mpesa_number" id="mpesa_number" placeholder="254712345678" class="form-control" required>
-          </div>
-          <button type="submit" class="btn btn-custom w-100" id="mpesa-submit-btn">Pay with M-Pesa</button>
-        </div>
-
-        <!-- Card Form (Stripe) -->
-        <div id="card-form" class="payment-form d-none">
-          <button type="submit" class="btn btn-custom w-100" id="card-submit-btn">Pay with Card</button>
-        </div>
-
-        <!-- PayPal Form -->
-        <div id="paypal-form" class="payment-form d-none">
-          <button type="submit" class="btn btn-custom w-100" id="paypal-submit-btn">Pay with PayPal</button>
-          <div id="paypal-loading" class="d-none text-center mt-2">
-            <div class="spinner-border spinner-border-sm" role="status">
-              <span class="visually-hidden">Loading...</span>
-            </div>
-            <span>Redirecting to PayPal...</span>
-          </div>
-        </div>
-      </form>
-    </div>
+<div class="subscription-section">
+  <div class="subscription-header">
+    <h1>Manage Your Subscription</h1>
   </div>
-</div>
-
-<!-- Toast for Notifications -->
-<div class="toast-container position-fixed bottom-0 end-0 p-4">
-  <div id="subscriptionToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-    <div class="toast-header">
-      <strong class="me-auto">Subscription Update</strong>
-      <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-    </div>
-    <div class="toast-body"></div>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+  <div class="current-plan">
+    <h2>Current Plan: {{ subscription.plan | capitalize }}</h2>
+    <p>Employee Limit: {{ subscription.employee_limit }}</p>
+    <p>Start Date: {{ subscription.start_date }}</p>
+    {% if subscription.end_date %}
+      <p>End Date: {{ subscription.end_date }}</p>
+    {% endif %}
   </div>
+  <form id="subscription-form" class="subscription-form" method="POST" action="{{ url_for('subscribe') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="transaction_id" id="transaction-id">
+    <div class="form-group">
+      <label for="plan_type">Select Plan</label>
+      <select name="plan_type" id="plan_type" class="form-control" required>
+        {% for plan, details in subscription_tiers.items() %}
+          <option value="{{ plan }}" {% if plan == subscription.plan %}selected{% endif %}>
+            {{ plan | capitalize }} (${{ details.price }}/month, {{ details.employee_limit }} Employees)
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Payment Method</label>
+      <div class="payment-methods">
+        <div class="payment-option" data-bs-toggle="tooltip" data-bs-placement="top" title="Pay with M-Pesa">
+          <input type="radio" name="payment_method" value="mpesa" id="mpesa" checked>
+          <label for="mpesa">
+            <i class="fas fa-mobile-alt"></i>
+            M-Pesa
+          </label>
+        </div>
+        <div class="payment-option" data-bs-toggle="tooltip" data-bs-placement="top" title="Pay with Credit/Debit Card">
+          <input type="radio" name="payment_method" value="stripe" id="stripe">
+          <label for="stripe">
+            <i class="fas fa-credit-card"></i>
+            Card
+          </label>
+        </div>
+        <div class="payment-option" data-bs-toggle="tooltip" data-bs-placement="top" title="Pay with PayPal">
+          <input type="radio" name="payment_method" value="paypal" id="paypal">
+          <label for="paypal">
+            <i class="fab fa-paypal"></i>
+            PayPal
+          </label>
+        </div>
+      </div>
+    </div>
+    <div id="mpesa-fields" class="form-group">
+      <label for="mpesa_number">M-Pesa Phone Number</label>
+      <input type="text" name="mpesa_number" id="mpesa_number" class="form-control" placeholder="e.g., 2547********">
+    </div>
+    <div id="card-fields" class="form-group" style="display: none;">
+      <label for="card-element">Card Details</label>
+      <div id="card-element"></div>
+      <div id="card-errors" role="alert"></div>
+    </div>
+    <div id="paypal-button-container" class="form-group" style="display: none;"></div>
+    <button type="submit" class="btn btn-custom" id="submit-btn">
+      Upgrade Subscription
+      <i class="fas fa-spinner loading-spinner"></i>
+    </button>
+  </form>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script src="https://js.stripe.com/v3/"></script>
 <script>
-  // Reinitialize theme and navigation (unchanged)
-  const root = document.documentElement;
-  const savedTheme = localStorage.getItem('theme') || 'light';
-  root.setAttribute('data-theme', savedTheme);
-  const themeToggle = document.getElementById('themeToggle');
-  const sidebarThemeToggle = document.getElementById('sidebarThemeToggle');
-  if (themeToggle) themeToggle.querySelector('i').className = savedTheme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
-  if (sidebarThemeToggle) sidebarThemeToggle.querySelector('i').className = savedTheme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('subscribe.html DOM loaded at', new Date().toLocaleString());
 
-  themeToggle?.addEventListener('click', (e) => {
-    e.preventDefault();
-    const currentTheme = root.getAttribute('data-theme');
-    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-    setTheme(newTheme);
-  });
-
-  sidebarThemeToggle?.addEventListener('click', (e) => {
-    e.preventDefault();
-    const currentTheme = root.getAttribute('data-theme');
-    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-    setTheme(newTheme);
-  });
-
-  function setTheme(theme) {
-    root.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
-    if (themeToggle) themeToggle.querySelector('i').className = theme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
-    if (sidebarThemeToggle) sidebarThemeToggle.querySelector('i').className = theme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+  // Initialize Stripe
+  let stripe, elements, cardElement;
+  try {
+    if (typeof Stripe === 'undefined') {
+      console.error('Stripe SDK not loaded. Check network or script src.');
+      document.getElementById('card-errors').textContent = 'Payment system unavailable. Please try again later.';
+      throw new Error('Stripe SDK not loaded');
+    }
+    stripe = Stripe('{{ config.STRIPE_PUBLISHABLE_KEY }}');
+    if (!'{{ config.STRIPE_PUBLISHABLE_KEY }}'.startsWith('pk_')) {
+      console.warn('Invalid Stripe publishable key. Expected format: pk_...');
+    }
+    elements = stripe.elements();
+    cardElement = elements.create('card', {
+      style: {
+        base: {
+          fontSize: '16px',
+          color: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
+          fontFamily: '"Poppins", sans-serif',
+          '::placeholder': {
+            color: getComputedStyle(document.documentElement).getPropertyValue('--dropdown-border').trim(),
+          },
+        },
+        invalid: {
+          color: '#dc3545',
+        },
+      },
+    });
+    const cardElementDiv = document.getElementById('card-element');
+    if (!cardElementDiv) {
+      throw new Error('Card element container not found');
+    }
+    cardElement.mount('#card-element');
+    console.log('Stripe card element mounted successfully');
+  } catch (err) {
+    console.error('Stripe initialization error:', err.message);
+    document.getElementById('card-errors').textContent = 'Failed to load card input: ' + err.message;
   }
 
-  $(document).ready(function() {
-    // Reattach tab and navigation handlers (unchanged)
-    $('#myTab a').on('click', function (e) {
-      e.preventDefault();
-      $(this).tab('show');
-    });
-
-    $('#sidebarEmployeeBtn, #employeeBtn').on('click', function(e) {
-      e.preventDefault();
-      if (!hasLoggedIn) {
-        window.location.href = '/login';
-        return;
+  // Initialize PayPal
+  let paypalInitialized = false;
+  function initPayPal() {
+    try {
+      if (typeof paypal === 'undefined') {
+        console.error('PayPal SDK not loaded. Check network or client-id.');
+        document.getElementById('card-errors').textContent = 'PayPal unavailable. Please try again later.';
+        throw new Error('PayPal SDK not loaded');
       }
-      $('#myTab a[href="#employee-tab"]').tab('show');
-      closeSidebarIfOpen?.();
-    });
-
-    $('#sidebarBookingBtn, #bookingBtn').on('click', function(e) {
-      e.preventDefault();
-      if (!hasLoggedIn) {
-        window.location.href = '/login';
-        return;
+      if (!document.getElementById('paypal-button-container')) {
+        throw new Error('PayPal button container not found');
       }
-      $('#myTab a[href="#booking-tab"]').tab('show');
-      closeSidebarIfOpen?.();
-    });
-
-    $('#sidebarGuestBtn, #guestBtn').on('click', function(e) {
-      e.preventDefault();
-      if (!hasLoggedIn) {
-        window.location.href = '/login';
-        return;
-      }
-      $('#myTab a[href="#guest-tab"]').tab('show');
-      closeSidebarIfOpen?.();
-    });
-
-    // Subscription-specific script
-    const planTypeSelect = document.getElementById('planType');
-    const paymentMethodRadios = document.querySelectorAll('input[name="payment_method"]');
-    const mpesaForm = document.getElementById('mpesa-form');
-    const cardForm = document.getElementById('card-form');
-    const paypalForm = document.getElementById('paypal-form');
-    const subscriptionForm = document.getElementById('subscriptionForm');
-    const mpesaSubmitBtn = document.getElementById('mpesa-submit-btn');
-    const cardSubmitBtn = document.getElementById('card-submit-btn');
-    const paypalSubmitBtn = document.getElementById('paypal-submit-btn');
-    const paypalLoading = document.getElementById('paypal-loading');
-
-    // Show/hide payment forms based on selected method
-    paymentMethodRadios.forEach(radio => {
-      radio.addEventListener('change', () => {
-        mpesaForm.classList.add('d-none');
-        cardForm.classList.add('d-none');
-        paypalForm.classList.add('d-none');
-        if (radio.value === 'mpesa') {
-          mpesaForm.classList.remove('d-none');
-        } else if (radio.value === 'stripe') {
-          cardForm.classList.remove('d-none');
-        } else if (radio.value === 'paypal') {
-          paypalForm.classList.remove('d-none');
+      paypal.Buttons({
+        style: {
+          layout: 'vertical',
+          color: 'blue',
+          shape: 'pill',
+          label: 'paypal',
+        },
+        createOrder: (data, actions) => {
+          const planType = document.getElementById('plan_type').value;
+          const prices = {
+            {% for plan, details in subscription_tiers.items() %}
+              "{{ plan }}": {{ details.price }},
+            {% endfor %}
+          };
+          if (!prices[planType]) {
+            throw new Error(`Invalid plan type: ${planType}`);
+          }
+          console.log('Creating PayPal order for plan:', planType, 'Price:', prices[planType]);
+          return actions.order.create({
+            purchase_units: [{
+              amount: {
+                value: prices[planType].toFixed(2),
+                currency_code: 'USD'
+              },
+              description: `Subscription to ${planType} plan`
+            }],
+            application_context: {
+              shipping_preference: 'NO_SHIPPING'
+            }
+          });
+        },
+        onApprove: (data, actions) => {
+          console.log('PayPal order approved:', data.orderID);
+          return actions.order.capture().then(details => {
+            console.log('PayPal capture details:', details);
+            document.getElementById('transaction-id').value = data.orderID;
+            document.getElementById('subscription-form').submit();
+          }).catch(err => {
+            console.error('PayPal capture error:', err);
+            document.getElementById('card-errors').textContent = 'PayPal error: ' + err.message;
+          });
+        },
+        onError: err => {
+          console.error('PayPal button error:', err);
+          document.getElementById('card-errors').textContent = 'PayPal error: ' + err.message;
         }
+      }).render('#paypal-button-container').then(() => {
+        console.log('PayPal button rendered successfully');
+        paypalInitialized = true;
+      }).catch(err => {
+        console.error('PayPal render error:', err);
+        document.getElementById('card-errors').textContent = 'Failed to load PayPal button: ' + err.message;
       });
-    });
+    } catch (err) {
+      console.error('PayPal initialization error:', err.message);
+      document.getElementById('card-errors').textContent = 'PayPal initialization failed: ' + err.message;
+    }
+  }
 
-    // Restrict M-Pesa number to valid Kenyan format (e.g., 254712345678)
-    document.getElementById('mpesa_number')?.addEventListener('input', (e) => {
-      e.target.value = e.target.value.replace(/[^0-9]/g, '');
-      if (e.target.value.length > 12) {
-        e.target.value = e.target.value.slice(0, 12);
-      }
-      if (!e.target.value.startsWith('254')) {
-        e.target.value = '254' + e.target.value;
-      }
-      if (e.target.value.length > 3 && !e.target.value.match(/^254[0-9]{9}$/)) {
-        e.target.setCustomValidity('Please enter a valid Kenyan number (e.g., 254712345678)');
-      } else {
-        e.target.setCustomValidity('');
-      }
-    });
+  // Handle payment method selection
+  const paymentMethodsContainer = document.querySelector('.payment-methods');
+  const mpesaFields = document.getElementById('mpesa-fields');
+  const cardFields = document.getElementById('card-fields');
+  const paypalButtonContainer = document.getElementById('paypal-button-container');
 
-    // Handle form submission
-    subscriptionForm.addEventListener('submit', (e) => {
-      const planType = planTypeSelect.value;
-      const paymentMethod = document.querySelector('input[name="payment_method"]:checked').value;
-      const mpesaNumber = document.getElementById('mpesa_number')?.value;
+  if (!paymentMethodsContainer) {
+    console.error('Payment methods container not found');
+    document.getElementById('card-errors').textContent = 'Payment options unavailable. Please refresh the page.';
+    return;
+  }
 
-      if (!planType || !paymentMethod) {
-        e.preventDefault();
-        alert('Please select a plan and payment method.');
+  paymentMethodsContainer.addEventListener('change', (e) => {
+    if (e.target.name === 'payment_method') {
+      const method = e.target.value;
+      console.log('Payment method selected:', method);
+      mpesaFields.style.display = method === 'mpesa' ? 'block' : 'none';
+      cardFields.style.display = method === 'stripe' ? 'block' : 'none';
+      paypalButtonContainer.style.display = method === 'paypal' ? 'block' : 'none';
+      if (method === 'paypal' && !paypalInitialized) {
+        console.log('Initializing PayPal buttons on first selection');
+        initPayPal();
+      }
+    }
+  });
+
+  // Trigger initial state
+  const checkedMethod = document.querySelector('input[name="payment_method"]:checked');
+  if (checkedMethod) {
+    console.log('Initial payment method:', checkedMethod.value);
+    mpesaFields.style.display = checkedMethod.value === 'mpesa' ? 'block' : 'none';
+    cardFields.style.display = checkedMethod.value === 'stripe' ? 'block' : 'none';
+    paypalButtonContainer.style.display = checkedMethod.value === 'paypal' ? 'block' : 'none';
+  }
+
+  // Initialize tooltips
+  const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+  tooltipTriggerList.forEach(el => {
+    try {
+      new bootstrap.Tooltip(el, { trigger: 'hover' });
+    } catch (err) {
+      console.warn('Tooltip initialization failed for element:', el, err);
+    }
+  });
+
+  // Handle form submission
+  const submitBtn = document.getElementById('submit-btn');
+  const loadingSpinner = submitBtn.querySelector('.loading-spinner');
+  const form = document.getElementById('subscription-form');
+
+  if (!form) {
+    console.error('Subscription form not found');
+    document.getElementById('card-errors').textContent = 'Form unavailable. Please refresh the page.';
+    return;
+  }
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const paymentMethod = document.querySelector('input[name="payment_method"]:checked')?.value;
+    if (!paymentMethod) {
+      console.error('No payment method selected');
+      document.getElementById('card-errors').textContent = 'Please select a payment method.';
+      return;
+    }
+
+    submitBtn.disabled = true;
+    loadingSpinner.classList.add('active');
+    console.log('Form submission started for payment method:', paymentMethod);
+
+    try {
+      if (paymentMethod === 'stripe') {
+        if (!stripe || !cardElement) {
+          throw new Error('Stripe not initialized');
+        }
+        console.log('Processing Stripe payment...');
+        const { error, paymentMethod } = await stripe.createPaymentMethod({
+          type: 'card',
+          card: cardElement,
+        });
+        if (error) {
+          console.error('Stripe error:', error.message);
+          document.getElementById('card-errors').textContent = error.message;
+          throw error;
+        }
+        console.log('Stripe payment method created:', paymentMethod.id);
+        document.getElementById('transaction-id').value = paymentMethod.id;
+        form.submit();
+      } else if (paymentMethod === 'paypal') {
+        console.log('PayPal submission handled by onApprove callback');
+        if (!paypalInitialized) {
+          console.warn('PayPal buttons not initialized yet');
+          document.getElementById('card-errors').textContent = 'PayPal not ready. Please select PayPal again.';
+        }
+        submitBtn.disabled = false;
+        loadingSpinner.classList.remove('active');
         return;
+      } else if (paymentMethod === 'mpesa') {
+        const mpesaNumber = document.getElementById('mpesa_number').value;
+        if (!mpesaNumber.match(/^2547\d{8}$/)) {
+          console.error('Invalid M-Pesa number:', mpesaNumber);
+          document.getElementById('card-errors').textContent = 'Invalid M-Pesa number (e.g., 2547********)';
+          throw new Error('Invalid M-Pesa number');
+        }
+        console.log('M-Pesa number validated:', mpesaNumber);
+        form.submit();
       }
+    } catch (err) {
+      console.error('Form submission error:', err.message);
+      document.getElementById('card-errors').textContent = 'Error processing payment: ' + err.message;
+    } finally {
+      submitBtn.disabled = false;
+      loadingSpinner.classList.remove('active');
+    }
+  });
 
-      if (paymentMethod === 'mpesa' && (!mpesaNumber || !mpesaNumber.match(/^254[0-9]{9}$/))) {
-        e.preventDefault();
-        alert('Please enter a valid phone number in the format 254XXXXXXXXXX.');
-        return;
-      }
+  // Theme synchronization
+  function updateCardElementStyle() {
+    const theme = document.documentElement.getAttribute('data-theme') || 'light';
+    const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
+    const placeholderColor = getComputedStyle(document.documentElement).getPropertyValue('--dropdown-border').trim();
+    console.log('Updating card element for theme:', theme);
+    if (cardElement) {
+      cardElement.update({
+        style: {
+          base: {
+            color: textColor,
+            '::placeholder': {
+              color: placeholderColor,
+            },
+          },
+        },
+      });
+    }
+  }
 
-      // Disable submit buttons during processing
-      mpesaSubmitBtn.disabled = paymentMethod === 'mpesa';
-      cardSubmitBtn.disabled = paymentMethod === 'stripe';
-      paypalSubmitBtn.disabled = paymentMethod === 'paypal';
-      if (paymentMethod === 'paypal') {
-        paypalLoading.classList.remove('d-none');
-        paypalSubmitBtn.textContent = 'Processing...';
+  const themeObserver = new MutationObserver(mutations => {
+    mutations.forEach(mutation => {
+      if (mutation.attributeName === 'data-theme') {
+        console.log('Theme changed to:', document.documentElement.getAttribute('data-theme'));
+        updateCardElementStyle();
       }
     });
   });
+  themeObserver.observe(document.documentElement, { attributes: true });
+
+  const savedTheme = localStorage.getItem('theme') || 'light';
+  console.log('Initial theme applied:', savedTheme);
+  document.documentElement.setAttribute('data-theme', savedTheme);
+  updateCardElementStyle();
+});
 </script>
 {% endblock %}
