@@ -1,48 +1,210 @@
-{% extends "dashboard.html" %}
+{% extends "base.html" %}
 
-{% block title %}Guest Records - {{ config.company_name or 'Hospitality Dashboard' }}{% endblock %}
+{% block title %}Guest Records - {{ config.company_name or 'Hospitality' }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  .guest-section {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  .section-header {
+    margin-bottom: 20px;
+  }
+  .section-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-color);
+  }
+  .table-wrapper {
+    max-height: 50vh;
+    overflow-y: auto;
+    background: var(--table-bg);
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--dropdown-border);
+  }
+  table.table-striped {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  table thead {
+    background: var(--table-header-bg);
+    color: var(--table-header-text);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+  table th, table td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--dropdown-border);
+  }
+  table th {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  table tr:hover {
+    background: var(--dropdown-hover-bg);
+  }
+  .action-btn {
+    font-size: 1.2rem;
+    cursor: pointer;
+    background: none;
+    border: none;
+    color: var(--text-color);
+    padding: 8px;
+    transition: transform 0.2s;
+  }
+  .action-btn:hover {
+    transform: scale(1.2);
+  }
+  @media (max-width: 767px) {
+    .guest-section {
+      padding: 15px;
+    }
+    .table-wrapper {
+      max-height: 40vh;
+      padding: 10px;
+    }
+    table th, table td {
+      padding: 8px 10px;
+      font-size: 0.9rem;
+    }
+  }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="container mt-4 mx-auto">
-    <div class="tab-content">
-        <div class="guest-section">
-            <div class="d-flex justify-content-between align-items-center section-header">
-                <div class="section-title">Guest Records</div>
-                <div class="d-flex align-items-center gap-3">
-                    <a href="/sync_channels" class="action-btn" data-bs-toggle="tooltip" data-bs-placement="top" title="Sync with OTAs/PMS">
-                        <i class="fas fa-sync"></i>
-                    </a>
-                </div>
-            </div>
-            <div class="table-wrapper shadow-sm rounded">
-                <table class="table table-striped align-middle">
-                    <thead>
-                        <tr>
-                            <th>Guest ID</th>
-                            <th>Name</th>
-                            <th>Room</th>
-                            <th>Check-In Date</th>
-                            <th>Check-Out Date</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="guest-table-body">
-                        {% for record in records %}
-                        <tr>
-                            <td>{{ record.guest_id or 'N/A' }}</td>
-                            <td>{{ record.name or 'N/A' }}</td>
-                            <td>{{ record.room_id or 'N/A' }}</td>
-                            <td>{{ record.check_in_date or '-' }}</td>
-                            <td>{{ record.check_out_date or '-' }}</td>
-                            <td>{{ record.status or 'N/A' }}</td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="6">No guest records available.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+  <div class="tab-content">
+    <div class="guest-section">
+      <div class="d-flex justify-content-between align-items-center section-header">
+        <div class="section-title">Guest Records</div>
+        <div class="d-flex align-items-center gap-3">
+          <button class="action-btn" id="syncChannelsBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Sync with OTAs/PMS">
+            <i class="fas fa-sync"></i>
+          </button>
         </div>
+      </div>
+      <div class="table-wrapper shadow-sm rounded">
+        <table class="table table-striped align-middle">
+          <thead>
+            <tr>
+              <th>Guest ID</th>
+              <th>Name</th>
+              <th>Room</th>
+              <th>Check-In Date</th>
+              <th>Check-Out Date</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="guest-table-body">
+            {% for record in records %}
+            <tr>
+              <td>{{ record.guest_id or 'N/A' }}</td>
+              <td>{{ record.name or 'N/A' }}</td>
+              <td>{{ record.room_id or 'N/A' }}</td>
+              <td>{{ record.check_in_date or '-' }}</td>
+              <td>{{ record.check_out_date or '-' }}</td>
+              <td>{{ record.status or 'N/A' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6">No guest records available.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
+  </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+  }
+
+  const syncChannelsBtn = document.getElementById('syncChannelsBtn');
+  const guestTableBody = document.getElementById('guest-table-body');
+  let token = getCookie('access_token_cookie');
+
+  async function loadGuestRecords() {
+    if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'guest')) {
+      showToast('Access denied.');
+      window.location.href = '/';
+      return;
+    }
+    try {
+      const response = await fetch('/guest_records', {
+        headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+        credentials: 'include'
+      });
+      const data = await response.json();
+      guestTableBody.innerHTML = '';
+      if (data.status === 'success' && data.records?.length) {
+        data.records.forEach(record => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${record.guest_id || 'N/A'}</td>
+            <td>${record.name || 'N/A'}</td>
+            <td>${record.room_id || 'N/A'}</td>
+            <td>${record.check_in_date || '-'}</td>
+            <td>${record.check_out_date || '-'}</td>
+            <td>${record.status || 'N/A'}</td>
+          `;
+          guestTableBody.appendChild(row);
+        });
+      } else {
+        guestTableBody.innerHTML = '<tr><td colspan="6">No guest records found.</td></tr>';
+      }
+    } catch (error) {
+      console.error('Error loading guest records:', error);
+      guestTableBody.innerHTML = '<tr><td colspan="6">Error loading records.</td></tr>';
+      showToast('Error loading guest records.');
+    }
+  }
+
+  syncChannelsBtn.addEventListener('click', async () => {
+    if (!hasLoggedIn || userRole !== 'admin') {
+      showToast('Access denied. Admins only.');
+      return;
+    }
+    try {
+      const response = await fetch('/sync_channels', {
+        headers: { 'Authorization': `Bearer ${token}` },
+        credentials: 'include'
+      });
+      const data = await response.json();
+      if (data.status === 'success') {
+        showToast(data.message || 'Channels synced successfully.');
+        loadGuestRecords();
+      } else {
+        showToast(data.message || 'Failed to sync channels.');
+      }
+    } catch (error) {
+      console.error('Sync error:', error);
+      showToast('Error syncing channels.');
+    }
+  });
+
+  // Initialize
+  $(document).ready(() => {
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    const tooltipList = [...tooltipTriggerList].map(trigger => new bootstrap.Tooltip(trigger));
+    if (!token || !hasLoggedIn || (userRole !== 'admin' && userRole !== 'guest')) {
+      window.location.href = '/';
+    } else {
+      loadGuestRecords();
+    }
+  });
+</script>
 {% endblock %}

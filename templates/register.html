@@ -1,13 +1,84 @@
-{% extends "dashboard.html" %}
+{% extends "base.html" %}
 
 {% block title %}
-{{ config.company_name or 'Hospitality Dashboard' }} - Register
+{{ config.company_name or 'Hospitality' }} - Register
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  .register-section {
+    max-width: 450px;
+    margin: 40px auto;
+    padding: 20px;
+    background: var(--table-bg);
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--dropdown-border);
+  }
+  .register-section h2 {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: var(--text-color);
+    text-align: center;
+  }
+  .btn-custom {
+    background: var(--upgrade-btn-bg);
+    color: #fff;
+    border-radius: 25px;
+    padding: 10px;
+    font-weight: 600;
+    transition: transform 0.2s, box-shadow 0.3s;
+  }
+  .btn-custom:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.5);
+  }
+  .alert {
+    border-radius: 8px;
+    margin-bottom: 20px;
+  }
+  .alert-success {
+    background: rgba(40, 167, 69, 0.1);
+    color: #28a745;
+    border-color: #28a745;
+  }
+  .alert-danger {
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+    border-color: #dc3545;
+  }
+  .text-center a {
+    color: var(--button-bg);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .text-center a:hover {
+    text-decoration: underline;
+  }
+  #registerMessage {
+    font-size: 1rem;
+    margin-top: 15px;
+  }
+  @media (max-width: 767px) {
+    .register-section {
+      margin: 20px auto;
+      padding: 15px;
+    }
+    .register-section h2 {
+      font-size: 1.5rem;
+    }
+    .btn-custom {
+      padding: 8px;
+      font-size: 0.9rem;
+    }
+  }
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="container mt-4 mx-auto">
   <div class="tab-content">
-    <div class="login-section">
+    <div class="register-section">
       <h2 class="mb-4">Register</h2>
       <!-- Display flash messages -->
       {% with messages = get_flashed_messages(with_categories=true) %}
@@ -20,8 +91,8 @@
           {% endfor %}
         {% endif %}
       {% endwith %}
-      <form id="registerForm" method="POST" action="{{ url_for('register') }}" class="shadow-sm p-4">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <form id="registerFormData" method="POST" action="{{ url_for('register') }}" class="p-4">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="mb-3">
           <label for="username" class="form-label">Username</label>
           <input type="text" class="form-control" id="username" name="username" placeholder="Username" required>
@@ -49,55 +120,41 @@
     </div>
   </div>
 </div>
-
-<!-- Toast for Notifications -->
-<div class="toast-container position-fixed bottom-0 end-0 p-4">
-  <div id="registerToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-    <div class="toast-header">
-      <strong class="me-auto">Registration</strong>
-      <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-    </div>
-    <div class="toast-body"></div>
-  </div>
-</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-  const registerForm = document.getElementById('registerForm');
+  const registerForm = document.getElementById('registerFormData');
   const registerMessage = document.getElementById('registerMessage');
-  const registerToast = new bootstrap.Toast(document.getElementById('registerToast'));
 
-  registerForm.addEventListener('submit', (e) => {
+  registerForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const formData = new FormData(registerForm);
-    fetch('/register', {
-      method: 'POST',
-      body: formData,
-      credentials: 'include'
-    })
-    .then(response => {
+    try {
+      const response = await fetch('/register', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
+      });
       if (response.redirected) {
-        window.location.href = response.url; // Follow the redirect to /login
+        window.location.href = response.url; // Follow redirect to /login
       } else {
-        return response.json();
-      }
-    })
-    .then(data => {
-      if (data) {
+        const data = await response.json();
         registerMessage.textContent = data.message || 'Registration failed';
         registerMessage.style.color = 'red';
-        document.querySelector('#registerToast .toast-body').textContent = data.message || 'Registration failed';
-        registerToast.show();
+        showToast(data.message || 'Registration failed');
       }
-    })
-    .catch(error => {
+    } catch (error) {
       console.error('Error during registration:', error);
       registerMessage.textContent = 'An error occurred. Please try again.';
       registerMessage.style.color = 'red';
-      document.querySelector('#registerToast .toast-body').textContent = 'An error occurred. Please try again.';
-      registerToast.show();
-    });
+      showToast('An error occurred. Please try again.');
+    }
+  });
+
+  // Initialize
+  $(document).ready(() => {
+    updateAuthUI(); // From base.html
   });
 </script>
 {% endblock %}

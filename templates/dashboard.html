@@ -1,1381 +1,1160 @@
-<!DOCTYPE html>
-<html lang="en" data-theme="light">
-  <head>
-    <meta charset="UTF-8">
-    <title>{% block title %}{{ config.company_name or 'Hospitality Dashboard' }} Dashboard{% endblock %}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
-    {% block extra_head %}{% endblock %}
-    <style>
-      :root[data-theme='light'] {
-        --bg-color: #f8f9fa;
-        --text-color: #212529;
-        --header-bg: {{ config['theme']['primary_color'] or '#007bff' }};
-        --header-text: #fff;
-        --table-bg: #fff;
-        --table-header-bg: {{ config['theme']['primary_color'] or '#007bff' }};
-        --table-header-text: #fff;
-        --button-bg: {{ config['theme']['primary_color'] or '#007bff' }};
-        --button-text: #fff;
-        --modal-bg: rgba(255, 255, 255, 0.9);
-        --modal-text: #212529;
-        --upgrade-btn-bg: linear-gradient(90deg, #007bff, #00c4ff);
-        --dropdown-bg: #fff;
-        --dropdown-border: #ced4da;
-        --dropdown-hover-bg: #e9ecef;
-        --sidebar-bg: rgba(255, 255, 255, 0.9);
-        --sidebar-text: #212529;
-        --sidebar-hover-bg: rgba(200, 200, 200, 0.2);
-      }
-      :root[data-theme='dark'] {
-        --bg-color: #121212;
-        --text-color: #e0e0e0;
-        --header-bg: {{ config['theme']['secondary_color'] or '#0056b3' }};
-        --header-text: #e0e0e0;
-        --table-bg: #1e1e1e;
-        --table-header-bg: {{ config['theme']['secondary_color'] or '#0056b3' }};
-        --table-header-text: #e0e0e0;
-        --button-bg: {{ config['theme']['primary_color'] or '#007bff' }};
-        --button-text: #fff;
-        --modal-bg: rgba(42, 42, 42, 0.9);
-        --modal-text: #e0e0e0;
-        --upgrade-btn-bg: linear-gradient(90deg, #0056b3, #00aaff);
-        --dropdown-bg: #444;
-        --dropdown-border: #666;
-        --dropdown-hover-bg: #555;
-        --sidebar-bg: rgba(30, 30, 30, 0.9);
-        --sidebar-text: #e0e0e0;
-        --sidebar-hover-bg: rgba(255, 255, 255, 0.1);
-      }
-      body {
-        background-color: var(--bg-color);
-        color: var(--text-color);
-        transition: background-color 0.3s, color 0.3s;
-        margin: 0;
-        padding: 0;
-        font-family: 'Poppins', sans-serif;
-        display: flex;
-        min-height: 100vh;
-      }
-      .header {
-        background-color: var(--header-bg);
-        color: var(--header-text);
-        padding: 20px;
-        text-align: center;
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-        width: 100%;
-        box-sizing: border-box;
-        margin-bottom: 20px;
-      }
-      .logo {
-        max-height: 60px;
-        margin-bottom: 10px;
-      }
-      .table-wrapper {
-        max-height: 50vh;
-        overflow-y: auto;
-        background-color: var(--table-bg);
-        padding: 15px;
-        border-radius: 10px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        border: 1px solid var(--dropdown-border);
-      }
-      table.table-striped {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 0;
-      }
-      table thead {
-        background-color: var(--table-header-bg);
-        color: var(--table-header-text);
-        position: sticky;
-        top: 0;
-        z-index: 1;
-      }
-      table th, table td {
-        padding: 10px 12px;
-        text-align: left;
-        border-bottom: 1px solid var(--dropdown-border);
-      }
-      table th {
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-      table tr:hover {
-        background-color: var(--dropdown-hover-bg);
-        transition: background-color 0.2s;
-      }
-      table tr:last-child td {
-        border-bottom: none;
-      }
-      .btn-custom {
-        background: var(--upgrade-btn-bg);
-        color: #fff;
-        border: none;
-        border-radius: 25px;
-        padding: 10px 25px;
-        font-weight: 600;
-        transition: transform 0.2s, box-shadow 0.3s;
-        box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
-      }
-      .btn-custom:hover {
-        transform: scale(1.05);
-        box-shadow: 0 4px 12px rgba(0, 123, 255, 0.5);
-      }
-      .main-content {
-        display: flex;
-        flex-direction: column;
-        width: 100%;
-        box-sizing: border-box;
-        align-items: center;
-        transition: margin-left 0.3s ease;
-        position: relative;
-      }
-      .footer {
-        font-size: 0.85rem;
-        margin-top: 40px;
-        text-align: center;
-        width: 100%;
-        box-sizing: border-box;
-        padding-bottom: 20px;
-      }
-      .nav-buttons {
-        position: absolute;
-        top: 20px;
-        right: 20px;
-        display: flex;
-        gap: 15px;
-      }
-      .nav-btn {
-        color: var(--header-text);
-        font-size: 1.2rem;
-        cursor: pointer;
-        background: rgba(255, 255, 255, 0.1);
-        border: none;
-        padding: 8px;
-        border-radius: 50%;
-        transition: transform 0.2s, background 0.2s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 40px;
-        height: 40px;
-      }
-      .nav-btn:hover {
-        transform: scale(1.1);
-        background: rgba(255, 255, 255, 0.2);
-      }
-      .login-section {
-        max-width: 450px;
-        margin: 20px auto;
-      }
-      .action-btn {
-        font-size: 1.2rem;
-        cursor: pointer;
-        background: none;
-        border: none;
-        color: var(--text-color);
-        padding: 8px;
-        transition: transform 0.2s;
-      }
-      .action-btn:hover {
-        transform: scale(1.2);
-      }
-      .attendance-records .action-btn {
-        font-size: 1rem;
-        padding: 6px;
-      }
-      .hidden { display: none; }
-      .tab-content {
-        width: 90%;
-        max-width: 1000px;
-      }
-      #myTabContent {
-        margin-top: 2rem;
-      }
-      .section-header {
-        margin-bottom: 20px;
-      }
-      .section-title {
-        font-size: 1.1rem;
-        font-weight: 600;
-        margin-bottom: 0;
-      }
-      .gap-3 {
-        gap: 15px !important;
-      }
-      .gap-2 {
-        gap: 10px !important;
-      }
-      .sidebar {
-        width: 250px;
-        background: var(--sidebar-bg);
-        border-radius: 0 15px 15px 0;
-        padding: 20px;
-        box-shadow: 2px 0 15px rgba(0, 0, 0, 0.2);
-        position: fixed;
-        top: 0;
-        left: -250px;
-        height: 100%;
-        transition: left 0.3s ease;
-        z-index: 2000;
-        color: var(--sidebar-text);
-      }
-      .sidebar.visible {
-        left: 0;
-      }
-      .sidebar-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-        padding: 0 10px;
-      }
-      .sidebar-header h4 {
-        margin: 0;
-        font-size: 1.4rem;
-        font-weight: 600;
-      }
-      .sidebar-btn {
-        background: none;
-        border: none;
-        color: var(--sidebar-text);
-        font-size: 1.4rem;
-        cursor: pointer;
-        transition: transform 0.2s;
-        padding: 5px;
-      }
-      .sidebar-btn:hover {
-        transform: scale(1.1);
-      }
-      .sidebar-nav {
-        list-style: none;
-        padding: 0 10px;
-        margin: 0;
-      }
-      .sidebar-nav li {
-        margin-bottom: 10px;
-      }
-      .sidebar-nav a, .sidebar-nav button {
-        background: transparent;
-        border: none;
-        color: var(--sidebar-text);
-        font-size: 1rem;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 10px;
-        width: 100%;
-        text-align: left;
-        border-radius: 8px;
-        text-decoration: none;
-        transition: background 0.2s, transform 0.2s;
-        font-weight: 600;
-      }
-      .sidebar-nav a:hover, .sidebar-nav button:hover {
-        background: var(--sidebar-hover-bg);
-        transform: translateX(5px);
-      }
-      .main-content.shifted {
-        margin-left: 250px;
-      }
-      .menu-toggle {
-        position: fixed;
-        top: 15px;
-        left: 15px;
-        background: rgba(0, 0, 0, 0.5);
-        border: none;
-        color: #fff;
-        font-size: 1.4rem;
-        z-index: 1100;
-        padding: 8px;
-        border-radius: 5px;
-        transition: transform 0.2s, background 0.2s;
-        display: block;
-      }
-      .menu-toggle:hover {
-        transform: scale(1.1);
-        background: rgba(0, 0, 0, 0.7);
-      }
-      .nav-tabs .nav-link {
-        background: linear-gradient(135deg, var(--header-bg), rgba(255, 255, 255, 0.1));
-        color: var(--header-text);
-        border: none;
-        border-radius: 8px;
-        padding: 10px 20px;
-        margin-right: 10px;
-        font-weight: 600;
-        transition: background 0.3s, transform 0.2s;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      }
-      .nav-tabs .nav-link.active {
-        background: linear-gradient(135deg, var(--header-bg), rgba(255, 255, 255, 0.3));
-        color: var(--header-text);
-        font-weight: 600;
-      }
-      .nav-tabs .nav-link:hover {
-        background: linear-gradient(135deg, var(--header-bg), rgba(255, 255, 255, 0.2));
-        transform: translateY(-2px);
-      }
-      @media (max-width: 767px) {
-        .sidebar {
-          left: -250px;
-          width: 200px;
-        }
-        .sidebar.visible {
-          left: 0;
-        }
-        .main-content {
-          margin-left: 0;
-        }
-        .main-content.shifted {
-          margin-left: 0;
-        }
-        .header {
-          padding: 15px;
-        }
-        .nav-buttons {
-          top: 15px;
-          right: 15px;
-          gap: 10px;
-        }
-        .nav-buttons.d-md-flex {
-          display: none !important;
-        }
-        .tab-content {
-          width: 95%;
-        }
-        .table-wrapper {
-          max-height: 40vh;
-          padding: 10px;
-        }
-        table th, table td {
-          padding: 8px 10px;
-          font-size: 0.9rem;
-        }
-        .btn-custom {
-          padding: 8px 20px;
-          font-size: 0.9rem;
-        }
-        .nav-tabs .nav-link {
-          padding: 8px 15px;
-          margin-right: 0;
-          margin-bottom: 10px;
-          width: 100%;
-        }
-        .nav-tabs .nav-item {
-          width: 100%;
-        }
-        .nav-tabs {
-          flex-direction: column;
-          gap: 0;
-        }
-        .menu-toggle {
-          display: block;
-        }
-      }
-      @media (min-width: 768px) {
-        .sidebar {
-          left: -250px;
-        }
-        .sidebar.visible {
-          left: 0;
-        }
-        .main-content {
-          margin-left: 0;
-        }
-        .main-content.shifted {
-          margin-left: 250px;
-        }
-        .nav-buttons.d-md-flex {
-          display: flex !important;
-        }
-        .nav-tabs {
-          flex-direction: row;
-          gap: 10px;
-          justify-content: center;
-        }
-        .menu-toggle {
-          display: block;
-        }
-      }
-      .qr-code-container {
-        margin-top: 20px;
-        text-align: center;
-      }
-      .intro-section {
-        text-align: center;
-        padding: 20px 15px;
-        max-width: 800px;
-        margin: 0 auto 40px auto;
-        color: var(--text-color);
-        font-size: 1.2rem;
-      }
-      @media (max-width: 767px) {
-        .intro-section {
-          font-size: 1rem;
-          padding: 15px;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <button class="menu-toggle" id="menuToggle">
-      <i class="fas fa-bars"></i>
-    </button>
+{% extends 'base.html' %}
 
-    <div class="sidebar" id="sidebar">
-      <div class="sidebar-header">
-        <h4>Menu</h4>
-        <button class="sidebar-btn" id="closeSidebar">
-          <i class="fas fa-times"></i>
+{% block title %}
+{{ config.company_name or 'Hospitality' }} Dashboard
+{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+<style>
+  .table-wrapper {
+    max-height: 50vh;
+    overflow-y: auto;
+    background-color: var(--table-bg);
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--dropdown-border);
+  }
+  table.table-striped {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  table thead {
+    background-color: var(--table-header-bg);
+    color: var(--table-header-text);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+  table th, table td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--dropdown-border);
+  }
+  table th {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  table tr:hover {
+    background-color: var(--dropdown-hover-bg);
+    transition: background-color 0.2s;
+  }
+  table tr:last-child td {
+    border-bottom: none;
+  }
+  .login-section {
+    max-width: 450px;
+    margin: 20px auto;
+  }
+  .action-btn {
+    font-size: 1.2rem;
+    cursor: pointer;
+    background: none;
+    border: none;
+    color: var(--text-color);
+    padding: 8px;
+    transition: transform 0.2s;
+  }
+  .action-btn:hover {
+    transform: scale(1.2);
+  }
+  .attendance-records .action-btn {
+    font-size: 1rem;
+    padding: 6px;
+  }
+  .tab-content {
+    width: 90%;
+    max-width: 1000px;
+  }
+  #myTabContent {
+    margin-top: 2rem;
+  }
+  .section-header {
+    margin-bottom: 20px;
+  }
+  .section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0;
+  }
+  .gap-3 {
+    gap: 15px !important;
+  }
+  .gap-2 {
+    gap: 10px !important;
+  }
+  .nav-tabs .nav-link {
+    background: linear-gradient(135deg, var(--header-bg), rgba(255, 255, 255, 0.1));
+    color: var(--header-text);
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    margin-right: 10px;
+    font-weight: 600;
+    transition: background 0.3s, transform 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  .nav-tabs .nav-link.active {
+    background: linear-gradient(135deg, var(--header-bg), rgba(255, 255, 255, 0.3));
+    color: var(--header-text);
+    font-weight: 600;
+  }
+  .nav-tabs .nav-link:hover {
+    background: linear-gradient(135deg, var(--header-bg), rgba(255, 255, 255, 0.2));
+    transform: translateY(-2px);
+  }
+  .qr-code-container {
+    margin-top: 20px;
+    text-align: center;
+  }
+  .intro-section {
+    text-align: center;
+    padding: 20px 15px;
+    max-width: 800px;
+    margin: 0 auto 40px auto;
+    color: var(--text-color);
+    font-size: 1.2rem;
+  }
+  .pagination {
+    margin-top: 15px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+  }
+  .pagination .page-link {
+    background: var(--header-bg);
+    color: var(--header-text);
+    border: none;
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .pagination .page-link:hover {
+    background: var(--dropdown-hover-bg);
+  }
+  .pagination .page-link.disabled {
+    background: var(--table-bg);
+    color: var(--text-muted);
+    cursor: not-allowed;
+  }
+  .pagination-info {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+  }
+  @media (max-width: 767px) {
+    .tab-content {
+      width: 95%;
+    }
+    .table-wrapper {
+      max-height: 40vh;
+      padding: 10px;
+    }
+    table th, table td {
+      padding: 8px 10px;
+      font-size: 0.9rem;
+    }
+    .btn-custom {
+      padding: 8px 20px;
+      font-size: 0.9rem;
+    }
+    .nav-tabs .nav-link {
+      padding: 8px 15px;
+      margin-right: 0;
+      margin-bottom: 10px;
+      width: 100%;
+    }
+    .nav-tabs .nav-item {
+      width: 100%;
+    }
+    .nav-tabs {
+      flex-direction: column;
+      gap: 0;
+    }
+    .intro-section {
+      font-size: 1rem;
+      padding: 15px;
+    }
+    .pagination {
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    .pagination .page-link {
+      padding: 6px 10px;
+      font-size: 0.9rem;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="intro-section">
+  <h1 id="welcome-title">Welcome to Your Management Portal</h1>
+  <p id="welcome-message">
+    {% if hasLoggedIn %}
+      {% if userRole == 'admin' %}
+        Manage your organization, employees, and bookings with full control
+      {% elif userRole == 'employee' %}
+        Handle employee check-ins and access attendance records
+      {% elif userRole == 'guest' %}
+        Book rooms and manage your stay with ease
+      {% else %}
+        Explore your dashboard and manage services efficiently
+      {% endif %}
+    {% else %}
+      Please log in or register to access your personalized dashboard
+    {% endif %}
+  </p>
+</div>
+
+<div class="container mt-4 mx-auto">
+  <div class="tab-content">
+    <ul class="nav nav-tabs justify-content-center" id="myTab" role="tablist">
+      <li class="nav-item" id="employeeTabNav">
+        <button class="nav-link active" id="employee-tab-btn" data-bs-toggle="tab" data-bs-target="#employee-tab" type="button" role="tab" aria-controls="employee-tab" aria-selected="true">
+          <i class="fas fa-users"></i> Employee Management
         </button>
-      </div>
-      <ul class="sidebar-nav">
-        <li>
-          <a href="/" id="sidebarHomeBtn">
-            <i class="fas fa-home"></i> Home
-          </a>
-        </li>
-        <li>
-          <a href="#employee-tab" id="sidebarEmployeeBtn">
-            <i class="fas fa-users"></i> Employees
-          </a>
-        </li>
-        <li>
-          <a href="#booking-tab" id="sidebarBookingBtn">
-            <i class="fas fa-bed"></i> Booking
-          </a>
-        </li>
-        <li>
-          <a href="#guest-tab" id="sidebarGuestBtn">
-            <i class="fas fa-user"></i> Guests
-          </a>
-        </li>
-        <li class="no-auth">
-          <a href="/register" id="sidebarRegisterBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Register">
-            <i class="fas fa-user-plus"></i> Register
-          </a>
-        </li>
-        <li class="auth-required">
-          <a href="/subscribe" id="sidebarSubscribeBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Subscribe">
-            <i class="bi bi-credit-card"></i> Subscribe
-          </a>
-        </li>
-        <li class="auth-required">
-          <button id="sidebarLogoutBtn">
-            <i class="fas fa-sign-out-alt"></i> Logout
-          </button>
-        </li>
-        <li>
-          <button id="sidebarThemeToggle">
-            <i class="fas fa-moon"></i> Theme
-          </button>
-        </li>
-      </ul>
-    </div>
+      </li>
+      <li class="nav-item" id="bookingTabNav">
+        <button class="nav-link" id="booking-tab-btn" data-bs-toggle="tab" data-bs-target="#booking-tab" type="button" role="tab" aria-controls="booking-tab" aria-selected="false">
+          <i class="fas fa-bed"></i> Hotel Booking
+        </button>
+      </li>
+      <li class="nav-item" id="guestTabNav">
+        <button class="nav-link" id="guest-tab-btn" data-bs-toggle="tab" data-bs-target="#guest-tab" type="button" role="tab" aria-controls="guest-tab" aria-selected="false">
+          <i class="fas fa-user"></i> Guest Management
+        </button>
+      </li>
+    </ul>
 
-    <div class="main-content">
-      <div class="header">
-        <a href="/" style="text-decoration: none; color: inherit;">
-          <img src="{{ config.logo_url or '/static/photos/logo.png' }}" alt="{{ config.company_name or 'Company' }}" class="logo">
-          <h2>🏨 {{ config.company_name or 'Hospitality' }} Dashboard</h2>
-        </a>
-        <p class="mb-0">{% if hasLoggedIn %}Logged in as: {{ username or 'User' }}{% else %}Manage employees, bookings, and guests efficiently{% endif %}</p>
-        <div class="nav-buttons d-md-flex" id="navMenu">
-          <a href="/" class="nav-btn" id="homeBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Home">
-            <i class="fas fa-home"></i>
-          </a>
-          <a class="nav-btn" href="#employee-tab" id="employeeBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Employee Management">
-            <i class="fas fa-users"></i>
-          </a>
-          <a class="nav-btn" href="#booking-tab" id="bookingBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Hotel Booking">
-            <i class="fas fa-bed"></i>
-          </a>
-          <a class="nav-btn" href="#guest-tab" id="guestBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Guest Management">
-            <i class="fas fa-user"></i>
-          </a>
-          <a href="/register" class="nav-btn no-auth" id="registerBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Register">
-            <i class="fas fa-user-plus"></i>
-          </a>
-          <a href="/subscribe" class="nav-btn auth-required" id="subscribeBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Subscribe">
-            <i class="bi bi-credit-card"></i>
-          </a>
-          <button class="nav-btn auth-required" id="logoutBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Logout">
-            <i class="fas fa-sign-out-alt"></i>
-          </button>
-          <button class="nav-btn" id="themeToggle" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Theme">
-            <i class="fas fa-moon"></i>
-          </button>
+    <div class="tab-content" id="myTabContent">
+      <div class="tab-pane fade show active" id="employee-tab" role="tabpanel" aria-labelledby="employee-tab-btn">
+        <div class="login-section" id="employeeLoginSection">
+          <div class="section-title">Employee Login</div>
+          <form id="employee-form" class="shadow-sm">
+            <div class="mb-3">
+              <label for="employeeUsername" class="form-label">Username</label>
+              <input type="text" class="form-control" id="employeeUsername" name="username" required>
+            </div>
+            <div class="mb-3">
+              <label for="employeePassword" class="form-label">Password</label>
+              <input type="password" class="form-control" id="employeePassword" name="password" required>
+            </div>
+            <div class="d-flex justify-content-center align-items-center gap-2 mt-3">
+              <button type="button" class="btn btn-custom" id="employeeBiometricLogin">
+                <i class="fas fa-fingerprint me-2"></i> Biometric Login
+              </button>
+              <button type="submit" class="btn btn-custom">
+                <i class="fas fa-qrcode me-2"></i> Login with QR
+              </button>
+            </div>
+            <div class="qr-code-container hidden" id="employeeQrCodeContainer"></div>
+          </form>
         </div>
-      </div>
-
-      {% block content %}
-      <div class="intro-section">
-        <h1>Welcome to Your Employee Management & Hospitality Hub</h1>
-        <p>Please log in or register to access your dashboard and manage employees, book rooms, and handle guest services.</p>
-      </div>
-
-      <div class="container mt-4 mx-auto">
-        <div class="tab-content">
-          <ul class="nav nav-tabs" id="myTab" role="tablist">
-            <li class="nav-item" role="presentation">
-              <button class="nav-link active" id="employee-tab-btn" data-bs-toggle="tab" data-bs-target="#employee-tab" type="button" role="tab" aria-controls="employee-tab" aria-selected="true">
-                <i class="fas fa-users"></i> Employee Management
+        <div class="attendance-section hidden" id="attendanceSection">
+          <div class="d-flex justify-content-between align-items-center section-header">
+            <div class="section-title">Employee Check-In/Out</div>
+            <div class="d-flex align-items-center gap-3">
+              <input type="text" id="employeeId" class="form-control form-control-sm" placeholder="Employee ID">
+              <input type="text" id="employeeName" class="form-control form-control-sm" placeholder="Name">
+              <button class="action-btn" id="checkInBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Check In">
+                <i class="fas fa-sign-in-alt"></i>
               </button>
-            </li>
-            <li class="nav-item" role="presentation">
-              <button class="nav-link" id="booking-tab-btn" data-bs-toggle="tab" data-bs-target="#booking-tab" type="button" role="tab" aria-controls="booking-tab" aria-selected="false">
-                <i class="fas fa-bed"></i> Hotel Booking
+              <button class="action-btn" id="checkOutBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Check Out">
+                <i class="fas fa-sign-out-alt"></i>
               </button>
-            </li>
-            <li class="nav-item" role="presentation">
-              <button class="nav-link" id="guest-tab-btn" data-bs-toggle="tab" data-bs-target="#guest-tab" type="button" role="tab" aria-controls="guest-tab" aria-selected="false">
-                <i class="fas fa-user"></i> Guest Management
-              </button>
-            </li>
-          </ul>
-
-          <div class="tab-content" id="myTabContent">
-            <div class="tab-pane fade show active" id="employee-tab" role="tabpanel" aria-labelledby="employee-tab-btn">
-              <div class="login-section" id="employeeLoginSection">
-                <div class="section-title">Employee Authentication</div>
-                <form id="loginForm" class="employee-form shadow-sm">
-                  <div class="mb-3">
-                    <label for="username" class="form-label">Username</label>
-                    <input type="text" class="form-control" id="username" required>
-                  </div>
-                  <div class="mb-3">
-                    <label for="password" class="form-label">Password</label>
-                    <input type="password" class="form-control" id="password" required>
-                  </div>
-                  <div class="d-flex justify-content-center align-items-center gap-2 mt-3">
-                    <button type="button" class="btn btn-custom" id="biometricLogin">
-                      <i class="fas fa-fingerprint me-2"></i>Biometric Login
-                    </button>
-                    <button type="submit" class="btn btn-custom">
-                      <i class="fas fa-qrcode me-2"></i>Login with QR
-                    </button>
-                  </div>
-                  <div class="qr-code-container hidden" id="qrCodeContainer"></div>
-                </form>
-              </div>
-              <div class="attendance-section hidden" id="attendanceSection">
-                <div class="d-flex justify-content-between align-items-center section-header">
-                  <div class="section-title">Employee Check-in/Out</div>
-                  <div class="d-flex align-items-center gap-3">
-                    <input type="text" id="employeeId" class="form-control form-control-sm" placeholder="Employee ID" style="width: 140px;">
-                    <input type="text" id="employeeName" class="form-control form-control-sm" placeholder="Name" style="width: 140px;">
-                    <button class="action-btn" id="checkInBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Check In">
-                      <i class="fas fa-sign-in-alt"></i>
-                    </button>
-                    <button class="action-btn" id="checkOutBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Check Out">
-                      <i class="fas fa-sign-out-alt"></i>
-                    </button>
-                  </div>
-                </div>
-                <div class="d-flex justify-content-between align-items-center section-header attendance-records">
-                  <div class="section-title">Attendance Records</div>
-                  <div class="d-flex align-items-center gap-3">
-                    <input type="date" id="startDate" class="form-control form-control-sm" style="width: 140px;">
-                    <input type="date" id="endDate" class="form-control form-control-sm" style="width: 140px;">
-                    <button class="action-btn" id="filterAttendance" data-bs-toggle="tooltip" data-bs-placement="top" title="Filter">
-                      <i class="fas fa-filter"></i>
-                    </button>
-                    <button class="action-btn" id="refreshAttendance" data-bs-toggle="tooltip" data-bs-placement="top" title="Refresh">
-                      <i class="fas fa-sync-alt"></i>
-                    </button>
-                    <button class="action-btn" id="exportBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Export CSV">
-                      <i class="fas fa-file-export"></i>
-                    </button>
-                  </div>
-                </div>
-                <div class="table-wrapper shadow-sm rounded">
-                  <table class="table table-striped align-middle">
-                    <thead>
-                      <tr>
-                        <th>Employee ID</th>
-                        <th>Name</th>
-                        <th>Date</th>
-                        <th>Time In</th>
-                        <th>Time Out</th>
-                      </tr>
-                    </thead>
-                    <tbody id="attendance-table-body">
-                      {% for record in records if records %}
-                      <tr>
-                        <td>{{ record[0] or 'N/A' }}</td>
-                        <td>{{ record[1] or 'N/A' }}</td>
-                        <td>{{ record[2] or 'N/A' }}</td>
-                        <td>{{ record[3] or '-' }}</td>
-                        <td>{{ record[4] or '-' }}</td>
-                      </tr>
-                      {% else %}
-                      <tr><td colspan="5">No attendance records available.</td></tr>
-                      {% endfor %}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-
-            <div class="tab-pane fade" id="booking-tab" role="tabpanel" aria-labelledby="booking-tab-btn">
-              <div class="booking-section">
-                <div class="login-section" id="loginSection">
-                  <div class="section-title">Guest Authentication</div>
-                  <form id="loginForm" class="employee-form shadow-sm">
-                    <div class="mb-3">
-                      <label for="username" class="form-label">Username</label>
-                      <input type="text" class="form-control" id="username" required>
-                    </div>
-                    <div class="mb-3">
-                      <label for="password" class="form-label">Password</label>
-                      <input type="password" class="form-control" id="password" required>
-                    </div>
-                    <div class="d-flex justify-content-center align-items-center gap-2 mt-3">
-                      <button type="button" class="btn btn-custom" id="biometricLogin">
-                        <i class="fas fa-fingerprint me-2"></i>Biometric Login
-                      </button>
-                      <button type="submit" class="btn btn-custom">
-                        <i class="fas fa-qrcode me-2"></i>Login with QR
-                      </button>
-                    </div>
-                    <div class="qr-code-container hidden" id="qrCodeContainer"></div>
-                  </form>
-                </div>
-
-                <div class="section-header">
-                  <div class="section-title">Hotel Booking</div>
-                </div>
-                <form id="bookingForm" class="shadow-sm hidden">
-                  <div class="mb-3">
-                    <label for="guestName" class="form-label">Guest Name</label>
-                    <input type="text" class="form-control" id="guestName" placeholder="Guest name" required>
-                  </div>
-                  <div class="mb-3">
-                    <label for="checkInDate" class="form-label">Check-In Date</label>
-                    <input type="date" class="form-control" id="checkInDate" required>
-                  </div>
-                  <div class="mb-3">
-                    <label for="checkOutDate" class="form-label">Check-Out Date</label>
-                    <input type="date" class="form-control" id="checkOutDate" required>
-                  </div>
-                  <div class="mb-3">
-                    <label for="roomType" class="form-label">Room Type</label>
-                    <select class="form-control" id="roomType" required>
-                      <option value="">Select Room Type</option>
-                      <option value="standard">Standard</option>
-                      <option value="deluxe">Deluxe</option>
-                      <option value="suite">Suite</option>
-                    </select>
-                  </div>
-                  <button type="submit" class="btn btn-custom">Book Room</button>
-                </form>
-                <div class="mt-3 hidden">
-                  <div class="section-title">Room Availability</div>
-                  <div id="roomAvailability" class="text-muted">Loading availability...</div>
-                  <div class="table-wrapper mt-3">
-                    <table class="table table-striped align-middle">
-                      <thead>
-                        <tr>
-                          <th>Room ID</th>
-                          <th>Type</th>
-                          <th>Status</th>
-                        </tr>
-                      </thead>
-                      <tbody id="roomStatusTable"></tbody>
-                    </table>
-                  </div>
-                </div>
-                <button class="btn btn-custom mt-3 hidden" id="generateInvoice">Generate Invoice</button>
-              </div>
-            </div>
-
-            <div class="tab-pane fade" id="guest-tab" role="tabpanel" aria-labelledby="guest-tab-btn">
-              <div class="guest-section hidden">
-                <div class="d-flex justify-content-between align-items-center section-header">
-                  <div class="section-title">Guest Check-In/Out</div>
-                  <div class="d-flex align-items-center gap-2">
-                    <input type="text" id="guestId" class="form-control form-control-sm" placeholder="Guest ID" style="width: 140px;">
-                    <input type="text" id="guestCheckName" class="form-control form-control-sm" placeholder="Name" style="width: 140px;">
-                    <button class="action-btn" id="guestCheckInBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Guest Check-In">
-                      <i class="fas fa-sign-in-alt"></i>
-                    </button>
-                    <button class="action-btn" id="guestCheckOutBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Guest Check-Out">
-                      <i class="fas fa-sign-out-alt"></i>
-                    </button>
-                  </div>
-                </div>
-                <div class="d-flex justify-content-between align-items-center section-header">
-                  <div class="section-title">Guest Records & Channel Sync</div>
-                  <div class="d-flex align-items-center gap-3">
-                    <button class="action-btn" id="refreshGuestRecords" data-bs-toggle="tooltip" data-bs-placement="top" title="Refresh">
-                      <i class="fas fa-sync-alt"></i>
-                    </button>
-                    <button class="action-btn" id="syncChannels" data-bs-toggle="tooltip" data-bs-placement="top" title="Sync with OTAs/PMS">
-                      <i class="fas fa-sync"></i>
-                    </button>
-                  </div>
-                </div>
-                <div class="table-wrapper shadow-sm rounded">
-                  <table class="table table-striped align-middle">
-                    <thead>
-                      <tr>
-                        <th>Guest ID</th>
-                        <th>Name</th>
-                        <th>Room</th>
-                        <th>Check-In Date</th>
-                        <th>Check-Out Date</th>
-                        <th>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody id="guest-table-body">
-                      <tr><td colspan="6">No guest records available.</td></tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
             </div>
           </div>
-        </div>
-      </div>
-      {% endblock %}
-
-      <div class="toast-container position-fixed bottom-0 end-0 p-4">
-        <div id="attendanceToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-          <div class="toast-header">
-            <strong class="me-auto">Update</strong>
-            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+          <div class="d-flex justify-content-between align-items-center section-header attendance-records">
+            <div class="section-title">Attendance Records</div>
+            <div class="d-flex align-items-center gap-3">
+              <input type="date" id="startDate" class="form-control form-control-sm">
+              <input type="date" id="endDate" class="form-control form-control-sm">
+              <button class="action-btn" id="filterAttendanceBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Filter Records">
+                <i class="fas fa-filter"></i>
+              </button>
+              <button class="action-btn" id="refreshAttendanceBtn" data-bs-toggle="tooltip" title="Refresh Data">
+                <i class="fas fa-sync-alt"></i>
+              </button>
+              <button class="action-btn" id="exportBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Export to CSV">
+                <i class="fas fa-file-export"></i>
+              </button>
+            </div>
           </div>
-          <div class="toast-body"></div>
+          <div class="table-wrapper shadow-sm rounded">
+            <table class="table table-striped align-middle">
+              <thead>
+                <tr>
+                  <th>Employee ID</th>
+                  <th>Name</th>
+                  <th>Date</th>
+                  <th>Time In</th>
+                  <th>Time Out</th>
+                </tr>
+              </thead>
+              <tbody id="attendanceTableBody">
+                {% if records %}
+                  {% for record in records %}
+                    <tr>
+                      <td>{{ record.employee_id or record[0] or 'N/A' }}</td>
+                      <td>{{ record.name or record[1] or 'N/A' }}</td>
+                      <td>{{ record.date or record[2] or 'N/A' }}</td>
+                      <td>{{ record.time_in or record[3] or '-' }}</td>
+                      <td>{{ record.time_out or record[4] or '-' }}</td>
+                    </tr>
+                  {% endfor %}
+                {% else %}
+                  <tr><td colspan="5">No attendance records found</td></tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+          {% if records_pagination %}
+          <div class="pagination">
+            <span class="pagination-info">
+              Page {{ records_pagination.current_page }} of {{ records_pagination.total_pages }} ({{ records_pagination.total_items }} items)
+            </span>
+            <button class="page-link {{ 'disabled' if records_pagination.current_page == 1 }}" 
+                    onclick="loadAttendance({{ records_pagination.current_page - 1 }}, {{ records_pagination.per_page }})">
+              Previous
+            </button>
+            {% for page in range(1, records_pagination.total_pages + 1) %}
+              <button class="page-link {{ 'active' if page == records_pagination.current_page }}" 
+                      onclick="loadAttendance({{ page }}, {{ records_pagination.per_page }})">
+                {{ page }}
+              </button>
+            {% endfor %}
+            <button class="page-link {{ 'disabled' if records_pagination.current_page == records_pagination.total_pages }}" 
+                    onclick="loadAttendance({{ records_pagination.current_page + 1 }}, {{ records_pagination.per_page }})">
+              Next
+            </button>
+          </div>
+          {% endif %}
         </div>
       </div>
 
-      <footer class="footer text-center text-muted">
-        © {{ current_year or 2025 }} {{ config.company_name or 'Company' }}
-      </footer>
-    </div>
+      <div class="tab-pane fade" id="booking-tab" role="tabpanel" aria-labelledby="booking-tab-btn">
+        <div class="booking-section">
+          <div class="login-section" id="guestLoginSection">
+            <div class="section-title">Guest Authentication</div>
+            <form id="guest-form" class="shadow-sm">
+              <div class="mb-3">
+                <label for="guestUsername" class="form-label">Username</label>
+                <input type="text" class="form-control" id="guestUsername" name="username" required>
+              </div>
+              <div class="mb-3">
+                <label for="guestPassword" class="form-label">Password</label>
+                <input type="password" class="form-control" id="guestPassword" name="password" required>
+              </div>
+              <div class="d-flex justify-content-center align-items-center gap-2 mt-3">
+                <button type="button" class="btn btn-custom" id="guestBiometricLogin">
+                  <i class="fas fa-fingerprint me-2"></i> Biometric Login
+                </button>
+                <button type="submit" class="btn btn-custom">
+                  <i class="fas fa-qrcode me-2"></i> Login with QR
+                </button>
+              </div>
+              <div class="qr-code-container hidden" id="guestQrCodeContainer"></div>
+            </form>
+          </div>
 
-    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+          <div class="section-header">
+            <div class="section-title">Hotel Reservation</div>
+          </div>
+
+          <form id="booking-form" class="shadow-sm" hidden>
+            <div class="mb-3">
+              <label for="guestNameInput" class="form-label">Guest Name</label>
+              <input type="text" class="form-control" id="guestNameInput" name="guestName" placeholder="Guest Name" required>
+            </div>
+            <div class="mb-3">
+              <label for="checkInDateInput" class="form-label">Check-In Date</label>
+              <input type="date" class="form-control" id="checkInDateInput" name="checkInDate" required>
+            </div>
+            <div class="mb-3">
+              <label for="checkOutDateInput" class="form-label">Check-Out Date</label>
+              <input type="date" class="form-control" id="checkOutDateInput" name="checkOutDate" required>
+            </div>
+            <div class="mb-3">
+              <label for="roomTypeSelect" class="form-label">Room Type</label>
+              <select class="form-control" id="roomTypeSelect" name="roomType" required>
+                <option value="">Select Room Type</option>
+                <option value="standard">Standard</option>
+                <option value="deluxe">Deluxe</option>
+                <option value="suite">Suite</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-custom">Book Room</button>
+          </form>
+
+          <div id="roomAvailabilitySection" class="mt-3 hidden">
+            <div class="section-title">Room Availability</div>
+            <div id="roomAvailabilityStatus"></div>
+            <div class="table-wrapper mt-3">
+              <table class="table table-striped align-middle">
+                <thead>
+                  <tr>
+                    <th>Room ID</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="roomStatusTableBody">
+                  {% if rooms %}
+                    {% for room in rooms %}
+                      <tr>
+                        <td>{{ room.room_id or room[0] or 'N/A' }}</td>
+                        <td>{{ room.room_type or room[1] or 'N/A' }}</td>
+                        <td>{{ room.status or room[2] or 'N/A' }}</td>
+                      </tr>
+                    {% endfor %}
+                  {% else %}
+                    <tr><td colspan="3">No rooms found</td></tr>
+                  {% endif %}
+                </tbody>
+              </table>
+            </div>
+            {% if rooms_pagination %}
+            <div class="pagination">
+              <span class="pagination-info">
+                Page {{ rooms_pagination.current_page }} of {{ rooms_pagination.total_pages }} ({{ rooms_pagination.total_items }} items)
+              </span>
+              <button class="page-link {{ 'disabled' if rooms_pagination.current_page == 1 }}" 
+                      onclick="updateRoomStatus({{ rooms_pagination.current_page - 1 }}, {{ rooms_pagination.per_page }})">
+                Previous
+              </button>
+              {% for page in range(1, rooms_pagination.total_pages + 1) %}
+                <button class="page-link {{ 'active' if page == rooms_pagination.current_page }}" 
+                        onclick="updateRoomStatus({{ page }}, {{ rooms_pagination.per_page }})">
+                  {{ page }}
+                </button>
+              {% endfor %}
+              <button class="page-link {{ 'disabled' if rooms_pagination.current_page == rooms_pagination.total_pages }}" 
+                      onclick="updateRoomStatus({{ rooms_pagination.current_page + 1 }}, {{ rooms_pagination.per_page }})">
+                Next
+              </button>
+            </div>
+            {% endif %}
+          </div>
+          <button class="btn btn-custom mt-3 hidden" id="generateInvoiceBtn">Generate Invoice</button>
+        </div>
+      </div>
+
+      <div class="tab-pane fade" id="guest-tab" role="tabpanel" aria-labelledby="guest-tab-btn">
+        <div class="guest-section hidden" id="guestSection">
+          <div class="d-flex justify-content-between align-items-center section-header">
+            <div class="section-title">Guest Check-In/Out</div>
+            <div class="d-flex gap-2">
+              <input type="text" id="guestIdInput" class="form-control form-control-sm" placeholder="Guest ID">
+              <input type="text" id="guestNameInput" class="form-control form-control-sm" placeholder="Guest Name">
+              <button class="action-btn" id="guestCheckInBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Guest Check-In">
+                <i class="fas fa-sign-in-alt"></i>
+              </button>
+              <button class="action-btn" id="guestCheckOutBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Guest Check-Out">
+                <i class="fas fa-sign-out-alt"></i>
+              </button>
+            </div>
+          </div>
+          <div class="d-flex justify-content-between align-items-center section-header">
+            <div class="section-title">Guest Records & Sync</div>
+            <div class="d-flex align-items-center gap-2">
+              <button class="action-btn" id="refreshGuestRecordsBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Refresh">
+                <i class="fas fa-sync-alt"></i>
+              </button>
+              <button class="action-btn" id="syncChannelsBtn" data-bs-toggle="tooltip" data-bs-placement="top" title="Sync with OTAs/PMS">
+                <i class="fas fa-sync"></i>
+              </button>
+            </div>
+          </div>
+          <div class="table-wrapper shadow-sm rounded">
+            <table class="table table-striped align-middle">
+              <thead>
+                <tr>
+                  <th>Guest ID</th>
+                  <th>Name</th>
+                  <th>Room</th>
+                  <th>Check-In Date</th>
+                  <th>Check-Out Date</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="guestTableBody">
+                {% if guests %}
+                  {% for guest in guests %}
+                    <tr>
+                      <td>{{ guest.guest_id or 'N/A' }}</td>
+                      <td>{{ guest.name or 'N/A' }}</td>
+                      <td>{{ guest.room_id or 'N/A' }}</td>
+                      <td>{{ guest.check_in_date or '-' }}</td>
+                      <td>{{ guest.check_out_date or '-' }}</td>
+                      <td>{{ guest.status or 'N/A' }}</td>
+                    </tr>
+                  {% endfor %}
+                {% else %}
+                  <tr><td colspan="6">No guest records available</td></tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+          {% if guests_pagination %}
+          <div class="pagination">
+            <span class="pagination-info">
+              Page {{ guests_pagination.current_page }} of {{ guests_pagination.total_pages }} ({{ guests_pagination.total_items }} items)
+            </span>
+            <button class="page-link {{ 'disabled' if guests_pagination.current_page == 1 }}" 
+                    onclick="loadGuestRecords({{ guests_pagination.current_page - 1 }}, {{ guests_pagination.per_page }})">
+              Previous
+            </button>
+            {% for page in range(1, guests_pagination.total_pages + 1) %}
+              <button class="page-link {{ 'active' if page == guests_pagination.current_page }}" 
+                      onclick="loadGuestRecords({{ page }}, {{ guests_pagination.per_page }})">
+                {{ page }}
+              </button>
+            {% endfor %}
+            <button class="page-link {{ 'disabled' if guests_pagination.current_page == guests_pagination.total_pages }}" 
+                    onclick="loadGuestRecords({{ guests_pagination.current_page + 1 }}, {{ guests_pagination.per_page }})">
+              Next
+            </button>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 <script>
-    const socket = io();
-    const attendanceTbody = document.getElementById('attendance-table-body');
-    const guestTbody = document.getElementById('guest-table-body');
-    const loginForm = document.getElementById('loginForm');
-    const bookingForm = document.getElementById('bookingForm');
-    const loginSection = document.getElementById('loginSection');
-    const employeeLoginSection = document.getElementById('employeeLoginSection');
-    const attendanceSection = document.getElementById('attendanceSection');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const sidebarLogoutBtn = document.getElementById('sidebarLogoutBtn');
-    const sidebar = document.getElementById('sidebar');
-    const mainContent = document.getElementById('main-content');
-    const menuToggle = document.getElementById('menuToggle');
-    const closeSidebar = document.getElementById('closeSidebar');
-    const themeToggle = document.getElementById('themeToggle');
-    const sidebarThemeToggle = document.getElementById('sidebarThemeToggle');
-    const refreshAttendance = document.getElementById('refreshAttendance');
-    const filterAttendance = document.getElementById('filterAttendance');
-    const exportBtn = document.getElementById('exportBtn');
-    const checkInBtn = document.getElementById('checkInBtn');
-    const checkOutBtn = document.getElementById('checkOutBtn');
-    const guestCheckInBtn = document.getElementById('guestCheckInBtn');
-    const guestCheckOutBtn = document.getElementById('guestCheckOutBtn');
-    const refreshGuestRecords = document.getElementById('refreshGuestRecords');
-    const roomAvailability = document.getElementById('roomAvailability');
-    const roomStatusTable = document.getElementById('roomStatusTable');
-    const qrCodeContainer = document.getElementById('qrCodeContainer');
-    const biometricLogin = document.getElementById('biometricLogin');
-    const generateInvoice = document.getElementById('generateInvoice');
-    const syncChannels = document.getElementById('syncChannels');
+  const socket = io();
+  socket.on('attendance_update', (data) => {
+    console.log('Attendance update received:', data);
+    showToast(`${data.name || 'User'} ${data.action === 'check-in' ? 'checked in' : 'checked out'} at ${data.time_in || data.time_out || 'N/A'}`);
+    loadAttendance();
+  });
 
-    let hasLoggedIn = {{ hasLoggedIn | tojson | safe }};
-    let userRole = '{{ userRole | default("guest") }}';
-    let isSidebarOpen = false;
-    let username = {{ username | tojson | safe }};
+  socket.on('guest_update', (data) => {
+    console.log('Guest update received:', data);
+    showToast(`${data.name || 'Guest'} ${data.action === 'check-in' ? 'checked in' : 'checked out'}`);
+    loadGuestRecords();
+  });
 
-    // Initialize tooltips
-    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl, {
-        trigger: 'hover'
-    }));
+  // DOM Elements
+  const attendanceTableBody = document.getElementById('attendanceTableBody');
+  const guestTableBody = document.getElementById('guestTableBody');
+  const employeeForm = document.getElementById('employee-form');
+  const guestForm = document.getElementById('guest-form');
+  const bookingForm = document.getElementById('booking-form');
+  const employeeLoginSection = document.getElementById('employeeLoginSection');
+  const guestLoginSection = document.getElementById('guestLoginSection');
+  const attendanceSection = document.getElementById('attendanceSection');
+  const guestSection = document.getElementById('guestSection');
+  const roomAvailabilitySection = document.getElementById('roomAvailabilitySection');
+  const roomAvailabilityStatus = document.getElementById('roomAvailabilityStatus');
+  const roomStatusTableBody = document.getElementById('roomStatusTableBody');
+  const employeeQrCodeContainer = document.getElementById('employeeQrCodeContainer');
+  const guestQrCodeContainer = document.getElementById('guestQrCodeContainer');
+  const checkInBtn = document.getElementById('checkInBtn');
+  const checkOutBtn = document.getElementById('checkOutBtn');
+  const guestCheckInBtn = document.getElementById('guestCheckInBtn');
+  const guestCheckOutBtn = document.getElementById('guestCheckOutBtn');
+  const refreshAttendanceBtn = document.getElementById('refreshAttendanceBtn');
+  const filterAttendanceBtn = document.getElementById('filterAttendanceBtn');
+  const exportBtn = document.getElementById('exportBtn');
+  const refreshGuestRecordsBtn = document.getElementById('refreshGuestRecordsBtn');
+  const syncBtn = document.getElementById('syncChannelsBtn');
+  const employeeBiometricLogin = document.getElementById('employeeBiometricLogin');
+  const guestBiometricLogin = document.getElementById('guestBiometricLogin');
+  const generateInvoiceBtn = document.getElementById('generateInvoiceBtn');
+  const employeeTabNav = document.getElementById('employeeTabNav');
+  const bookingTabNav = document.getElementById('bookingTabNav');
+  const guestTabNav = document.getElementById('guestTabNav');
 
-    function toggleSidebar() {
-        isSidebarOpen = !isSidebarOpen;
-        sidebar.classList.toggle('visible', isSidebarOpen);
-        if (window.innerWidth >= 768) {
-            mainContent.classList.toggle('shifted', isSidebarOpen);
-        }
-        menuToggle.querySelector('i').className = isSidebarOpen ? 'fas fa-times' : 'fas fa-bars';
-        tooltipList.forEach(tooltip => tooltip.hide());
+  // State
+  let hasLoggedIn = {{ hasLoggedIn | tojson | safe }};
+  let userRole = '{{ userRole || 'guest' | safe }}';
+  let username = {{ username | tojson | safe }};
+  let currentRecordsPage = {{ records_pagination.current_page or 1 }};
+  let currentRecordsPerPage = {{ records_pagination.per_page or 50 }};
+  let currentRoomsPage = {{ rooms_pagination.current_page or 1 }};
+  let currentRoomsPerPage = {{ rooms_pagination.per_page or 50 }};
+  let currentGuestsPage = {{ guests_pagination.current_page or 1 }};
+  let currentGuestsPerPage = {{ guests_pagination.per_page or 50 }};
+
+  // Update UI based on login state
+  function updateUi() {
+    const welcomeTitle = document.getElementById('welcome-title');
+    const welcomeMessage = document.getElementById('welcome-message');
+    if (hasLoggedIn) {
+      if (userRole === 'admin') {
+        welcomeTitle.textContent = 'Admin Control Panel';
+        welcomeMessage.textContent = 'Manage your organization, employees, and bookings with full control';
+        employeeTabNav.classList.remove('hidden');
+        bookingTabNav.classList.remove('hidden');
+        guestTabNav.classList.remove('hidden');
+        attendanceSection.classList.remove('hidden');
+        bookingForm.classList.remove('hidden');
+        roomAvailabilitySection.classList.remove('hidden');
+        generateInvoiceBtn.classList.remove('hidden');
+        guestSection.classList.remove('hidden');
+        employeeLoginSection.classList.add('hidden');
+        guestLoginSection.classList.add('hidden');
+      } else if (userRole === 'employee') {
+        welcomeTitle.textContent = 'Employee Dashboard';
+        welcomeMessage.textContent = 'Handle check-ins and view attendance records';
+        employeeTabNav.classList.remove('hidden');
+        bookingTabNav.classList.add('hidden');
+        guestTabNav.classList.add('hidden');
+        attendanceSection.classList.remove('hidden');
+        employeeLoginSection.classList.add('hidden');
+        guestLoginSection.classList.add('hidden');
+        bookingForm.classList.add('hidden');
+        guestSection.classList.add('hidden');
+      } else if (userRole === 'guest') {
+        welcomeTitle.textContent = 'Guest Portal';
+        welcomeMessage.textContent = 'Book rooms and manage your stay with ease';
+        employeeTabNav.classList.add('hidden');
+        bookingTabNav.classList.remove('hidden');
+        guestTabNav.classList.remove('hidden');
+        bookingForm.classList.remove('hidden');
+        guestLoginSection.classList.add('hidden');
+        guestSection.classList.remove('hidden');
+        attendanceSection.classList.add('hidden');
+        employeeLoginSection.classList.add('hidden');
+      }
+    } else {
+      welcomeTitle.textContent = 'Welcome to Your Management Portal';
+      welcomeMessage.textContent = 'Please log in or register to access your personalized dashboard';
+      employeeTabNav.classList.remove('hidden');
+      bookingTabNav.classList.remove('hidden');
+      guestTabNav.classList.remove('hidden');
+      employeeLoginSection.classList.remove('hidden');
+      guestLoginSection.classList.remove('hidden');
+      attendanceSection.classList.add('hidden');
+      bookingForm.classList.add('hidden');
+      roomAvailabilitySection.classList.add('hidden');
+      generateInvoiceBtn.classList.add('hidden');
+      guestSection.classList.add('hidden');
     }
 
-    function closeSidebarIfOpen() {
-        if (isSidebarOpen) {
-            toggleSidebar();
-        }
-    }
+    // Show default tab
+    const defaultTab = hasLoggedIn && (userRole === 'admin' || userRole === 'employee') ? '#employee-tab' : '#booking-tab';
+    $(`#myTab a[href="${defaultTab}"]`).tab('show');
 
-    menuToggle.addEventListener('click', toggleSidebar);
-    closeSidebar.addEventListener('click', toggleSidebar);
+    loadAttendance(currentRecordsPage, currentRecordsPerPage);
+    loadGuestRecords(currentGuestsPage, currentGuestsPerPage);
+    updateRoomStatus(currentRoomsPage, currentRoomsPerPage);
+    checkRoomAvailability();
+  }
 
-    document.addEventListener('click', (e) => {
-        if (window.innerWidth < 768 && isSidebarOpen && !sidebar.contains(e.target) && !menuToggle.contains(e.target)) {
-            closeSidebarIfOpen();
-        }
-    });
-
-    window.addEventListener('resize', () => {
-        if (window.innerWidth < 768 && isSidebarOpen) {
-            mainContent.classList.remove('shifted');
-        } else if (window.innerWidth >= 768) {
-            mainContent.classList.toggle('shifted', isSidebarOpen);
-        }
-    });
-
-    function updateUI() {
-        const employeeTab = $('#myTab a[href="#employee-tab"]').parent();
-        const bookingTab = $('#myTab a[href="#booking-tab"]').parent();
-        const guestTab = $('#myTab a[href="#guest-tab"]').parent();
-        const authRequiredElements = document.querySelectorAll('.auth-required');
-        const noAuthElements = document.querySelectorAll('.no-auth');
-
-        if (hasLoggedIn) {
-            loginSection.classList.add('hidden');
-            employeeLoginSection.classList.add('hidden');
-            logoutBtn.classList.remove('hidden');
-            sidebarLogoutBtn.classList.remove('hidden');
-            attendanceSection.classList.remove('hidden');
-            bookingForm.classList.remove('hidden');
-            roomAvailability.parentElement.classList.remove('hidden');
-            generateInvoice.classList.remove('hidden');
-            document.querySelector('.guest-section').classList.remove('hidden');
-            authRequiredElements.forEach(el => el.classList.remove('hidden'));
-            noAuthElements.forEach(el => el.classList.add('hidden'));
-            if (userRole === 'admin' || userRole === 'employee') {
-                employeeTab.removeClass('d-none');
-            } else {
-                employeeTab.addClass('d-none');
-                $('#myTab a[href="#booking-tab"]').tab('show');
-            }
-            if (userRole === 'admin') {
-                bookingTab.removeClass('d-none');
-                guestTab.removeClass('d-none');
-            } else if (userRole === 'employee') {
-                bookingTab.addClass('d-none');
-                guestTab.addClass('d-none');
-            } else if (userRole === 'guest') {
-                employeeTab.addClass('d-none');
-                bookingTab.removeClass('d-none');
-                guestTab.removeClass('d-none');
-            }
-        } else {
-            loginSection.classList.remove('hidden');
-            employeeLoginSection.classList.remove('hidden');
-            logoutBtn.classList.add('hidden');
-            sidebarLogoutBtn.classList.add('hidden');
-            attendanceSection.classList.add('hidden');
-            bookingForm.classList.add('hidden');
-            roomAvailability.parentElement.classList.add('hidden');
-            generateInvoice.classList.add('hidden');
-            document.querySelector('.guest-section').classList.add('hidden');
-            authRequiredElements.forEach(el => el.classList.add('hidden'));
-            noAuthElements.forEach(el => el.classList.remove('hidden'));
-            employeeTab.removeClass('d-none');
-            bookingTab.removeClass('d-none');
-            guestTab.removeClass('d-none');
-            $('#myTab a[href="#booking-tab"]').tab('show');
-        }
-        loadAttendance();
-        loadGuestRecords();
-        checkRoomAvailability();
-    }
-
-    function loadAttendance() {
-        if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'employee')) return;
-        const today = new Date().toISOString().split('T')[0];
-        const startDate = document.getElementById('startDate').value || today;
-        const endDate = document.getElementById('endDate').value || today;
-        const url = `/attendance?start_date=${startDate}&end_date=${endDate}`;
-        fetch(url, { credentials: 'include' })
-            .then(response => response.json())
-            .then(data => {
-                attendanceTbody.innerHTML = '';
-                if (data.status === 'success' && data.records && data.records.length > 0) {
-                    data.records.forEach(record => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${record.employee_id || 'N/A'}</td>
-                            <td>${record.name || 'N/A'}</td>
-                            <td>${record.date || 'N/A'}</td>
-                            <td>${record.time_in || '-'}</td>
-                            <td>${record.time_out || '-'}</td>
-                        `;
-                        attendanceTbody.appendChild(row);
-                    });
-                } else {
-                    attendanceTbody.innerHTML = '<tr><td colspan="5">No attendance records available.</td></tr>';
-                }
-            })
-            .catch(error => {
-                console.error('Error in loadAttendance:', error);
-                attendanceTbody.innerHTML = '<tr><td colspan="5">Error loading attendance records.</td></tr>';
-            });
-    }
-
-    function loadGuestRecords() {
-        if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'guest')) return;
-        fetch('/guest_records', { credentials: 'include' })
-            .then(response => response.json())
-            .then(data => {
-                guestTbody.innerHTML = '';
-                if (data.status === 'success' && data.records && data.records.length > 0) {
-                    data.records.forEach(record => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${record.guest_id || 'N/A'}</td>
-                            <td>${record.name || 'N/A'}</td>
-                            <td>${record.room_id || 'N/A'}</td>
-                            <td>${record.check_in_date || '-'}</td>
-                            <td>${record.check_out_date || '-'}</td>
-                            <td>${record.status || 'N/A'}</td>
-                        `;
-                        guestTbody.appendChild(row);
-                    });
-                } else {
-                    guestTbody.innerHTML = '<tr><td colspan="6">No guest records available.</td></tr>';
-                }
-            })
-            .catch(error => {
-                console.error('Error in loadGuestRecords:', error);
-                guestTbody.innerHTML = '<tr><td colspan="6">Error loading guest records.</td></tr>';
-            });
-    }
-
-    function checkRoomAvailability() {
-        if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'guest')) return;
-        const checkInDate = document.getElementById('checkInDate').value;
-        const checkOutDate = document.getElementById('checkOutDate').value;
-        const roomType = document.getElementById('roomType').value;
-        if (!checkInDate || !checkOutDate || !roomType) {
-            roomAvailability.innerHTML = 'Please fill in all booking details.';
-            return;
-        }
-        fetch(`/room_availability?check_in=${checkInDate}&check_out=${checkOutDate}&room_type=${roomType}`, {
-            credentials: 'include'
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    roomAvailability.innerHTML = data.available ? `Available: ${data.rooms} rooms` : 'No rooms available.';
-                } else {
-                    roomAvailability.innerHTML = 'Error checking availability.';
-                }
-            })
-            .catch(error => {
-                console.error('Error in checkRoomAvailability:', error);
-                roomAvailability.innerHTML = 'Error checking availability.';
-            });
-    }
-
-    function updateRoomStatus() {
-        fetch('/room_status', { credentials: 'include' })
-            .then(response => response.json())
-            .then(data => {
-                roomStatusTable.innerHTML = '';
-                if (data.status === 'success' && data.rooms) {
-                    data.rooms.forEach(room => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${room.id}</td>
-                            <td>${room.type}</td>
-                            <td>${room.status}</td>
-                        `;
-                        roomStatusTable.appendChild(row);
-                    });
-                }
-            })
-            .catch(error => console.error('Error updating room status:', error));
-    }
-    setInterval(updateRoomStatus, 60000);
-    socket.on('room_update', updateRoomStatus);
-
-    loginForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        window.location.href = '/login'; // Redirect to login page instead of handling login here
-    });
-
-    biometricLogin.addEventListener('click', (e) => {
-        e.preventDefault();
-        window.location.href = '/login'; // Redirect to login page
-    });
-
-    bookingForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'guest')) {
-            alert('Access denied. Only admins and guests can book.');
-            return;
-        }
-        const guestName = document.getElementById('guestName').value;
-        const checkInDate = document.getElementById('checkInDate').value;
-        const checkOutDate = document.getElementById('checkOutDate').value;
-        const roomType = document.getElementById('roomType').value;
-        fetch('/book_room', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ guest_name: guestName, check_in_date: checkInDate, check_out_date: checkOutDate, room_type: roomType }),
-            credentials: 'include'
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    const toast = new bootstrap.Toast(document.getElementById('attendanceToast'));
-                    document.querySelector('#attendanceToast .toast-body').textContent = `Booking confirmed for ${guestName}!`;
-                    toast.show();
-                    bookingForm.reset();
-                    loadGuestRecords();
-                } else {
-                    alert(data.message || 'Booking failed');
-                }
-            })
-            .catch(error => {
-                console.error('Error during booking:', error);
-                alert('Booking failed. Check console for details.');
-            });
-    });
-
-    logoutBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '/logout';
-        document.body.appendChild(form);
-        form.submit();
-    });
-
-    sidebarLogoutBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '/logout';
-        document.body.appendChild(form);
-        form.submit();
-    });
-
-    refreshAttendance.addEventListener('click', (e) => {
-        e.preventDefault();
-        loadAttendance();
-    });
-
-    filterAttendance.addEventListener('click', (e) => {
-        e.preventDefault();
-        loadAttendance();
-    });
-
-    exportBtn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        if (userRole !== 'admin') {
-            alert('Access denied. Admins only.');
-            return;
-        }
-        try {
-            const response = await fetch('/export', { credentials: 'include' });
-            if (response.ok) {
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'attendance_export.csv';
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-                window.URL.revokeObjectURL(url);
-            } else {
-                const data = await response.json();
-                alert(data.message || 'Failed to export CSV.');
-            }
-        } catch (err) {
-            alert('Error exporting CSV: ' + err.message);
-        }
-    });
-
-    checkInBtn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'employee')) {
-            alert('Please log in as an admin or employee to perform this action.');
-            return;
-        }
-        const employeeId = document.getElementById('employeeId').value;
-        const employeeName = document.getElementById('employeeName').value;
-        try {
-            const response = await fetch('/check_in', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ employee_id: employeeId, name: employeeName }),
-                credentials: 'include'
-            });
-            const data = await response.json();
-            if (data.status === 'success') {
-                const toast = new bootstrap.Toast(document.getElementById('attendanceToast'));
-                document.querySelector('#attendanceToast .toast-body').textContent = `${employeeName} checked in successfully`;
-                toast.show();
-                loadAttendance();
-            } else {
-                alert(data.message || 'Check-in failed');
-            }
-        } catch (error) {
-            console.error('Error during check-in:', error);
-            alert('Error during check-in');
-        }
-    });
-
-    checkOutBtn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'employee')) {
-            alert('Please log in as an admin or employee to perform this action.');
-            return;
-        }
-        const employeeId = document.getElementById('employeeId').value;
-        try {
-            const response = await fetch('/check_out', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ employee_id: employeeId }),
-                credentials: 'include'
-            });
-            const data = await response.json();
-            if (data.status === 'success') {
-                const toast = new bootstrap.Toast(document.getElementById('attendanceToast'));
-                document.querySelector('#attendanceToast .toast-body').textContent = `Employee ${employeeId} checked out successfully`;
-                toast.show();
-                loadAttendance();
-            } else {
-                alert(data.message || 'Check-out failed');
-            }
-        } catch (error) {
-            console.error('Error during check-out:', error);
-            alert('Error during check-out');
-        }
-    });
-
-    guestCheckInBtn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'guest')) {
-            alert('Access denied. Only admins and guests can check in.');
-            return;
-        }
-        const guestId = document.getElementById('guestId').value;
-        const guestName = document.getElementById('guestCheckName').value;
-        try {
-            const response = await fetch('/guest_check_in', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ guest_id: guestId, name: guestName }),
-                credentials: 'include'
-            });
-            const data = await response.json();
-            if (data.status === 'success') {
-                const toast = new bootstrap.Toast(document.getElementById('attendanceToast'));
-                document.querySelector('#attendanceToast .toast-body').textContent = `${guestName} checked in successfully`;
-                toast.show();
-                loadGuestRecords();
-            } else {
-                alert(data.message || 'Guest check-in failed');
-            }
-        } catch (error) {
-            console.error('Error during guest check-in:', error);
-            alert('Error during guest check-in');
-        }
-    });
-
-    guestCheckOutBtn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'guest')) {
-            alert('Access denied. Only admins and guests can check out.');
-            return;
-        }
-        const guestId = document.getElementById('guestId').value;
-        try {
-            const response = await fetch('/guest_check_out', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ guest_id: guestId }),
-                credentials: 'include'
-            });
-            const data = await response.json();
-            if (data.status === 'success') {
-                const toast = new bootstrap.Toast(document.getElementById('attendanceToast'));
-                document.querySelector('#attendanceToast .toast-body').textContent = `Guest ${guestId} checked out successfully`;
-                toast.show();
-                loadGuestRecords();
-            } else {
-                alert(data.message || 'Guest check-out failed');
-            }
-        } catch (error) {
-            console.error('Error during guest check-out:', error);
-            alert('Error during guest check-out');
-        }
-    });
-
-    refreshGuestRecords.addEventListener('click', (e) => {
-        e.preventDefault();
-        loadGuestRecords();
-    });
-
-    socket.on('attendance_update', (data) => {
-        if (data.status === 'error') {
-            alert(data.message || 'Update failed');
-        } else {
-            const toast = new bootstrap.Toast(document.getElementById('attendanceToast'));
-            const time = data.action === 'check-in' ? data.time_in : data.time_out;
-            document.querySelector('#attendanceToast .toast-body').textContent = `${data.name || 'User'} ${data.action === 'check-in' ? 'checked in' : 'checked out'} at ${time || 'N/A'}`;
-            toast.show();
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${data.employee_id || 'N/A'}</td>
-                <td>${data.name || 'N/A'}</td>
-                <td>${data.date || 'N/A'}</td>
-                <td>${data.time_in || '-'}</td>
-                <td>${data.time_out || '-'}</td>
-            `;
-            attendanceTbody.prepend(row);
-        }
-    });
-
-    socket.on('guest_update', (data) => {
-        if (data.status === 'error') {
-            alert(data.message || 'Error');
-        } else {
-            const toast = new bootstrap.Toast(document.getElementById('attendanceToast'));
-            document.querySelector('#attendanceToast .toast-body').textContent = `${data.name || 'Guest'} ${data.action === 'check-in' ? 'checked in' : 'checked out'}`;
-            toast.show();
-            loadGuestRecords();
-        }
-    });
-
-    setInterval(() => {
-        loadAttendance();
-        loadGuestRecords();
-    }, 60000);
-
-    const root = document.documentElement;
-    function setTheme(theme) {
-        root.setAttribute('data-theme', theme);
-        localStorage.setItem('theme', theme);
-        themeToggle.querySelector('i').className = theme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
-        sidebarThemeToggle.querySelector('i').className = theme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
-    }
-
-    themeToggle.addEventListener('click', (e) => {
-        e.preventDefault();
-        const currentTheme = root.getAttribute('data-theme');
-        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-        setTheme(newTheme);
-    });
-
-    sidebarThemeToggle.addEventListener('click', (e) => {
-        e.preventDefault();
-        const currentTheme = root.getAttribute('data-theme');
-        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-        setTheme(newTheme);
-    });
-
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    setTheme(savedTheme);
-
-    generateInvoice.addEventListener('click', (e) => {
-        e.preventDefault();
-        const guestName = document.getElementById('guestName').value;
-        const checkInDate = document.getElementById('checkInDate').value;
-        const checkOutDate = document.getElementById('checkOutDate').value;
-        const roomType = document.getElementById('roomType').value;
-        if (guestName && checkInDate && checkOutDate && roomType) {
-            const invoice = {
-                guestName,
-                checkInDate,
-                checkOutDate,
-                roomType,
-                amount: 100.00
-            };
-            const toast = new bootstrap.Toast(document.getElementById('attendanceToast'));
-            document.querySelector('#attendanceToast .toast-body').textContent = `Invoice generated for ${guestName}. Amount: $${invoice.amount} (Email sent)`;
-            toast.show();
-            console.log('Invoice:', invoice);
-        } else {
-            alert('Please fill booking details to generate invoice.');
-        }
-    });
-
-    syncChannels.addEventListener('click', (e) => {
-        e.preventDefault();
-        fetch('/sync_channels', { credentials: 'include' })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    const toast = new bootstrap.Toast(document.getElementById('attendanceToast'));
-                    document.querySelector('#attendanceToast .toast-body').textContent = 'Channels synced with OTAs and PMS successfully.';
-                    toast.show();
-                } else {
-                    alert('Failed to sync channels. Check console for details.');
-                }
-            })
-            .catch(error => {
-                console.error('Error syncing channels:', error);
-                alert('Error syncing channels.');
-            });
-    });
-
-    window.jQuery || document.write('<script src="https://code.jquery.com/jquery-3.6.0.min.js"><\/script>');
-    $(document).ready(function() {
-        updateUI();
-        $('#myTab a').on('click', function (e) {
-            e.preventDefault();
-            $(this).tab('show');
+  // Load attendance records with pagination
+  async function loadAttendance(page = currentRecordsPage, perPage = currentRecordsPerPage) {
+    if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'employee')) return;
+    const startDate = document.getElementById('startDate').value || new Date().toISOString().split('T')[0];
+    const endDate = document.getElementById('endDate').value || startDate;
+    try {
+      const response = await fetch(`/attendance?page=${page}&per_page=${perPage}&start_date=${startDate}&end_date=${endDate}`, { credentials: 'include' });
+      const data = await response.json();
+      attendanceTableBody.innerHTML = '';
+      if (data.success && data.records?.length) {
+        data.records.forEach(record => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${record.employee_id || 'N/A'}</td>
+            <td>${record.name || 'N/A'}</td>
+            <td>${record.date || '-'}</td>
+            <td>${record.time_in || '-'}</td>
+            <td>${record.time_out || '-'}</td>
+          `;
+          attendanceTableBody.appendChild(row);
         });
-        $('#sidebarEmployeeBtn, #employeeBtn').on('click', function(e) {
-            e.preventDefault();
-            $('#myTab a[href="#employee-tab"]').tab('show');
-            closeSidebarIfOpen();
-        });
-        $('#sidebarBookingBtn, #bookingBtn').on('click', function(e) {
-            e.preventDefault();
-            $('#myTab a[href="#booking-tab"]').tab('show');
-            closeSidebarIfOpen();
-        });
-        $('#sidebarGuestBtn, #guestBtn').on('click', function(e) {
-            e.preventDefault();
-            $('#myTab a[href="#guest-tab"]').tab('show');
-            closeSidebarIfOpen();
-        });
-        $('#sidebarHomeBtn, #homeBtn').on('click', function(e) {
-            e.preventDefault();
-            window.location.href = '/';
-            closeSidebarIfOpen();
-        });
-        $('#sidebarRegisterBtn, #registerBtn').on('click', function(e) {
-            e.preventDefault();
-            window.location.href = '/register';
-            closeSidebarIfOpen();
-        });
-        $('#sidebarSubscribeBtn, #subscribeBtn').on('click', function(e) {
-            e.preventDefault();
-            window.location.href = '/subscribe';
-            closeSidebarIfOpen();
-        });
-    });
+        currentRecordsPage = data.pagination.current_page;
+        currentRecordsPerPage = data.pagination.per_page;
+        updateAttendancePagination(data.pagination);
+      } else {
+        attendanceTableBody.innerHTML = '<tr><td colspan="5">No attendance records found</td></tr>';
+        updateAttendancePagination({ current_page: 1, per_page: perPage, total_items: 0, total_pages: 1 });
+      }
+    } catch (error) {
+      console.error('Error loading attendance:', error);
+      attendanceTableBody.innerHTML = '<tr><td colspan="5">Error loading records</td></tr>';
+      updateAttendancePagination({ current_page: 1, per_page: perPage, total_items: 0, total_pages: 1 });
+    }
+  }
 
-    {% block scripts %}{% endblock %}
+  // Update attendance pagination controls
+  function updateAttendancePagination(pagination) {
+    let paginationContainer = document.querySelector('#employee-tab .pagination');
+    if (!paginationContainer) {
+      paginationContainer = document.createElement('div');
+      paginationContainer.className = 'pagination';
+      attendanceTableBody.parentElement.parentElement.after(paginationContainer);
+    }
+    paginationContainer.innerHTML = `
+      <span class="pagination-info">
+        Page ${pagination.current_page} of ${pagination.total_pages} (${pagination.total_items} items)
+      </span>
+      <button class="page-link ${pagination.current_page === 1 ? 'disabled' : ''}" 
+              onclick="loadAttendance(${pagination.current_page - 1}, ${pagination.per_page})">
+        Previous
+      </button>
+      ${Array.from({ length: pagination.total_pages }, (_, i) => i + 1).map(page => `
+        <button class="page-link ${page === pagination.current_page ? 'active' : ''}" 
+                onclick="loadAttendance(${page}, ${pagination.per_page})">
+          ${page}
+        </button>
+      `).join('')}
+      <button class="page-link ${pagination.current_page === pagination.total_pages ? 'disabled' : ''}" 
+              onclick="loadAttendance(${pagination.current_page + 1}, ${pagination.per_page})">
+        Next
+      </button>
+    `;
+  }
+
+  // Load guest records with pagination
+  async function loadGuestRecords(page = currentGuestsPage, perPage = currentGuestsPerPage) {
+    if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'guest')) return;
+    try {
+      const response = await fetch(`/guest_records?page=${page}&per_page=${perPage}`, { credentials: 'include' });
+      const data = await response.json();
+      guestTableBody.innerHTML = '';
+      if (data.success && data.records?.length) {
+        data.records.forEach(record => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${record.guest_id || 'N/A'}</td>
+            <td>${record.name || 'N/A'}</td>
+            <td>${record.room_id || 'N/A'}</td>
+            <td>${record.check_in_date || '-'}</td>
+            <td>${record.check_out_date || '-'}</td>
+            <td>${record.status || 'N/A'}</td>
+          `;
+          guestTableBody.appendChild(row);
+        });
+        currentGuestsPage = data.pagination.current_page;
+        currentGuestsPerPage = data.pagination.per_page;
+        updateGuestPagination(data.pagination);
+      } else {
+        guestTableBody.innerHTML = '<tr><td colspan="6">No guest records found</td></tr>';
+        updateGuestPagination({ current_page: 1, per_page: perPage, total_items: 0, total_pages: 1 });
+      }
+    } catch (error) {
+      console.error('Error loading guest records:', error);
+      guestTableBody.innerHTML = '<tr><td colspan="6">Error loading records</td></tr>';
+      updateGuestPagination({ current_page: 1, per_page: perPage, total_items: 0, total_items: 0, total_pages: 1 });
+    }
+  }
+
+  // Update guest pagination controls
+  function updateGuestPagination(pagination) {
+    let paginationContainer = document.querySelector('#guest-tab .pagination');
+    if (!paginationContainer) {
+      paginationContainer = document.createElement('div');
+      paginationContainer.className = 'pagination';
+      guestTableBody.parentElement.parentElement.after(paginationContainer);
+    }
+    paginationContainer.innerHTML = `
+      <span class="pagination-info">
+        Page ${pagination.current_page} of ${pagination.total_pages} (${pagination.total_items} items)
+      </span>
+      <button class="page-link ${pagination.current_page === 1 ? 'disabled' : ''}" 
+              onclick="loadGuestRecords(${pagination.current_page - 1}, ${pagination.per_page})">
+        Previous
+      </button>
+      ${Array.from({ length: pagination.total_pages }, (_, i) => i + 1).map(page => `
+        <button class="page-link ${page === pagination.current_page ? 'active' : ''}" 
+                onclick="loadGuestRecords(${page}, ${pagination.per_page})">
+          ${page}
+        </button>
+      `).join('')}
+      <button class="page-link ${pagination.current_page === pagination.total_pages ? 'disabled' : ''}" 
+              onclick="loadGuestRecords(${pagination.current_page + 1}, ${pagination.per_page})">
+        Next
+      </button>
+    `;
+  }
+
+  // Check room availability
+  async function checkRoomAvailability() {
+    if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'guest')) return;
+    const checkInDate = document.getElementById('checkInDateInput').value;
+    const checkOutDate = document.getElementById('checkOutDateInput').value;
+    const roomType = document.getElementById('roomTypeSelect').value;
+    if (!checkInDate || !checkOutDate || !roomType) {
+      roomAvailabilityStatus.textContent = 'Please complete all booking details';
+      return;
+    }
+    try {
+      const response = await fetch(`/room_availability?check_in_date=${checkInDate}&check_out_date=${checkOutDate}&room_type=${roomType}`, { credentials: 'include' });
+      const data = await response.json();
+      roomAvailabilityStatus.textContent = data.success && data.available ? `Available rooms: ${data.rooms.length}` : 'No rooms available';
+    } catch (error) {
+      console.error('Error checking room availability:', error);
+      roomAvailabilityStatus.textContent = 'Error checking availability';
+    }
+  }
+
+  // Update room status with pagination
+  async function updateRoomStatus(page = currentRoomsPage, perPage = currentRoomsPerPage) {
+    try {
+      const response = await fetch(`/room_status?page=${page}&per_page=${perPage}`, { credentials: 'include' });
+      const data = await response.json();
+      roomStatusTableBody.innerHTML = '';
+      if (data.success && data.rooms?.length) {
+        data.rooms.forEach(room => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${room.room_id || 'N/A'}</td>
+            <td>${room.room_type || 'N/A'}</td>
+            <td>${room.status || 'N/A'}</td>
+          `;
+          roomStatusTableBody.appendChild(row);
+        });
+        currentRoomsPage = data.pagination.current_page;
+        currentRoomsPerPage = data.pagination.per_page;
+        updateRoomPagination(data.pagination);
+      } else {
+        roomStatusTableBody.innerHTML = '<tr><td colspan="3">No rooms found</td></tr>';
+        updateRoomPagination({ current_page: 1, per_page: perPage, total_items: 0, total_pages: 1 });
+      }
+    } catch (error) {
+      console.error('Error updating room status:', error);
+      roomStatusTableBody.innerHTML = '<tr><td colspan="3">Error loading rooms</td></tr>';
+      updateRoomPagination({ current_page: 1, per_page: perPage, total_items: 0, total_pages: 1 });
+    }
+  }
+
+  // Update room pagination controls
+  function updateRoomPagination(pagination) {
+    let paginationContainer = document.querySelector('#booking-tab .pagination');
+    if (!paginationContainer) {
+      paginationContainer = document.createElement('div');
+      paginationContainer.className = 'pagination';
+      roomStatusTableBody.parentElement.parentElement.after(paginationContainer);
+    }
+    paginationContainer.innerHTML = `
+      <span class="pagination-info">
+        Page ${pagination.current_page} of ${pagination.total_pages} (${pagination.total_items} items)
+      </span>
+      <button class="page-link ${pagination.current_page === 1 ? 'disabled' : ''}" 
+              onclick="updateRoomStatus(${pagination.current_page - 1}, ${pagination.per_page})">
+        Previous
+      </button>
+      ${Array.from({ length: pagination.total_pages }, (_, i) => i + 1).map(page => `
+        <button class="page-link ${page === pagination.current_page ? 'active' : ''}" 
+                onclick="updateRoomStatus(${page}, ${pagination.per_page})">
+          ${page}
+        </button>
+      `).join('')}
+      <button class="page-link ${pagination.current_page === pagination.total_pages ? 'disabled' : ''}" 
+              onclick="updateRoomStatus(${pagination.current_page + 1}, ${pagination.per_page})">
+        Next
+      </button>
+    `;
+  }
+
+  setInterval(() => updateRoomStatus(currentRoomsPage, currentRoomsPerPage), 60000);
+  socket.on('room_status_update', () => updateRoomStatus(currentRoomsPage, currentRoomsPerPage));
+
+  // Employee login
+  employeeForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('employeeUsername').value;
+    const password = document.getElementById('employeePassword').value;
+    try {
+      const response = await fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, role: 'employee' }),
+        credentials: 'include'
+      });
+      const data = await response.json();
+      if (data.status === 'success') {
+        hasLoggedIn = true;
+        userRole = data.user_role || 'employee';
+        username = data.username;
+        updateUi();
+        showToast('Login successful!');
+        window.location.reload();
+      } else {
+        showToast(data.message || 'Login failed. Check credentials');
+      }
+    } catch (error) {
+      console.error('Employee login error:', error);
+      showToast('Login error. Try again');
+    }
+  });
+
+  // Guest login
+  guestForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('guestUsername').value;
+    const password = document.getElementById('guestPassword').value;
+    try {
+      const response = await fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, role: 'guest' }),
+        credentials: 'include'
+      });
+      const data = await response.json();
+      if (data.status === 'success') {
+        hasLoggedIn = true;
+        userRole = data.user_role || 'guest';
+        username = data.username;
+        updateUi();
+        showToast('Login successful!');
+        window.location.reload();
+      } else {
+        showToast(data.message || 'Login failed. Check credentials');
+      }
+    } catch (error) {
+      console.error('Guest login error:', error);
+      showToast('Login error. Try again');
+    }
+  });
+
+  // Biometric login
+  employeeBiometricLogin.addEventListener('click', () => {
+    window.location.href = '/login?method=biometric&role=employee';
+  });
+
+  guestBiometricLogin.addEventListener('click', () => {
+    window.location.href = '/login?method=biometric&role=guest';
+  });
+
+  // Booking form submission
+  bookingForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'guest')) {
+      showToast('Access denied. Only admins and guests can book rooms');
+      return;
+    }
+    const guestName = document.getElementById('guestNameInput').value;
+    const checkInDate = document.getElementById('checkInDateInput').value;
+    const checkOutDate = document.getElementById('checkOutDateInput').value;
+    const roomType = document.getElementById('roomTypeSelect').value;
+    try {
+      const response = await fetch('/book_room', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ guest_name: guestName, check_in_date: checkInDate, check_out_date: checkOutDate, room_type: roomType }),
+        credentials: 'include'
+      });
+      const data = await response.json();
+      if (data.success) {
+        showToast(`Booking confirmed for ${guestName}!`);
+        bookingForm.reset();
+        loadGuestRecords(currentGuestsPage, currentGuestsPerPage);
+      } else {
+        showToast(data.message || 'Booking failed');
+      }
+    } catch (error) {
+      console.error('Booking error:', error);
+      showToast('Booking error. Try again');
+    }
+  });
+
+  // Attendance actions
+  refreshAttendanceBtn.addEventListener('click', () => loadAttendance(currentRecordsPage, currentRecordsPerPage));
+  filterAttendanceBtn.addEventListener('click', () => loadAttendance(currentRecordsPage, currentRecordsPerPage));
+
+  exportBtn.addEventListener('click', async () => {
+    if (userRole !== 'admin') {
+      showToast('Access denied. Admins only');
+      return;
+    }
+    try {
+      const response = await fetch('/export_attendance', { credentials: 'include' });
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'attendance_export.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      } else {
+        const data = await response.json();
+        showToast(data.message || 'Failed to export CSV');
+      }
+    } catch (error) {
+      console.error('Export error:', error);
+      showToast('Error exporting CSV');
+    }
+  });
+
+  checkInBtn.addEventListener('click', async () => {
+    if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'employee')) {
+      showToast('Access denied. Login as admin or employee');
+      return;
+    }
+    const employeeId = document.getElementById('employeeId').value;
+    const employeeName = document.getElementById('employeeName').value;
+    try {
+      const response = await fetch('/check_in', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employee_id: employeeId, name: employeeName }),
+        credentials: 'include'
+      });
+      const data = await response.json();
+      if (data.success) {
+        showToast(`${employeeName} checked in successfully`);
+        loadAttendance(currentRecordsPage, currentRecordsPerPage);
+      } else {
+        showToast(data.message || 'Check-in failed');
+      }
+    } catch (error) {
+      console.error('Check-in error:', error);
+      showToast('Check-in error. Try again');
+    }
+  });
+
+  checkOutBtn.addEventListener('click', async () => {
+    if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'employee')) {
+      showToast('Access denied');
+      return;
+    }
+    const employeeId = document.getElementById('employeeId').value;
+    try {
+      const response = await fetch('/check_out', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: employeeId }),
+        credentials: 'include'
+      });
+      const data = await response.json();
+      if (data.success) {
+        showToast(`Employee ${employeeId} checked out successfully`);
+        loadAttendance(currentRecordsPage, currentRecordsPerPage);
+      } else {
+        showToast(data.message || 'Check-out failed');
+      }
+    } catch (error) {
+      console.error('Check-out error:', error);
+      showToast('Check-out error. Try again');
+    }
+  });
+
+  // Guest actions
+  guestCheckInBtn.addEventListener('click', async () => {
+    if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'guest')) {
+      showToast('Access denied. Only admins or guests can check in');
+      return;
+    }
+    const guestId = document.getElementById('guestIdInput').value;
+    const guestName = document.getElementById('guestNameInput').value;
+    try {
+      const response = await fetch('/guest_check_in', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ guest_id: guestId, name: guestName }),
+        credentials: 'include'
+      });
+      const data = await response.json();
+      if (data.success) {
+        showToast(`${guestName} checked in successfully`);
+        loadGuestRecords(currentGuestsPage, currentGuestsPerPage);
+      } else {
+        showToast(data.message || 'Guest check-in failed');
+      }
+    } catch (error) {
+      console.error('Guest check-in error:', error);
+      showToast('Guest check-in error. Try again');
+    }
+  });
+
+  guestCheckOutBtn.addEventListener('click', async () => {
+    if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'guest')) {
+      showToast('Access denied');
+      return;
+    }
+    const guestId = document.getElementById('guestIdInput').value;
+    try {
+      const response = await fetch('/guest_check_out', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ guest_id: guestId }),
+        credentials: 'include'
+      });
+      const data = await response.json();
+      if (data.success) {
+        showToast(`Guest ${guestId} checked out successfully`);
+        loadGuestRecords(currentGuestsPage, currentGuestsPerPage);
+      } else {
+        showToast(data.message || 'Guest check-out failed');
+      }
+    } catch (error) {
+      console.error('Guest check-out error:', error);
+      showToast('Guest check-out error. Try again');
+    }
+  });
+
+  refreshGuestRecordsBtn.addEventListener('click', () => loadGuestRecords(currentGuestsPage, currentGuestsPerPage));
+
+  // Sync channels
+  syncBtn.addEventListener('click', async () => {
+    if (!hasLoggedIn || userRole !== 'admin') {
+      showToast('Access denied. Admins only');
+      return;
+    }
+    try {
+      const response = await fetch('/sync_channels', { credentials: 'include' });
+      const data = await response.json();
+      if (data.success) {
+        showToast('Channels synced successfully');
+      } else {
+        showToast(data.message || 'Failed to sync channels');
+      }
+    } catch (error) {
+      console.error('Sync error:', error);
+      showToast('Error syncing channels');
+    }
+  });
+
+  // Generate invoice
+  generateInvoiceBtn.addEventListener('click', () => {
+    if (!hasLoggedIn || (userRole !== 'admin' && userRole !== 'guest')) {
+      showToast('Access denied. Only admins or guests can generate invoices');
+      return;
+    }
+    const guestName = document.getElementById('guestNameInput').value;
+    const checkInDate = document.getElementById('checkInDateInput').value;
+    const checkOutDate = document.getElementById('checkOutDateInput').value;
+    const roomType = document.getElementById('roomTypeSelect').value;
+    if (guestName && checkInDate && checkOutDate && roomType) {
+      const invoice = { guestName, checkIn: checkInDate, checkOut: checkOutDate, roomType, amount: 100.00 };
+      showToast(`Invoice generated for ${guestName}. Amount: $${invoice.amount}`);
+      console.log('Generated invoice:', invoice);
+    } else {
+      showToast('Please fill in all booking details');
+    }
+  });
+
+  // Tab navigation
+  $(document).ready(() => {
+    updateUi();
+    $('#myTab a').on('click', (e) => {
+      e.preventDefault();
+      $(this).tab('show');
+    });
+  });
+
+  // Periodic data refresh
+  setInterval(() => {
+    loadAttendance(currentRecordsPage, currentRecordsPerPage);
+    loadGuestRecords(currentGuestsPage, currentGuestsPerPage);
+  }, 60000);
 </script>
-  </body>
-</html>
+{% endblock %}

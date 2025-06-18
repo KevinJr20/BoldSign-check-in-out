@@ -1,43 +1,102 @@
-{% extends "dashboard.html" %}
+{% extends "base.html" %}
+
+{% block title %}
+{{ config.company_name or 'Hospitality' }} - Logout
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  .logout-container {
+    text-align: center;
+    padding: 40px 20px;
+    max-width: 600px;
+    margin: 40px auto;
+    background: var(--table-bg);
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--dropdown-border);
+  }
+  .intro-section h1 {
+    font-size: 2rem;
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 20px;
+  }
+  .intro-section p {
+    font-size: 1.2rem;
+    color: var(--text-muted);
+  }
+  .btn-custom {
+    background: var(--upgrade-btn-bg);
+    color: #fff;
+    border-radius: 25px;
+    padding: 10px 25px;
+    font-weight: 600;
+    transition: transform 0.2s, box-shadow 0.3s;
+  }
+  .btn-custom:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.5);
+  }
+  .btn-secondary {
+    background: var(--dropdown-border);
+    color: var(--text-color);
+    border: none;
+    border-radius: 25px;
+    padding: 10px 25px;
+    font-weight: 600;
+    transition: transform 0.2s, box-shadow 0.3s;
+  }
+  .btn-secondary:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+  @media (max-width: 767px) {
+    .logout-container {
+      padding: 20px 15px;
+      margin: 20px auto;
+    }
+    .intro-section h1 {
+      font-size: 1.5rem;
+    }
+    .intro-section p {
+      font-size: 1rem;
+    }
+    .btn-custom, .btn-secondary {
+      padding: 8px 20px;
+      font-size: 0.9rem;
+    }
+  }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="logout-container">
-    <div class="intro-section">
-        <h1>Logout Confirmation</h1>
-        <p>Are you sure you want to log out of your {{ config.company_name or 'Hospitality' }} Dashboard session?</p>
-    </div>
-    <div class="d-flex justify-content-center gap-3">
-        <form method="POST" action="{{ url_for('logout') }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn btn-custom">
-                <i class="fas fa-sign-out-alt me-2"></i> Yes, Logout
-            </button>
-        </form>
-        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
-            <i class="fas fa-arrow-left me-2"></i> Cancel
-        </a>
-    </div>
+  <div class="intro-section">
+    <h1>Logout Confirmation</h1>
+    <p>Are you sure you want to log out of your {{ config.company_name or 'Hospitality' }} Dashboard session?</p>
+  </div>
+  <div class="d-flex justify-content-center gap-3">
+    <form method="POST" action="{{ url_for('logout') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-custom">
+        <i class="fas fa-sign-out-alt me-2"></i> Yes, Logout
+      </button>
+    </form>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+      <i class="fas fa-arrow-left me-2"></i> Cancel
+    </a>
+  </div>
 </div>
+{% endblock %}
 
-<style>
-    .logout-container {
-        text-align: center;
-        padding: 40px 20px;
-        max-width: 600px;
-        margin: 0 auto;
+{% block scripts %}
+<script>
+  $(document).ready(() => {
+    if (!hasLoggedIn) {
+      showToast('You are not logged in.');
+      window.location.href = '/login';
     }
-    .btn-secondary {
-        background-color: var(--dropdown-border);
-        color: var(--text-color);
-        border: none;
-        border-radius: 25px;
-        padding: 10px 25px;
-        font-weight: 600;
-        transition: transform 0.2s, box-shadow 0.3s;
-    }
-    .btn-secondary:hover {
-        transform: scale(1.05);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    }
-</style>
+  });
+</script>
 {% endblock %}

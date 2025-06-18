@@ -1,15 +1,82 @@
-{% extends "dashboard.html" %}
+{% extends "base.html" %}
 
-{% block title %}Payment Error - {{ config.company_name or 'Hospitality Dashboard' }}{% endblock %}
+{% block title %}
+Payment Error - {{ config.company_name or 'Hospitality' }}
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  .error-section {
+    max-width: 600px;
+    margin: 40px auto;
+    padding: 20px;
+    text-align: center;
+    background: var(--table-bg);
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--dropdown-border);
+  }
+  .error-section h1 {
+    font-size: 2.5rem;
+    font-weight: 600;
+    color: #dc3545; /* Bootstrap danger */
+    margin-bottom: 20px;
+  }
+  .error-section p {
+    font-size: 1.2rem;
+    color: var(--text-muted);
+    margin-bottom: 30px;
+  }
+  .btn-custom {
+    background: var(--upgrade-btn-bg);
+    color: #fff;
+    border-radius: 25px;
+    padding: 10px 25px;
+    font-weight: 600;
+    transition: transform 0.2s, box-shadow 0.3s;
+  }
+  .btn-custom:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.5);
+  }
+  @media (max-width: 767px) {
+    .error-section {
+      margin: 20px auto;
+      padding: 15px;
+    }
+    .error-section h1 {
+      font-size: 2rem;
+    }
+    .error-section p {
+      font-size: 1rem;
+    }
+    .btn-custom {
+      padding: 8px 20px;
+      font-size: 0.9rem;
+    }
+  }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="container mt-4 mx-auto">
-    <div class="tab-content">
-        <div class="text-center">
-            <h1 class="text-danger">Error</h1>
-            <p>{{ message }}</p>
-            <a href="/subscribe" class="btn btn-custom">Try Again</a>
-        </div>
+  <div class="tab-content">
+    <div class="error-section">
+      <h1 class="text-danger">Error</h1>
+      <p>{{ message }}</p>
+      <a href="/subscribe" class="btn btn-custom">Try Again</a>
     </div>
+  </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  $(document).ready(() => {
+    if (!hasLoggedIn) {
+      showToast('Please log in to view this page.');
+      window.location.href = '/login';
+    }
+  });
+</script>
 {% endblock %}

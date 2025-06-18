@@ -1,479 +1,286 @@
-{% extends "dashboard.html" %}
+{% extends "base.html" %}
 
-{% block title %}{{ config.company_name or 'Dashboard' }} - Subscribe{% endblock %}
+{% block title %}
+Subscription - {{ config.company_name or 'Hospitality' }}
+{% endblock %}
 
 {% block extra_head %}
-<!-- Stripe SDK -->
 <script src="https://js.stripe.com/v3/"></script>
-<!-- PayPal SDK -->
-<script src="https://www.paypal.com/sdk/js?client-id={{ config.PAYPAL_CLIENT_ID }}&currency=USD"></script>
+<script src="https://www.paypal.com/sdk/js?client-id={{ paypal_client_id }}&currency=USD"></script>
 <style>
-  .subscription-section {
-    max-width: 600px;
-    margin: 40px auto;
-    padding: 25px;
-    background: var(--card-bg);
-    border-radius: 15px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    border: 1px solid var(--dropdown-border);
-  }
-  .subscription-header {
-    text-align: center;
-    margin-bottom: 25px;
-  }
-  .subscription-header h1 {
-    font-size: clamp(1.5rem, 4vw, 1.8rem);
-    font-weight: bold;
-    color: var(--text-color);
-  }
-  .current-plan {
-    background: var(--dropdown-bg);
-    padding: 15px;
+  .subscription-container {
+    max-width: 800px;
+    margin: 50px auto;
+    padding: 20px;
+    background: var(--table-bg, #fff);
     border-radius: 10px;
-    margin-bottom: 25px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--dropdown-border, #ced4da);
   }
-  .current-plan h2 {
-    font-size: clamp(1rem, 3vw, 1.2rem);
-    font-weight: bold;
-    margin-bottom: 10px;
-    color: var(--text-color);
-  }
-  .current-plan p {
-    margin: 5px 0;
-    font-size: clamp(0.85rem, 2.5vw, 0.9rem);
-    color: var(--text-color);
-  }
-  .subscription-form {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-  }
-  .payment-methods {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
-    justify-content: center;
-    margin: 25px 0;
-  }
-  .payment-option {
-    flex: 1 1 100px;
-    max-width: 150px;
-    padding: 15px;
-    background: var(--dropdown-bg);
-    border: 2px solid var(--dropdown-border);
-    border-radius: 10px;
-    text-align: center;
-    cursor: pointer;
-    transition: transform 0.2s, border-color 0.3s, box-shadow 0.3s;
-  }
-  .payment-option:hover {
-    transform: translateY(-2px);
-    border-color: var(--button-bg);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-  }
-  .payment-option input {
-    display: none;
-  }
-  .payment-option label {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    font-size: clamp(0.85rem, 2.5vw, 0.9rem);
-    font-weight: 600;
-    color: var(--text-color);
-    cursor: pointer;
-    margin: 0;
-    width: 100%;
-    height: 100%;
-  }
-  .payment-option i {
-    font-size: clamp(1.25rem, 3.5vw, 1.5rem);
-    color: var(--button-bg);
-  }
-  .payment-option input:checked + label {
-    background: var(--sidebar-hover-bg);
+  .plan-card {
+    background: var(--dropdown-bg, #f8f9fa);
+    border: 1px solid var(--dropdown-border, #ced4da);
     border-radius: 8px;
-    padding: 5px;
+    padding: 15px;
+    margin-bottom: 15px;
+    transition: transform 0.2s;
+  }
+  .plan-card:hover {
+    transform: scale(1.02);
+  }
+  .payment-method {
+    margin: 20px 0;
   }
   #card-element {
-    background: var(--dropdown-bg);
-    color: var(--text-color);
-    border: 1px solid var(--dropdown-border);
-    border-radius: 8px;
-    padding: 12px;
+    background: var(--dropdown-bg, #fff);
+    padding: 10px;
+    border: 1px solid var(--dropdown-border, #ced4da);
+    border-radius: 5px;
     margin-top: 10px;
   }
   #card-errors {
     color: #dc3545;
-    font-size: clamp(0.8rem, 2vw, 0.85rem);
-    margin-top: 8px;
-    text-align: center;
+    margin-top: 5px;
   }
-  @media (max-width: 767px) {
-    .subscription-section {
-      margin: 20px 10px;
-      padding: 15px;
-    }
-    .subscription-header h1 {
-      font-size: 1.5rem;
-    }
-    .current-plan h2 {
-      font-size: 1.1rem;
-    }
-    .payment-methods {
-      flex-direction: column;
-      align-items: center;
-    }
-    .payment-option {
-      max-width: 100%;
-      width: 100%;
-    }
+  .loading-spinner {
+    display: none;
+    margin-left: 10px;
+  }
+  .loading-spinner.active {
+    display: inline-block;
   }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="subscription-section">
-  <div class="subscription-header">
-    <h1>Manage Your Subscription</h1>
-  </div>
+<div class="subscription-container">
+  <h1>Subscription Plans</h1>
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
       {% for category, message in messages %}
-        <div class="alert alert-{{ category }}">{{ message }}</div>
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
       {% endfor %}
     {% endif %}
   {% endwith %}
-  <div class="current-plan">
-    <h2>Current Plan: {{ subscription.plan | capitalize }}</h2>
-    <p>Employee Limit: {{ subscription.employee_limit }}</p>
-    <p>Start Date: {{ subscription.start_date }}</p>
-    {% if subscription.end_date %}
-      <p>End Date: {{ subscription.end_date }}</p>
-    {% endif %}
-  </div>
-  <form id="subscription-form" class="subscription-form" method="POST" action="{{ url_for('subscribe') }}">
+  <form id="subscription-form" method="POST" action="{{ url_for('subscribe') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input type="hidden" name="transaction_id" id="transaction-id">
-    <div class="form-group">
-      <label for="plan_type">Select Plan</label>
-      <select name="plan_type" id="plan_type" class="form-control" required>
-        {% for plan, details in subscription_tiers.items() %}
-          <option value="{{ plan }}" {% if plan == subscription.plan %}selected{% endif %}>
-            {{ plan | capitalize }} (${{ details.price }}/month, {{ details.employee_limit }} Employees)
-          </option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="form-group">
-      <label>Payment Method</label>
-      <div class="payment-methods">
-        <div class="payment-option" data-bs-toggle="tooltip" data-bs-placement="top" title="Pay with M-Pesa">
-          <input type="radio" name="payment_method" value="mpesa" id="mpesa" checked>
-          <label for="mpesa">
-            <i class="fas fa-mobile-alt"></i>
-            M-Pesa
-          </label>
-        </div>
-        <div class="payment-option" data-bs-toggle="tooltip" data-bs-placement="top" title="Pay with Credit/Debit Card">
-          <input type="radio" name="payment_method" value="stripe" id="stripe">
-          <label for="stripe">
-            <i class="fas fa-credit-card"></i>
-            Card
-          </label>
-        </div>
-        <div class="payment-option" data-bs-toggle="tooltip" data-bs-placement="top" title="Pay with PayPal">
-          <input type="radio" name="payment_method" value="paypal" id="paypal">
-          <label for="paypal">
-            <i class="fab fa-paypal"></i>
-            PayPal
-          </label>
+    <input type="hidden" name="transaction_id" id="transaction-id" value="{{ transaction_id }}">
+    <div class="row">
+      {% for plan, details in subscription_tiers.items() %}
+      <div class="col-md-4">
+        <div class="plan-card">
+          <h3>{{ plan.capitalize() }}</h3>
+          <p>Price: ${{ details.price }}</p>
+          <p>Employees: {{ details.employee_limit }}</p>
+          <input type="radio" name="plan_type" value="{{ plan }}" id="{{ plan }}-plan" required>
+          <label for="{{ plan }}-plan">Select {{ plan.capitalize() }}</label>
         </div>
       </div>
+      {% endfor %}
     </div>
-    <div id="mpesa-fields" class="form-group">
-      <label for="mpesa_number">M-Pesa Phone Number</label>
-      <input type="text" name="mpesa_number" id="mpesa_number" class="form-control" placeholder="e.g., 2547********">
-    </div>
-    <div id="card-fields" class="form-group" style="display: none;">
-      <label for="card-element">Card Details</label>
-      <div id="card-element"></div>
+    <div class="payment-method">
+      <h4>Payment Method</h4>
+      <div class="form-check">
+        <input class="form-check-input" type="radio" name="payment_method" id="stripe" value="stripe" required>
+        <label class="form-check-label" for="stripe">Stripe (Debit/Credit Card)</label>
+      </div>
+      <div id="card-element" style="display: none;"></div>
       <div id="card-errors" role="alert"></div>
+      <div class="form-check">
+        <input class="form-check-input" type="radio" name="payment_method" id="paypal" value="paypal">
+        <label class="form-check-label" for="paypal">PayPal</label>
+      </div>
+      <div id="paypal-button-container" style="display: none;"></div>
+      <div class="form-check">
+        <input class="form-check-input" type="radio" name="payment_method" id="mpesa" value="mpesa">
+        <label class="form-check-label" for="mpesa">M-Pesa</label>
+      </div>
+      <div id="mpesa-input" style="display: none;">
+        <label for="mpesa_number">M-Pesa Number (e.g., 2547xxxxxxxx)</label>
+        <input type="text" class="form-control" id="mpesa_number" name="mpesa_number">
+      </div>
     </div>
-    <div id="paypal-button-container" class="form-group" style="display: none;"></div>
-    <button type="submit" class="btn btn-custom" id="submit-btn">
-      Upgrade Subscription
-      <i class="fas fa-spinner loading-spinner"></i>
-    </button>
+    <button type="submit" class="btn btn-primary" id="submit-btn">Subscribe</button>
+    <span class="loading-spinner" id="loading-spinner">
+      <i class="fas fa-spinner fa-spin"></i>
+    </span>
   </form>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-  console.log('subscribe.html DOM loaded at', new Date().toLocaleString());
-
-  // Initialize Stripe
-  let stripe, elements, cardElement;
-  try {
-    if (typeof Stripe === 'undefined') {
-      console.error('Stripe SDK not loaded. Check network or script src.');
-      document.getElementById('card-errors').textContent = 'Payment system unavailable. Please try again later.';
-      throw new Error('Stripe SDK not loaded');
-    }
-    stripe = Stripe('{{ config.STRIPE_PUBLISHABLE_KEY }}');
-    if (!'{{ config.STRIPE_PUBLISHABLE_KEY }}'.startsWith('pk_')) {
-      console.warn('Invalid Stripe publishable key. Expected format: pk_...');
-    }
-    elements = stripe.elements();
-    cardElement = elements.create('card', {
-      style: {
-        base: {
-          fontSize: '16px',
-          color: getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim(),
-          fontFamily: '"Poppins", sans-serif',
-          '::placeholder': {
-            color: getComputedStyle(document.documentElement).getPropertyValue('--dropdown-border').trim(),
-          },
-        },
-        invalid: {
-          color: '#dc3545',
-        },
-      },
-    });
-    const cardElementDiv = document.getElementById('card-element');
-    if (!cardElementDiv) {
-      throw new Error('Card element container not found');
-    }
-    cardElement.mount('#card-element');
-    console.log('Stripe card element mounted successfully');
-  } catch (err) {
-    console.error('Stripe initialization error:', err.message);
-    document.getElementById('card-errors').textContent = 'Failed to load card input: ' + err.message;
-  }
-
-  // Initialize PayPal
+  console.log('Initializing payment form...');
+  const stripe = Stripe('{{ stripe_publishable_key }}');
+  const elements = stripe.elements();
+  const cardElement = elements.create('card', {
+    style: { base: { fontSize: '16px', color: '#32325d' } }
+  });
   let paypalInitialized = false;
-  function initPayPal() {
-    try {
-      if (typeof paypal === 'undefined') {
-        console.error('PayPal SDK not loaded. Check network or client-id.');
-        document.getElementById('card-errors').textContent = 'PayPal unavailable. Please try again later.';
-        throw new Error('PayPal SDK not loaded');
+
+  // DOM Elements
+  const form = document.getElementById('subscription-form');
+  const submitBtn = document.getElementById('submit-btn');
+  const loadingSpinner = document.getElementById('loading-spinner');
+  const stripeRadio = document.getElementById('stripe');
+  const paypalRadio = document.getElementById('paypal');
+  const mpesaRadio = document.getElementById('mpesa');
+  const cardElementDiv = document.getElementById('card-element');
+  const paypalContainer = document.getElementById('paypal-button-container');
+  const mpesaInput = document.getElementById('mpesa-input');
+  const cardErrors = document.getElementById('card-errors');
+
+  // Payment method toggle
+  function togglePaymentFields() {
+    console.log('Toggling payment fields:', { stripe: stripeRadio.checked, paypal: paypalRadio.checked, mpesa: mpesaRadio.checked });
+    cardElementDiv.style.display = stripeRadio.checked ? 'block' : 'none';
+    paypalContainer.style.display = paypalRadio.checked ? 'block' : 'none';
+    mpesaInput.style.display = mpesaRadio.checked ? 'block' : 'none';
+    if (stripeRadio.checked) {
+      try {
+        cardElement.mount('#card-element');
+        console.log('Stripe card element mounted');
+      } catch (err) {
+        console.error('Stripe mount error:', err);
+        cardErrors.textContent = 'Failed to load Stripe card fields';
       }
-      if (!document.getElementById('paypal-button-container')) {
-        throw new Error('PayPal button container not found');
-      }
+    } else {
+      cardElement.unmount();
+    }
+    if (paypalRadio.checked && !paypalInitialized) {
+      console.log('Initializing PayPal buttons...');
       paypal.Buttons({
-        style: {
-          layout: 'vertical',
-          color: 'blue',
-          shape: 'pill',
-          label: 'paypal',
-        },
         createOrder: (data, actions) => {
-          const planType = document.getElementById('plan_type').value;
-          const prices = {
-            {% for plan, details in subscription_tiers.items() %}
-              "{{ plan }}": {{ details.price }},
-            {% endfor %}
-          };
-          if (!prices[planType]) {
-            throw new Error(`Invalid plan type: ${planType}`);
-          }
-          console.log('Creating PayPal order for plan:', planType, 'Price:', prices[planType]);
+          const planType = document.querySelector('input[name="plan_type"]:checked')?.value;
+          const amount = {{ subscription_tiers | tojson }}[planType]?.price || 0;
+          console.log('Creating PayPal order:', { planType, amount });
           return actions.order.create({
             purchase_units: [{
-              amount: {
-                value: prices[planType].toFixed(2),
-                currency_code: 'USD'
-              },
-              description: `Subscription to ${planType} plan`
-            }],
-            application_context: {
-              shipping_preference: 'NO_SHIPPING'
-            }
+              amount: { value: amount.toFixed(2) }
+            }]
           });
         },
-        onApprove: (data, actions) => {
+        onApprove: async (data, actions) => {
           console.log('PayPal order approved:', data.orderID);
-          return actions.order.capture().then(details => {
-            console.log('PayPal capture details:', details);
-            document.getElementById('transaction-id').value = data.orderID;
-            document.getElementById('subscription-form').submit();
-          }).catch(err => {
+          try {
+            const order = await actions.order.capture();
+            const formData = new FormData(form);
+            formData.append('paypal_order_id', order.id);
+            submitBtn.disabled = true;
+            loadingSpinner.classList.add('active');
+            const response = await fetch('/subscribe', {
+              method: 'POST',
+              body: formData,
+              credentials: 'include'
+            });
+            const result = await response.json();
+            console.log('PayPal response:', result);
+            if (result.status === 'success') {
+              window.location.href = '/completed/success?transaction_id=' + formData.get('transaction_id') + '&plan=' + formData.get('plan_type');
+            } else {
+              cardErrors.textContent = result.message || 'PayPal payment failed';
+            }
+          } catch (err) {
             console.error('PayPal capture error:', err);
-            document.getElementById('card-errors').textContent = 'PayPal error: ' + err.message;
-          });
+            cardErrors.textContent = 'PayPal error: ' + err.message;
+          } finally {
+            submitBtn.disabled = false;
+            loadingSpinner.classList.remove('active');
+          }
         },
-        onError: err => {
+        onError: (err) => {
           console.error('PayPal button error:', err);
-          document.getElementById('card-errors').textContent = 'PayPal error: ' + err.message;
+          cardErrors.textContent = 'PayPal error: ' + err.message;
         }
-      }).render('#paypal-button-container').then(() => {
-        console.log('PayPal button rendered successfully');
-        paypalInitialized = true;
-      }).catch(err => {
-        console.error('PayPal render error:', err);
-        document.getElementById('card-errors').textContent = 'Failed to load PayPal button: ' + err.message;
-      });
-    } catch (err) {
-      console.error('PayPal initialization error:', err.message);
-      document.getElementById('card-errors').textContent = 'PayPal initialization failed: ' + err.message;
+      }).render('#paypal-button-container');
+      paypalInitialized = true;
+      console.log('PayPal buttons rendered');
     }
   }
 
-  // Handle payment method selection
-  const paymentMethodsContainer = document.querySelector('.payment-methods');
-  const mpesaFields = document.getElementById('mpesa-fields');
-  const cardFields = document.getElementById('card-fields');
-  const paypalButtonContainer = document.getElementById('paypal-button-container');
+  stripeRadio.addEventListener('change', togglePaymentFields);
+  paypalRadio.addEventListener('change', togglePaymentFields);
+  mpesaRadio.addEventListener('change', togglePaymentFields);
 
-  if (!paymentMethodsContainer) {
-    console.error('Payment methods container not found');
-    document.getElementById('card-errors').textContent = 'Payment options unavailable. Please refresh the page.';
-    return;
-  }
-
-  paymentMethodsContainer.addEventListener('change', (e) => {
-    if (e.target.name === 'payment_method') {
-      const method = e.target.value;
-      console.log('Payment method selected:', method);
-      mpesaFields.style.display = method === 'mpesa' ? 'block' : 'none';
-      cardFields.style.display = method === 'stripe' ? 'block' : 'none';
-      paypalButtonContainer.style.display = method === 'paypal' ? 'block' : 'none';
-      if (method === 'paypal' && !paypalInitialized) {
-        console.log('Initializing PayPal buttons on first selection');
-        initPayPal();
-      }
-    }
-  });
-
-  // Trigger initial state
-  const checkedMethod = document.querySelector('input[name="payment_method"]:checked');
-  if (checkedMethod) {
-    console.log('Initial payment method:', checkedMethod.value);
-    mpesaFields.style.display = checkedMethod.value === 'mpesa' ? 'block' : 'none';
-    cardFields.style.display = checkedMethod.value === 'stripe' ? 'block' : 'none';
-    paypalButtonContainer.style.display = checkedMethod.value === 'paypal' ? 'block' : 'none';
-  }
-
-  // Initialize tooltips
-  const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-  tooltipTriggerList.forEach(el => {
-    try {
-      new bootstrap.Tooltip(el, { trigger: 'hover' });
-    } catch (err) {
-      console.warn('Tooltip initialization failed for element:', el, err);
-    }
-  });
-
-  // Handle form submission
-  const submitBtn = document.getElementById('submit-btn');
-  const loadingSpinner = submitBtn.querySelector('.loading-spinner');
-  const form = document.getElementById('subscription-form');
-
-  if (!form) {
-    console.error('Subscription form not found');
-    document.getElementById('card-errors').textContent = 'Form unavailable. Please refresh the page.';
-    return;
-  }
-
-  form.addEventListener('submit', async e => {
+  // Form submission
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const paymentMethod = document.querySelector('input[name="payment_method"]:checked')?.value;
+    console.log('Form submitted with payment method:', paymentMethod);
     if (!paymentMethod) {
-      console.error('No payment method selected');
-      document.getElementById('card-errors').textContent = 'Please select a payment method.';
+      cardErrors.textContent = 'Please select a payment method.';
       return;
     }
-
     submitBtn.disabled = true;
     loadingSpinner.classList.add('active');
-    console.log('Form submission started for payment method:', paymentMethod);
-
     try {
       if (paymentMethod === 'stripe') {
-        if (!stripe || !cardElement) {
-          throw new Error('Stripe not initialized');
-        }
         console.log('Processing Stripe payment...');
-        const { error, paymentMethod } = await stripe.createPaymentMethod({
+        const { error, paymentMethod: stripePaymentMethod } = await stripe.createPaymentMethod({
           type: 'card',
-          card: cardElement,
+          card: cardElement
         });
         if (error) {
-          console.error('Stripe error:', error.message);
-          document.getElementById('card-errors').textContent = error.message;
+          console.error('Stripe payment method error:', error);
+          cardErrors.textContent = error.message;
           throw error;
         }
-        console.log('Stripe payment method created:', paymentMethod.id);
-        document.getElementById('transaction-id').value = paymentMethod.id;
-        form.submit();
-      } else if (paymentMethod === 'paypal') {
-        console.log('PayPal submission handled by onApprove callback');
-        if (!paypalInitialized) {
-          console.warn('PayPal buttons not initialized yet');
-          document.getElementById('card-errors').textContent = 'PayPal not ready. Please select PayPal again.';
+        console.log('Stripe payment method created:', stripePaymentMethod.id);
+        const formData = new FormData(form);
+        formData.append('payment_method_id', stripePaymentMethod.id);
+        const response = await fetch('/subscribe', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include'
+        });
+        const data = await response.json();
+        console.log('Stripe response:', data);
+        if (data.status === 'success' && data.session_id) {
+          stripe.redirectToCheckout({ sessionId: data.session_id });
+        } else {
+          cardErrors.textContent = data.message || 'Stripe payment failed';
         }
-        submitBtn.disabled = false;
-        loadingSpinner.classList.remove('active');
-        return;
+      } else if (paymentMethod === 'paypal') {
+        console.log('PayPal payment selected, waiting for onApprove...');
+        // PayPal handled by onApprove callback
+        if (!paypalInitialized) {
+          cardErrors.textContent = 'PayPal not initialized. Please select again.';
+        }
       } else if (paymentMethod === 'mpesa') {
+        console.log('Processing M-Pesa payment...');
         const mpesaNumber = document.getElementById('mpesa_number').value;
         if (!mpesaNumber.match(/^2547\d{8}$/)) {
-          console.error('Invalid M-Pesa number:', mpesaNumber);
-          document.getElementById('card-errors').textContent = 'Invalid M-Pesa number (e.g., 2547********)';
+          cardErrors.textContent = 'Invalid M-Pesa number (e.g., 2547xxxxxxxx)';
           throw new Error('Invalid M-Pesa number');
         }
-        console.log('M-Pesa number validated:', mpesaNumber);
-        form.submit();
+        const formData = new FormData(form);
+        const response = await fetch('/subscribe', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include'
+        });
+        const data = await response.json();
+        console.log('M-Pesa response:', data);
+        if (data.status === 'pending') {
+          cardErrors.textContent = 'M-Pesa payment request sent. Please complete the payment on your phone.';
+        } else {
+          cardErrors.textContent = data.message || 'M-Pesa payment initiation failed';
+        }
       }
     } catch (err) {
-      console.error('Form submission error:', err.message);
-      document.getElementById('card-errors').textContent = 'Error processing payment: ' + err.message;
+      console.error('Payment error:', err);
+      cardErrors.textContent = 'Payment error: ' + err.message;
     } finally {
       submitBtn.disabled = false;
       loadingSpinner.classList.remove('active');
     }
   });
 
-  // Theme synchronization
-  function updateCardElementStyle() {
-    const theme = document.documentElement.getAttribute('data-theme') || 'light';
-    const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-color').trim();
-    const placeholderColor = getComputedStyle(document.documentElement).getPropertyValue('--dropdown-border').trim();
-    console.log('Updating card element for theme:', theme);
-    if (cardElement) {
-      cardElement.update({
-        style: {
-          base: {
-            color: textColor,
-            '::placeholder': {
-              color: placeholderColor,
-            },
-          },
-        },
-      });
-    }
-  }
-
-  const themeObserver = new MutationObserver(mutations => {
-    mutations.forEach(mutation => {
-      if (mutation.attributeName === 'data-theme') {
-        console.log('Theme changed to:', document.documentElement.getAttribute('data-theme'));
-        updateCardElementStyle();
-      }
-    });
-  });
-  themeObserver.observe(document.documentElement, { attributes: true });
-
-  const savedTheme = localStorage.getItem('theme') || 'light';
-  console.log('Initial theme applied:', savedTheme);
-  document.documentElement.setAttribute('data-theme', savedTheme);
-  updateCardElementStyle();
-});
+  // Initialize
+  console.log('Calling togglePaymentFields on load');
+  togglePaymentFields();
 </script>
 {% endblock %}
