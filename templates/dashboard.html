@@ -580,7 +580,7 @@
 
   // State
   let hasLoggedIn = {{ hasLoggedIn | tojson | safe }};
-  let userRole = '{{ userRole || 'guest' | safe }}';
+  let userRole = '{{ userRole | safe }}' || 'guest';
   let username = {{ username | tojson | safe }};
   let currentRecordsPage = {{ records_pagination.current_page or 1 }};
   let currentRecordsPerPage = {{ records_pagination.per_page or 50 }};

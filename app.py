@@ -20,7 +20,7 @@ from flask_assets import Environment, Bundle
 from cryptography.fernet import Fernet
 from passlib.hash import bcrypt
 from dotenv import load_dotenv
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 import paypalrestsdk
 import stripe
 from dateutil.parser import parse as parse_date
@@ -49,7 +49,7 @@ logger = structlog.get_logger()
 
 # Load environment variables
 load_dotenv()
-ENCRYPTION_KEY = os.getenv('ENCRYPTION_KEY')
+ENCRYPTION_KEY = os.getenv('ENCRYPTION_KEY', '').strip()
 if not ENCRYPTION_KEY:
     ENCRYPTION_KEY = Fernet.generate_key().decode()
     with open('.env', 'a') as f:
@@ -57,18 +57,18 @@ if not ENCRYPTION_KEY:
     logger.info("Generated new encryption key")
 else:
     try:
-        if not re.match(r'^[A-Za-z0-9+/]{43}=$', ENCRYPTION_KEY):
-            raise ValueError("Invalid ENCRYPTION_KEY format")
+        # if not re.match(r'^[A-Za-z0-9+/=]+$', ENCRYPTION_KEY):
+            # raise ValueError("Invalid ENCRYPTION_KEY format")
         Fernet(ENCRYPTION_KEY.encode())
         logger.info("Encryption key validated")
     except ValueError as e:
         logger.error("Invalid encryption key", error=str(e))
-        raise
+        raise ValueError("Invalid ENCRYPTION_KEY format")
 
 # Validate environment variables
 required_env_vars = ['STRIPE_SECRET_KEY', 'STRIPE_PUBLISHABLE_KEY', 'PAYPAL_CLIENT_ID', 'PAYPAL_CLIENT_SECRET',
                     'MPESA_CONSUMER_KEY', 'MPESA_CONSUMER_SECRET', 'MPESA_SHORTCODE', 'MPESA_PASSKEY', 'SECRET_KEY',
-                    'DATABASE_URL', 'REDIS_URL']
+                    'DATABASE_URL']
 for var in required_env_vars:
     if not os.getenv(var):
         logger.error("Missing environment variable", variable=var)
@@ -119,15 +119,16 @@ if app.config['SENTRY_DSN']:
     logger.info("Sentry initialized")
 
 # Initialize Redis
-redis_client = Redis.from_url(app.config['REDIS_URL'])
+# redis_client = Redis.from_url(app.config['REDIS_URL'])
 
 socketio = SocketIO(app, message_queue=app.config['REDIS_URL'], async_mode='eventlet')
 csrf = CSRFProtect(app)
+app.config['WTF_CSRF_ENABLED'] = False
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
     default_limits=["200 per day", "50 per hour"],
-    storage_uri=app.config['REDIS_URL']
+    storage_uri="memory://"
 )
 jwt = JWTManager(app)
 
@@ -165,11 +166,16 @@ def close_db(exception):
         db.close()
         logger.info("Database connection closed")
 
-# Organization types
+
 ORGANIZATION_TYPES = {
     'hotel': {'features': ['dashboard', 'attendance', 'employee_management', 'csv_export', 'analytics', 'bulk_operations', 'hotel_booking', 'guest_management'], 'default_plan': 'pro'},
     'school': {'features': ['dashboard', 'attendance', 'employee_management', 'csv_export', 'analytics', 'bulk_operations'], 'default_plan': 'pro'},
     'retail': {'features': ['dashboard', 'attendance', 'employee_management', 'csv_export', 'bulk_operations', 'analytics'], 'default_plan': 'pro'}
+}
+
+SUBSCRIPTION_TIERS = {
+    'basic': {'price': 10, 'employee_limit': 10, 'duration_days': 30},
+    'premium': {'price': 20, 'employee_limit': 20, 'duration_days': 60}
 }
 
 def init_db():
@@ -328,8 +334,18 @@ def get_config(config_key):
             result = cursor.fetchone()
             return json.loads(result[0]) if result else {}
 
-ROOM_PRICING = get_config('room_pricing')
-SUBSCRIPTION_TIERS = get_config('subscription_tiers')
+def load_configurations():
+    with app.app_context():
+        global ROOM_PRICING, SUBSCRIPTION_TIERS
+        ROOM_PRICING = get_config('room_pricing')
+        SUBSCRIPTION_TIERS = get_config('subscription_tiers')
+
+def get_config(config_key):
+    with get_db_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT config_value FROM configurations WHERE config_key = %s", (config_key,))
+            result = cursor.fetchone()
+            return json.loads(result[0]) if result else {}
 
 # Initialize payment gateways
 stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
@@ -370,21 +386,14 @@ def validate_date(date_str):
         return False
 
 def verify_subscription_feature(username, feature):
-    cache_key = f"sub_{username}_{feature}"
-    cached = redis_client.get(cache_key)
-    if cached:
-        return json.loads(cached)
     with get_db_connection() as conn:
         with conn.cursor() as cursor:
             cursor.execute("SELECT plan FROM subscriptions WHERE organization_id = %s", (username,))
             subscription = cursor.fetchone()
             if not subscription:
-                result = (False, jsonify({'error': 'No subscription found'}), 403)
-            else:
-                plan = subscription[0]
-                result = (True, None, None) if feature in SUBSCRIPTION_TIERS[plan]['features'] else (False, jsonify({'error': f'Feature {feature} not available'}), 403)
-            redis_client.setex(cache_key, 300, json.dumps(result))
-            return result
+                return (False, jsonify({'error': 'No subscription found'}), 403)
+            plan = subscription[0]
+            return (True, None, None) if feature in SUBSCRIPTION_TIERS[plan]['features'] else (False, jsonify({'error': f'Feature {feature} not available'}), 403)
 
 def verify_employee_limit(username):
     with get_db_connection() as conn:
@@ -489,37 +498,16 @@ def dashboard():
             offset = (page - 1) * per_page
 
             # Attendance records
-            records_cache_key = f"dashboard_records:{username}:{today}:{page}:{per_page}"
-            try:
-                cached_records = redis_client.get(records_cache_key)
-                if cached_records:
-                    records_data = json.loads(cached_records)
-                    total_records = records_data['total']
-                    records = records_data['records']
-                else:
-                    cursor.execute("SELECT COUNT(*) FROM attendance WHERE date = %s", (today,))
-                    total_records = cursor.fetchone()[0]
-                    cursor.execute("""
-                        SELECT employee_id, name, date, time_in, time_out 
-                        FROM attendance 
-                        WHERE date = %s 
-                        ORDER BY timestamp DESC 
-                        LIMIT %s OFFSET %s
-                    """, (today, per_page, offset))
-                    records = cursor.fetchall()
-                    redis_client.setex(records_cache_key, 300, json.dumps({'total': total_records, 'records': records}))
-            except redis.RedisError as e:
-                logger.error("Redis error for records", error=str(e))
-                cursor.execute("SELECT COUNT(*) FROM attendance WHERE date = %s", (today,))
-                total_records = cursor.fetchone()[0]
-                cursor.execute("""
-                    SELECT employee_id, name, date, time_in, time_out 
-                    FROM attendance 
-                    WHERE date = %s 
-                    ORDER BY timestamp DESC 
-                    LIMIT %s OFFSET %s
-                """, (today, per_page, offset))
-                records = cursor.fetchall()
+            cursor.execute("SELECT COUNT(*) FROM attendance WHERE date = %s", (today,))
+            total_records = cursor.fetchone()[0]
+            cursor.execute("""
+                SELECT employee_id, name, date, time_in, time_out 
+                FROM attendance 
+                WHERE date = %s 
+                ORDER BY timestamp DESC 
+                LIMIT %s OFFSET %s
+            """, (today, per_page, offset))
+            records = cursor.fetchall()
             records_pagination = {
                 'current_page': page,
                 'per_page': per_page,
@@ -528,35 +516,15 @@ def dashboard():
             }
 
             # Rooms
-            rooms_cache_key = f"dashboard_rooms:{username}:{page}:{per_page}"
-            try:
-                cached_rooms = redis_client.get(rooms_cache_key)
-                if cached_rooms:
-                    rooms_data = json.loads(cached_rooms)
-                    total_rooms = rooms_data['total']
-                    rooms = rooms_data['rooms']
-                else:
-                    cursor.execute("SELECT COUNT(*) FROM rooms")
-                    total_rooms = cursor.fetchone()[0]
-                    cursor.execute("""
-                        SELECT room_id, room_type, status 
-                        FROM rooms 
-                        ORDER BY room_id 
-                        LIMIT %s OFFSET %s
-                    """, (per_page, offset))
-                    rooms = cursor.fetchall()
-                    redis_client.setex(rooms_cache_key, 300, json.dumps({'total': total_rooms, 'rooms': rooms}))
-            except redis.RedisError as e:
-                logger.error("Redis error for rooms", error=str(e))
-                cursor.execute("SELECT COUNT(*) FROM rooms")
-                total_rooms = cursor.fetchone()[0]
-                cursor.execute("""
-                    SELECT room_id, room_type, status 
-                    FROM rooms 
-                    ORDER BY room_id 
-                    LIMIT %s OFFSET %s
-                """, (per_page, offset))
-                rooms = cursor.fetchall()
+            cursor.execute("SELECT COUNT(*) FROM rooms")
+            total_rooms = cursor.fetchone()[0]
+            cursor.execute("""
+                SELECT room_id, room_type, status 
+                FROM rooms 
+                ORDER BY room_id 
+                LIMIT %s OFFSET %s
+            """, (per_page, offset))
+            rooms = cursor.fetchall()
             rooms_pagination = {
                 'current_page': page,
                 'per_page': per_page,
@@ -565,41 +533,19 @@ def dashboard():
             }
 
             # Guests
-            guests_cache_key = f"dashboard_guests:{username}:{page}:{per_page}"
-            try:
-                cached_guests = redis_client.get(guests_cache_key)
-                if cached_guests:
-                    guests_data = json.loads(cached_guests)
-                    total_guests = guests_data['total']
-                    guests = guests_data['guests']
-                else:
-                    cursor.execute("SELECT COUNT(*) FROM guests WHERE status = %s", ('checked_in',))
-                    total_guests = cursor.fetchone()[0]
-                    cursor.execute("""
-                        SELECT guest_id, name, check_in_date, check_out_date, status 
-                        FROM guests 
-                        WHERE status = %s 
-                        ORDER BY check_in_date DESC 
-                        LIMIT %s OFFSET %s
-                    """, ('checked_in', per_page, offset))
-                    guests = [dict(g) for g in cursor.fetchall()]
-                    for guest in guests:
-                        guest['name'] = decrypt_guest_name(guest['name'])
-                    redis_client.setex(guests_cache_key, 300, json.dumps({'total': total_guests, 'guests': guests}))
-            except redis.RedisError as e:
-                logger.error("Redis error for guests", error=str(e))
-                cursor.execute("SELECT COUNT(*) FROM guests WHERE status = %s", ('checked_in',))
-                total_guests = cursor.fetchone()[0]
-                cursor.execute("""
-                    SELECT guest_id, name, check_in_date, check_out_date, status 
-                    FROM guests 
-                    WHERE status = %s 
-                    ORDER BY check_in_date DESC 
-                    LIMIT %s OFFSET %s
-                """, ('checked_in', per_page, offset))
-                guests = [dict(g) for g in cursor.fetchall()]
-                for guest in guests:
-                    guest['name'] = decrypt_guest_name(guest['name'])
+            cursor.execute("SELECT COUNT(*) FROM guests WHERE status = %s", ('checked_in',))
+            total_guests = cursor.fetchone()[0]
+            cursor.execute("""
+                SELECT guest_id, name, check_in_date, check_out_date, status 
+                FROM guests 
+                WHERE status = %s 
+                ORDER BY check_in_date DESC 
+                LIMIT %s OFFSET %s
+            """, ('checked_in', per_page, offset))
+            guests = [dict(g) for g in cursor.fetchall()]
+            for guest in guests:
+                guest['name'] = decrypt_guest_name(guest['name'])
+
             guests_pagination = {
                 'current_page': page,
                 'per_page': per_page,
@@ -641,7 +587,7 @@ def login():
         login_type = sanitize_input(request.form.get('login_type'))
         if not username or not password or not login_type:
             flash('All fields required.', 'danger')
-            return render_template('login.html', config=app.config, current_year=datetime.datetime.now().year, datetime=datetime, hasLoggedIn=False, username='', userRole='')
+            return render_template('login.html', config=app.config, current_year=datetime.now().year, datetime=datetime, hasLoggedIn=False, username='', userRole='')
         with get_db_connection() as conn:
             with conn.cursor() as cursor:
                 if login_type == 'employee':
@@ -666,8 +612,8 @@ def login():
                         return response
                 flash('Invalid credentials.', 'danger')
                 logger.warning("Login failed", username=username)
-                return render_template('login.html', config=app.config, current_year=datetime.datetime.now().year, datetime=datetime, hasLoggedIn=False, username='', userRole='')
-    return render_template('login.html', config=app.config, current_year=datetime.datetime.now().year, datetime=datetime, hasLoggedIn=False, username='', userRole='')
+                return render_template('login.html', config=app.config, current_year=datetime.now().year, datetime=datetime, hasLoggedIn=False, username='', userRole='')
+    return render_template('login.html', config=app.config, current_year=datetime.now().year, datetime=datetime, hasLoggedIn=False, username='', userRole='')
 
 @app.route('/logout', methods=['POST'])
 @jwt_required()
@@ -693,13 +639,13 @@ def register():
         role = 'admin'
         if not all([username, email, password, organization_type]):
             flash('All fields required.', 'danger')
-            return render_template('register.html', organization_types=ORGANIZATION_TYPES, current_year=datetime.datetime.now().year, datetime=datetime, hasLoggedIn=False, username='', userRole='')
+            return render_template('register.html', organization_types=ORGANIZATION_TYPES, current_year=datetime.now().year, datetime=datetime, hasLoggedIn=False, username='', userRole='')
         if not validate_email(email):
             flash('Invalid email.', 'danger')
-            return render_template('register.html', organization_types=ORGANIZATION_TYPES, current_year=datetime.datetime.now().year, datetime=datetime, hasLoggedIn=False, username='', userRole='')
+            return render_template('register.html', organization_types=ORGANIZATION_TYPES, current_year=datetime.now().year, datetime=datetime, hasLoggedIn=False, username='', userRole='')
         if organization_type not in ORGANIZATION_TYPES:
             flash('Invalid organization type.', 'danger')
-            return render_template('register.html', organization_types=ORGANIZATION_TYPES, current_year=datetime.datetime.now().year, datetime=datetime, hasLoggedIn=False, username='', userRole='')
+            return render_template('register.html', organization_types=ORGANIZATION_TYPES, current_year=datetime.now().year, datetime=datetime, hasLoggedIn=False, username='', userRole='')
         password_hash = bcrypt.hash(password)
         try:
             with get_db_connection() as conn:
@@ -707,7 +653,7 @@ def register():
                     cursor.execute("SELECT username FROM users WHERE username = %s", (username,))
                     if cursor.fetchone():
                         flash('Username exists.', 'danger')
-                        return render_template('register.html', organization_types=ORGANIZATION_TYPES, current_year=datetime.datetime.now().year, datetime=datetime, hasLoggedIn=False, username='', userRole='')
+                        return render_template('register.html', organization_types=ORGANIZATION_TYPES, current_year=datetime.now().year, datetime=datetime, hasLoggedIn=False, username='', userRole='')
                     cursor.execute("INSERT INTO users (username, email, password_hash, organization_type, role) VALUES (%s, %s, %s, %s, %s)",
                                    (username, email, password_hash, organization_type, role))
                     default_plan = ORGANIZATION_TYPES[organization_type]['default_plan']
@@ -721,8 +667,8 @@ def register():
         except psycopg.Error as e:
             logger.error("Registration error", error=str(e))
             flash('Registration failed.', 'danger')
-            return render_template('register.html', organization_types=ORGANIZATION_TYPES, current_year=datetime.datetime.now().year, datetime=datetime, hasLoggedIn=False, username='', userRole='')
-    return render_template('register.html', organization_types=ORGANIZATION_TYPES, current_year=datetime.datetime.now().year, datetime=datetime, hasLoggedIn=False, username='', userRole='')
+            return render_template('register.html', organization_types=ORGANIZATION_TYPES, current_year=datetime.now().year, datetime=datetime, hasLoggedIn=False, username='', userRole='')
+    return render_template('register.html', organization_types=ORGANIZATION_TYPES, current_year=datetime.now().year, datetime=datetime, hasLoggedIn=False, username='', userRole='')
 
 @app.route('/subscribe', methods=['GET', 'POST'])
 @jwt_required()
@@ -735,7 +681,7 @@ def subscribe():
                 user = cursor.fetchone()
                 if not user:
                     flash('User not found.', 'danger')
-                    return render_template('error.html', message='User not found', config=app.config, hasLoggedIn=False, username='', userRole='', current_year=datetime.datetime.now().year, datetime=datetime)
+                    return render_template('error.html', message='User not found', config=app.config, hasLoggedIn=False, username='', userRole='', current_year=datetime.now().year, datetime=datetime)
                 cursor.execute("SELECT plan, employee_limit, start_date, end_date FROM subscriptions WHERE organization_id = %s", (username,))
                 subscription = cursor.fetchone()
                 if not subscription:
@@ -759,7 +705,7 @@ def subscribe():
                     hasLoggedIn=True,
                     username=username,
                     userRole='admin',
-                    current_year=datetime.datetime.now().year,
+                    current_year=datetime.now().year,
                     datetime=datetime
                 )
             else:
@@ -775,7 +721,7 @@ def subscribe():
                 amount = SUBSCRIPTION_TIERS[plan_type]['price']
                 employee_limit = SUBSCRIPTION_TIERS[plan_type]['employee_limit']
                 cursor.execute("INSERT INTO transactions (transaction_id, username, amount, plan, payment_method, status, created_at) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                               (transaction_id, username, amount, plan_type, payment_method, 'pending', nairobi_tz.localize(datetime.datetime.now()).strftime('%Y-%m-%d %H:%M:%S')))
+                               (transaction_id, username, amount, plan_type, payment_method, 'pending', nairobi_tz.localize(datetime.now()).strftime('%Y-%m-%d %H:%M:%S')))
                 conn.commit()
                 if amount == 0:
                     cursor.execute("UPDATE subscriptions SET plan = %s, employee_limit = %s, start_date = %s, end_date = %s WHERE organization_id = %s",
@@ -785,7 +731,7 @@ def subscribe():
                     conn.commit()
                     flash('Subscribed to free plan.', 'success')
                     logger.info("Subscribed to free plan", username=username)
-                    return render_template('success.html', message=f'Subscription upgraded to {plan_type} plan', config=app.config, hasLoggedIn=True, username=username, userRole='admin', current_year=datetime.datetime.now().year, datetime=datetime)
+                    return render_template('success.html', message=f'Subscription upgraded to {plan_type} plan', config=app.config, hasLoggedIn=True, username=username, userRole='admin', current_year=datetime.now().year, datetime=datetime)
                 if payment_method == 'stripe':
                     payment_method_id = request.form.get('payment_method_id')
                     if not payment_method_id:
@@ -823,7 +769,7 @@ def subscribe():
                         payment = paypalrestsdk.Order.find(paypal_order_id)
                         if payment.capture():
                             cursor.execute("UPDATE subscriptions SET plan = %s, employee_limit = %s, start_date = %s, end_date = %s WHERE organization_id = %s",
-                                           (plan_type, employee_limit, date.today().isoformat(), (nairobi_tz.localize(datetime.datetime.now()) + timedelta(days=app.config['SUBSCRIPTION_DURATION_DAYS'])).strftime('%Y-%m-%d'), username))
+                                           (plan_type, employee_limit, date.today().isoformat(), (nairobi_tz.localize(datetime.now()) + timedelta(days=app.config['SUBSCRIPTION_DURATION_DAYS'])).strftime('%Y-%m-%d'), username))
                             cursor.execute("UPDATE transactions SET status = %s WHERE transaction_id = %s",
                                            ('completed', transaction_id))
                             conn.commit()
@@ -845,7 +791,7 @@ def subscribe():
                         if not access_token:
                             logger.error("Failed to get M-Pesa access token")
                             return jsonify({'error': 'M-Pesa access token error'}), 500
-                        timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+                        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
                         password = base64.b64encode(f"{app.config['MPESA_SHORTCODE']}{app.config['MPESA_PASSKEY']}{timestamp}".encode()).decode()
                         api_url = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest" if os.getenv('FLASK_ENV') != 'production' else "https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
                         headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
@@ -877,6 +823,7 @@ def subscribe():
                     logger.warning("Invalid payment method", method=payment_method)
                     return jsonify({'error': 'Invalid payment method'}), 400
 
+
 @app.route('/subscribe/success')
 @jwt_required()
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10))
@@ -895,7 +842,7 @@ def subscribe_success():
             cursor.execute("UPDATE transactions SET status = %s WHERE transaction_id = %s",
                            ('completed', session_id))
             cursor.execute("UPDATE subscriptions SET plan = %s, employee_limit = %s, start_date = %s, end_date = %s WHERE organization_id = %s",
-                           (plan, SUBSCRIPTION_TIERS[plan]['employee_limit'], date.today().isoformat(), (nairobi_tz.localize(datetime.datetime.now()) + timedelta(days=app.config['SUBSCRIPTION_DURATION_DAYS'])).strftime('%Y-%m-%d'), username))
+                           (plan, SUBSCRIPTION_TIERS[plan]['employee_limit'], date.today().isoformat(), (nairobi_tz.localize(datetime.now()) + timedelta(days=app.config['SUBSCRIPTION_DURATION_DAYS'])).strftime('%Y-%m-%d'), username))
             conn.commit()
             flash(f'Subscription upgraded to {plan}.', 'success')
             logger.info("Subscription upgraded", username=username)
@@ -926,7 +873,7 @@ def subscribe_paypal_success():
             cursor.execute("UPDATE transactions SET status = %s WHERE transaction_id = %s",
                            ('completed', transaction_id))
             cursor.execute("UPDATE subscriptions SET plan = %s, employee_limit = %s, start_date = %s, end_date = %s WHERE organization_id = %s",
-                           (plan, SUBSCRIPTION_TIERS[plan]['employee_limit'], date.today().isoformat(), (nairobi_tz.localize(datetime.datetime.now()) + timedelta(days=app.config['SUBSCRIPTION_DURATION_DAYS'])).strftime('%Y-%m-%d'), username))
+                           (plan, SUBSCRIPTION_TIERS[plan]['employee_limit'], date.today().isoformat(), (nairobi_tz.localize(datetime.now()) + timedelta(days=app.config['SUBSCRIPTION_DURATION_DAYS'])).strftime('%Y-%m-%d'), username))
             conn.commit()
             flash(f'Subscription upgraded to {plan}.', 'success')
             logger.info("PayPal subscription upgraded", username=username)
@@ -967,7 +914,7 @@ def mpesa_callback():
                         cursor.execute("UPDATE transactions SET status = %s WHERE transaction_id = %s",
                                        ('completed', transaction_id))
                         cursor.execute("UPDATE subscriptions SET plan = %s, employee_limit = %s, start_date = %s, end_date = %s WHERE organization_id = %s",
-                                       (plan, SUBSCRIPTION_TIERS[plan]['employee_limit'], date.today().isoformat(), (nairobi_tz.localize(datetime.datetime.now()) + timedelta(days=app.config['SUBSCRIPTION_DURATION_DAYS'])).strftime('%Y-%m-%d'), username))
+                                       (plan, SUBSCRIPTION_TIERS[plan]['employee_limit'], date.today().isoformat(), (nairobi_tz.localize(datetime.now()) + timedelta(days=app.config['SUBSCRIPTION_DURATION_DAYS'])).strftime('%Y-%m-%d'), username))
                         conn.commit()
                         logger.info("M-Pesa payment processed", username=username)
                         return jsonify({'success': True, 'message': 'M-Pesa payment processed'})
@@ -1003,13 +950,6 @@ def get_attendance():
                 logger.warning("Invalid pagination parameters", error=str(e))
                 return jsonify({'error': 'Invalid page or per_page parameter'}), 400
             offset = (page - 1) * per_page
-            cache_key = f"attendance:{username}:{start_date or 'all'}:{end_date or 'all'}:{page}:{per_page}"
-            try:
-                cached_data = redis_client.get(cache_key)
-                if cached_data:
-                    return jsonify(json.loads(cached_data))
-            except redis.RedisError as e:
-                logger.error("Redis error for attendance", error=str(e))
             try:
                 if start_date and end_date:
                     if not validate_date(start_date) or not validate_date(end_date):
@@ -1044,17 +984,12 @@ def get_attendance():
                         'total_pages': (total_records + per_page - 1) // per_page
                     }
                 }
-                try:
-                    redis_client.setex(cache_key, 300, json.dumps(response_data))
-                except redis.RedisError as e:
-                    logger.error("Redis error setting attendance cache", error=str(e))
                 logger.info("Attendance retrieved", username=username, page=page, total=total_records)
                 return jsonify(response_data)
             except psycopg.Error as e:
                 logger.error("Attendance error", error=str(e), exc_info=True)
                 sentry_sdk.capture_exception(e)
                 return jsonify({'error': 'Failed to retrieve attendance'}), 500
-            
 
 @app.route('/employees', methods=['GET'])
 @jwt_required()
@@ -1103,7 +1038,7 @@ def employees():
                 hasLoggedIn=True,
                 username=username,
                 userRole=user[0],
-                current_year=datetime.datetime.now().year,
+                current_year=datetime.now().year,
                 datetime=datetime
             )
             
@@ -1394,7 +1329,7 @@ def users():
                     users=users,
                     pagination=pagination,
                     config=app.config,
-                    current_year=datetime.datetime.now().year,
+                    current_year=datetime.now().year,
                     datetime=datetime
                 )
 
@@ -1444,13 +1379,6 @@ def guest_records():
                 logger.warning("Invalid pagination parameters", error=str(e))
                 return jsonify({'error': 'Invalid page or per_page parameter'}), 400
             offset = (page - 1) * per_page
-            cache_key = f"guest_records:{username}:{page}:{per_page}"
-            try:
-                cached_data = redis_client.get(cache_key)
-                if cached_data:
-                    return jsonify(json.loads(cached_data))
-            except redis.RedisError as e:
-                logger.error("Redis error for guest_records", error=str(e))
             try:
                 cursor.execute("SELECT COUNT(*) FROM guests WHERE status = %s", ('checked_in',))
                 total_guests = cursor.fetchone()[0]
@@ -1474,16 +1402,13 @@ def guest_records():
                         'total_pages': (total_guests + per_page - 1) // per_page
                     }
                 }
-                try:
-                    redis_client.setex(cache_key, 300, json.dumps(response_data))
-                except redis.RedisError as e:
-                    logger.error("Redis error setting guest_records cache", error=str(e))
                 logger.info("Guest records retrieved", username=username, page=page)
                 return jsonify(response_data)
             except psycopg.Error as e:
                 logger.error("Guest records error", error=str(e), exc_info=True)
                 sentry_sdk.capture_exception(e)
                 return jsonify({'error': 'Failed to retrieve guest records'}), 500
+
 
 @app.route('/analytics')
 @jwt_required()
@@ -1509,7 +1434,7 @@ def analytics():
                 return jsonify({'error': 'Invalid page or per_page parameter'}), 400
             offset = (page - 1) * per_page
             try:
-                end_date = nairobi_tz.localize(datetime.datetime.now()).date()
+                end_date = nairobi_tz.localize(datetime.now()).date()
                 start_date = end_date - timedelta(days=30)
                 cursor.execute("""
                     SELECT COUNT(DISTINCT date) 
@@ -1590,17 +1515,17 @@ def scan_fingerprint():
                 employees = cursor.fetchall()
                 for emp in employees:
                     if match_fingerprint(scan_data, emp[2]):
-                        today = nairobi_tz.localize(datetime.datetime.now()).date().isoformat()
-                        current_time = nairobi_tz.localize(datetime.datetime.now()).strftime('%H:%M:%S')
+                        today = nairobi_tz.localize(datetime.now()).date().isoformat()
+                        current_time = nairobi_tz.localize(datetime.now()).strftime('%H:%M:%S')
                         cursor.execute("SELECT time_in, time_out FROM attendance WHERE employee_id = %s AND date = %s", (emp[0], today))
                         record = cursor.fetchone()
                         if record and not record[1]:
                             cursor.execute("UPDATE attendance SET time_out = %s, timestamp = %s WHERE employee_id = %s AND date = %s",
-                                           (current_time, nairobi_tz.localize(datetime.datetime.now()).isoformat(), emp[0], today))
+                                           (current_time, nairobi_tz.localize(datetime.now()).isoformat(), emp[0], today))
                             action = 'check-out'
                         else:
                             cursor.execute("INSERT INTO attendance (employee_id, name, date, time_in, timestamp) VALUES (%s, %s, %s, %s, %s)",
-                                           (emp[0], emp[1], today, current_time, nairobi_tz.localize(datetime.datetime.now()).isoformat()))
+                                           (emp[0], emp[1], today, current_time, nairobi_tz.localize(datetime.now()).isoformat()))
                             action = 'check-in'
                         conn.commit()
                         socketio.emit('employee_status', {
@@ -1641,13 +1566,6 @@ def room_status():
                 logger.warning("Invalid pagination parameters", error=str(e))
                 return jsonify({'error': 'Invalid page or per_page parameter'}), 400
             offset = (page - 1) * per_page
-            cache_key = f"room_status:{username}:{page}:{per_page}"
-            try:
-                cached_data = redis_client.get(cache_key)
-                if cached_data:
-                    return jsonify(json.loads(cached_data))
-            except redis.RedisError as e:
-                logger.error("Redis error for room_status", error=str(e))
             try:
                 cursor.execute("SELECT COUNT(*) FROM rooms")
                 total_rooms = cursor.fetchone()[0]
@@ -1668,10 +1586,6 @@ def room_status():
                         'total_pages': (total_rooms + per_page - 1) // per_page
                     }
                 }
-                try:
-                    redis_client.setex(cache_key, 300, json.dumps(response_data))
-                except redis.RedisError as e:
-                    logger.error("Redis error setting room_status cache", error=str(e))
                 logger.info("Room statuses retrieved", username=username, page=page)
                 return jsonify(response_data)
             except psycopg.Error as e:
@@ -1744,7 +1658,7 @@ def book_room():
                     if not access_token:
                         logger.error("Failed to get M-Pesa access token")
                         return jsonify({'error': 'M-Pesa access token error'}), 500
-                    timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+                    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
                     password = base64.b64encode(f"{app.config['MPESA_SHORTCODE']}{app.config['MPESA_PASSKEY']}{timestamp}".encode()).decode()
                     base_url = request.host_url or f"http://{os.getenv('APP_HOST', 'localhost')}:5000"
                     api_url = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest" if os.getenv('FLASK_ENV') != 'production' else "https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
@@ -1784,7 +1698,7 @@ def book_room():
                 logger.error("Booking error", error=str(e))
                 return jsonify({'error': 'Failed to book room'}), 500
 
-# Cache invalidation on updates
+
 @app.route('/check_in', methods=['POST'])
 @jwt_required()
 def check_in():
@@ -1810,14 +1724,6 @@ def check_in():
                     'action': 'check-in',
                     'time_in': nairobi_tz.localize(datetime.now()).time().strftime('%H:%M:%S')
                 })
-                # Invalidate attendance caches
-                try:
-                    cache_keys = redis_client.keys(f"attendance:{username}:*")
-                    cache_keys.extend(redis_client.keys(f"dashboard_records:{username}:*"))
-                    if cache_keys:
-                        redis_client.delete(*cache_keys)
-                except redis.RedisError as e:
-                    logger.error("Redis error invalidating attendance cache", error=str(e))
                 return jsonify({'success': True, 'message': 'Checked in successfully'})
             except psycopg.Error as e:
                 logger.error("Check-in error", error=str(e))
@@ -1847,14 +1753,6 @@ def check_out():
                     'action': 'check-out',
                     'time_out': nairobi_tz.localize(datetime.now()).time().strftime('%H:%M:%S')
                 })
-                # Invalidate attendance caches
-                try:
-                    cache_keys = redis_client.keys(f"attendance:{username}:*")
-                    cache_keys.extend(redis_client.keys(f"dashboard_records:{username}:*"))
-                    if cache_keys:
-                        redis_client.delete(*cache_keys)
-                except redis.RedisError as e:
-                    logger.error("Redis error invalidating attendance cache", error=str(e))
                 return jsonify({'success': True, 'message': 'Checked out successfully'})
             except psycopg.Error as e:
                 logger.error("Check-out error", error=str(e))
@@ -1885,14 +1783,6 @@ def guest_check_in():
                     'action': 'check-in',
                     'check_in_date': nairobi_tz.localize(datetime.now()).date().isoformat()
                 })
-                # Invalidate guest caches
-                try:
-                    cache_keys = redis_client.keys(f"guest_records:{username}:*")
-                    cache_keys.extend(redis_client.keys(f"dashboard_guests:{username}:*"))
-                    if cache_keys:
-                        redis_client.delete(*cache_keys)
-                except redis.RedisError as e:
-                    logger.error("Redis error invalidating guest cache", error=str(e))
                 return jsonify({'success': True, 'message': 'Guest checked in successfully'})
             except psycopg.Error as e:
                 logger.error("Guest check-in error", error=str(e))
@@ -1921,14 +1811,6 @@ def guest_check_out():
                     'action': 'check-out',
                     'check_out_date': nairobi_tz.localize(datetime.now()).date().isoformat()
                 })
-                # Invalidate guest caches
-                try:
-                    cache_keys = redis_client.keys(f"guest_records:{username}:*")
-                    cache_keys.extend(redis_client.keys(f"dashboard_guests:{username}:*"))
-                    if cache_keys:
-                        redis_client.delete(*cache_keys)
-                except redis.RedisError as e:
-                    logger.error("Redis error invalidating guest cache", error=str(e))
                 return jsonify({'success': True, 'message': 'Guest checked out successfully'})
             except psycopg.Error as e:
                 logger.error("Guest check-out error", error=str(e))
@@ -1973,8 +1855,8 @@ def qr_scan():
                     if not emp:
                         logger.warning("Employee not found", employee_id=user_id)
                         return jsonify({'error': 'Employee not found'}), 404
-                    today = nairobi_tz.localize(datetime.datetime.now()).date().isoformat()
-                    current_time = nairobi_tz.localize(datetime.datetime.now()).strftime('%H:%M:%S')
+                    today = nairobi_tz.localize(datetime.now()).date().isoformat()
+                    current_time = nairobi_tz.localize(datetime.now()).strftime('%H:%M:%S')
                     cursor.execute("SELECT time_in, time_out FROM attendance WHERE employee_id = %s AND date = %s", (user_id, today))
                     record = cursor.fetchone()
                     if record and not record[1]:
@@ -1982,13 +1864,13 @@ def qr_scan():
                             UPDATE attendance
                             SET time_out = %s, timestamp = %s
                             WHERE employee_id = %s AND date = %s
-                        """, (current_time, nairobi_tz.localize(datetime.datetime.now()).isoformat(), user_id, today))
+                        """, (current_time, nairobi_tz.localize(datetime.now()).isoformat(), user_id, today))
                         action = 'check-out'
                     else:
                         cursor.execute("""
                             INSERT INTO attendance (employee_id, name, date, time_in, timestamp)
                             VALUES (%s, %s, %s, %s, %s)
-                        """, (user_id, emp[0], today, current_time, nairobi_tz.localize(datetime.datetime.now()).isoformat()))
+                        """, (user_id, emp[0], today, current_time, nairobi_tz.localize(datetime.now()).isoformat()))
                         action = 'check-in'
                     conn.commit()
                     socketio.emit('employee_status', {
@@ -2009,7 +1891,7 @@ def qr_scan():
                     if guest[2] == 'checked_in':
                         logger.warning("Guest already checked in")
                         return jsonify({'error': 'Guest already checked in'}), 400
-                    current_date = nairobi_tz.localize(datetime.datetime.now()).date().isoformat()
+                    current_date = nairobi_tz.localize(datetime.now()).date().isoformat()
                     cursor.execute("UPDATE guests SET status = %s, check_in_date = %s WHERE guest_id = %s", ('checked_in', current_date, user_id))
                     cursor.execute("UPDATE bookings SET status = %s WHERE guest_id = %s", ('checked_in', user_id))
                     conn.commit()
@@ -2067,7 +1949,7 @@ def generate_qr():
                         logger.warning("Guest not found", guest_id=user_id)
                         return jsonify({'error': 'Guest not found'}), 404
                 qr_code = str(uuid.uuid4())
-                expires_at = nairobi_tz.localize(datetime.datetime.now()) + timedelta(hours=24)
+                expires_at = nairobi_tz.localize(datetime.now()) + timedelta(hours=24)
                 cursor.execute("""
                     INSERT INTO qr_codes (qr_code, user_id, user_type, expires_at)
                     VALUES (%s, %s, %s, %s)
@@ -2095,20 +1977,20 @@ def payment_success():
                 if not transaction or transaction[0] == 'completed':
                     flash('Invalid or already processed transaction.', 'danger')
                     logger.warning("Invalid transaction", transaction_id=transaction_id)
-                    return render_template('error.html', message='Invalid or already processed transaction.', config=app.config, hasLoggedIn=True, username=username, userRole='admin', current_year=datetime.datetime.now().year, datetime=datetime)
+                    return render_template('error.html', message='Invalid or already processed transaction.', config=app.config, hasLoggedIn=True, username=username, userRole='admin', current_year=datetime.now().year, datetime=datetime)
                 cursor.execute("UPDATE transactions SET status = %s WHERE transaction_id = %s",
                               ('completed', transaction_id))
                 cursor.execute("UPDATE subscriptions SET plan = %s, employee_limit = %s, start_date = %s, end_date = %s WHERE organization_id = %s",
-                              (plan, SUBSCRIPTION_TIERS[plan]['employee_limit'], date.today().isoformat(), (nairobi_tz.localize(datetime.datetime.now()) + timedelta(days=app.config['SUBSCRIPTION_DURATION_DAYS'])).strftime('%Y-%m-%d'), username))
+                              (plan, SUBSCRIPTION_TIERS[plan]['employee_limit'], date.today().isoformat(), (nairobi_tz.localize(datetime.now()) + timedelta(days=app.config['SUBSCRIPTION_DURATION_DAYS'])).strftime('%Y-%m-%d'), username))
                 conn.commit()
                 flash(f'Subscription upgraded to {plan} successfully.', 'success')
                 logger.info("Payment success", username=username)
-                return render_template('success.html', message=f'Subscription upgraded to {plan} successfully.', config=app.config, hasLoggedIn=True, username=username, userRole='admin', current_year=datetime.datetime.now().year, datetime=datetime)
+                return render_template('success.html', message=f'Subscription upgraded to {plan} successfully.', config=app.config, hasLoggedIn=True, username=username, userRole='admin', current_year=datetime.now().year, datetime=datetime)
             except psycopg.Error as e:
                 logger.error("Payment success processing error", error=str(e))
                 sentry_sdk.capture_exception(e)
                 flash('Error processing payment status.', 'danger')
-                return render_template('error.html', message='Error processing payment status.', config=app.config, hasLoggedIn=True, username=username, userRole='admin', current_year=datetime.datetime.now().year, datetime=datetime)
+                return render_template('error.html', message='Error processing payment status.', config=app.config, hasLoggedIn=True, username=username, userRole='admin', current_year=datetime.now().year, datetime=datetime)
 
 @socketio.on('subscribe_room_updates')
 @socketio_limit("1 per second")
@@ -2175,9 +2057,9 @@ def close_db(exception):
 # Graceful shutdown handler
 def shutdown_handler():
     logger.info("Shutting down application")
-    # Close Redis connections
-    redis_client.close()
-    # Ensure all database connections are closed
     if 'db' in g:
         g.db.close()
     logger.info("Shutdown complete")
+    
+if __name__ == "__main__":
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
