@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block title %}
+Login - {{ config.company_name or 'Hospitality' }}
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  .login-container {
+    max-width: 400px;
+    margin: 50px auto;
+    padding: 20px;
+    background: var(--table-bg);
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--dropdown-border);
+    position: relative;
+  }
+  .login-container h1 {
+    font-size: clamp(1.5rem, 4vw, 1.8rem);
+    font-weight: 600;
+    color: var(--text-color);
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  .form-group {
+    margin-bottom: 15px;
+    position: relative;
+  }
+  .form-control {
+    background: var(--dropdown-bg);
+    color: var(--text-color);
+    border: 1px solid var(--dropdown-border);
+    border-radius: 5px;
+    padding: 10px;
+  }
+  .password-toggle {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: var(--text-color);
+    border: none;
+    background: none;
+    font-size: 1rem;
+  }
+  .btn-custom {
+    background: var(--upgrade-btn-bg);
+    color: #fff;
+    border-radius: 25px;
+    padding: 10px;
+    font-weight: 600;
+    width: 100%;
+    transition: transform 0.2s, box-shadow 0.3s;
+  }
+  .btn-custom:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.5);
+  }
+  .alert {
+    border-radius: 8px;
+    margin-bottom: 20px;
+  }
+  .login-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: none;
+  }
+  .forgot-password {
+    text-align: right;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-top: 10px;
+  }
+  .forgot-password a {
+    color: var(--text-color);
+    text-decoration: none;
+  }
+  .forgot-password a:hover {
+    text-decoration: underline;
+  }
+  @media (max-width: 767px) {
+    .login-container {
+      margin: 20px 10px;
+      padding: 15px;
+    }
+    .login-container h1 {
+      font-size: 1.5rem;
+    }
+    .form-control {
+      font-size: 0.9rem;
+    }
+    .btn-custom {
+      font-size: 0.9rem;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-container">
+  <div class="login-loading spinner-border text-primary" role="status">
+    <span class="visually-hidden">Logging in...</span>
+  </div>
+  <h1>Login</h1>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+          {{ message | escape }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+  <form method="POST" action="{{ url_for('auth.login') }}" id="loginForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="form-group">
+      <label for="username" class="form-label">Username</label>
+      <input type="text" class="form-control" id="username" name="username" required aria-required="true" aria-label="Enter username">
+    </div>
+    <div class="form-group">
+      <label for="password" class="form-label">Password</label>
+      <input type="password" class="form-control" id="password" name="password" required aria-required="true" aria-label="Enter password">
+      <button type="button" class="password-toggle" id="togglePassword" aria-label="Toggle password visibility">
+        <i class="fas fa-eye"></i>
+      </button>
+    </div>
+    <div class="form-group">
+      <label for="login_type" class="form-label">Login Type</label>
+      <select class="form-control" id="login_type" name="login_type" required aria-required="true" aria-label="Select login type">
+        <option value="employee">Employee</option>
+        <option value="guest">Guest</option>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-custom" id="loginBtn">Login</button>
+    <div class="forgot-password">
+      <a href="{{ url_for('auth.forgot_password') }}">Forgot Password?</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+  }
+
+  function showLoading(state) {
+    const loadingSpinner = document.querySelector('.login-loading');
+    const loginBtn = document.getElementById('loginBtn');
+    loadingSpinner.style.display = state ? 'block' : 'none';
+    loginBtn.disabled = state;
+    document.querySelector('.login-container').style.opacity = state ? '0.5' : '1';
+  }
+
+  $(document).ready(() => {
+  const togglePassword = document.getElementById('togglePassword');
+  const passwordField = document.getElementById('password');
+
+  togglePassword.addEventListener('click', () => {
+    const type = passwordField.type === 'password' ? 'text' : 'password';
+    passwordField.type = type;
+    togglePassword.innerHTML = `<i class="fas fa-eye${type === 'password' ? '' : '-slash'}"></i>`;
+  });
+
+  const loginForm = document.getElementById('loginForm');
+  loginForm.addEventListener('submit', (e) => {
+    showLoading(true);
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    if (!username || !password) {
+      e.preventDefault();
+      if (typeof showToast === 'function') showToast('Username and password are required.');
+      showLoading(false);
+      return;
+    }
+  });
+
+    // Check if already logged in (optional redirect)
+    const token = getCookie('access_token_cookie');
+    if (token && typeof hasLoggedIn !== 'undefined' && hasLoggedIn) {
+      window.location.href = '/dashboard';
+    }
+  });
+</script>
+{% endblock %}

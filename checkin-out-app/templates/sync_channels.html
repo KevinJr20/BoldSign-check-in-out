@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}
+Sync Channels - {{ config.company_name or 'Hospitality' }}
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  .sync-section {
+    max-width: 600px;
+    margin: 40px auto;
+    padding: 20px;
+    background: var(--table-bg);
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--dropdown-border);
+  }
+  .section-header {
+    margin-bottom: 20px;
+  }
+  .section-title {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: var(--text-color);
+    text-align: center;
+  }
+  .btn-custom {
+    background: var(--upgrade-btn-bg);
+    color: #fff;
+    border-radius: 25px;
+    padding: 10px 25px;
+    font-weight: 600;
+    transition: transform 0.2s, box-shadow 0.3s;
+  }
+  .btn-custom:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.5);
+  }
+  .sync-status {
+    margin-top: 15px;
+    font-size: 1rem;
+    color: var(--text-muted);
+    text-align: center;
+  }
+  .sync-status.success {
+    color: #28a745;
+  }
+  .sync-status.error {
+    color: #dc3545;
+  }
+  @media (max-width: 767px) {
+    .sync-section {
+      margin: 20px auto;
+      padding: 15px;
+    }
+    .section-title {
+      font-size: 1.5rem;
+    }
+    .btn-custom {
+      padding: 8px 20px;
+      font-size: 0.9rem;
+    }
+    .sync-status {
+      font-size: 0.9rem;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mx-auto">
+  <div class="tab-content">
+    <div class="sync-section">
+      <div class="section-header">
+        <div class="section-title">Sync Channels</div>
+      </div>
+      <button id="syncButton" class="btn btn-custom" aria-label="Sync with OTAs and PMS">
+        <i class="fas fa-sync me-2"></i>Sync with OTAs and PMS
+      </button>
+      <div id="syncStatus" class="sync-status" role="status"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+  }
+
+  const syncButton = document.getElementById('syncButton');
+  const syncStatus = document.getElementById('syncStatus');
+  let token = getCookie('access_token_cookie');
+
+  syncButton.addEventListener('click', async () => {
+    if (!confirm('Are you sure you want to sync channels? This may take a few moments.')) {
+      return;
+    }
+
+    if (!hasLoggedIn || userRole !== 'admin') {
+      showToast('Access denied. Admins only.');
+      return;
+    }
+
+    try {
+      syncButton.disabled = true;
+      syncButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Syncing...';
+      syncStatus.textContent = 'Syncing channels...';
+      const response = await fetch('/sync_channels', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        credentials: 'include'
+      });
+      const data = await response.json();
+      if (data.status === 'success') {
+        syncStatus.textContent = data.message || 'Channels synced successfully.';
+        syncStatus.className = 'sync-status success';
+        showToast(data.message || 'Channels synced successfully.');
+      } else {
+        syncStatus.textContent = data.message || 'Failed to sync channels.';
+        syncStatus.className = 'sync-status error';
+        showToast(data.message || 'Failed to sync channels.');
+      }
+    } catch (error) {
+      console.error('Sync error:', error);
+      syncStatus.textContent = 'Error syncing channels.';
+      syncStatus.className = 'sync-status error';
+      showToast('Error syncing channels.');
+    } finally {
+      syncButton.disabled = false;
+      syncButton.innerHTML = '<i class="fas fa-sync me-2"></i>Sync with OTAs and PMS';
+    }
+  });
+
+  // Initialize
+  $(document).ready(() => {
+    if (!token || !hasLoggedIn || userRole !== 'admin') {
+      showToast('Access denied.');
+      window.location.href = '/';
+    }
+  });
+</script>
+{% endblock %}

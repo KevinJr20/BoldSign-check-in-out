@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ 'Add' if not employee else 'Edit' }} Employee - Employee Management</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block styles %}{% endblock %}
+</head>
+<body>
+    {% extends "dashboard.html" %}
+    {% block content %}
+    <div class="container py-4">
+        <h1 class="mb-4">{{ 'Add' if not employee else 'Edit' }} Employee</h1>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message | safe }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        <form method="POST" action="{{ url_for('add_employee') if not employee else url_for('edit_employee', employee_id=employee.employee_id) }}" id="employeeForm" novalidate>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-3">
+                <label for="employee_id" class="form-label">Employee ID:</label>
+                <input type="text" name="employee_id" id="employee_id" value="{{ employee.employee_id | escape if employee else '' }}" class="form-control" {{ 'readonly' if employee else '' }} required aria-required="true">
+            </div>
+            <div class="mb-3">
+                <label for="name" class="form-label">Name:</label>
+                <input type="text" name="name" id="name" value="{{ employee.name | escape if employee else '' }}" class="form-control" required aria-required="true" pattern="[A-Za-z\s]{2,50}" title="Name should be 2-50 letters only">
+            </div>
+            <div class="mb-3">
+                <label for="email" class="form-label">Email:</label>
+                <input type="email" name="email" id="email" value="{{ employee.email | escape if employee else '' }}" class="form-control" aria-describedby="emailHelp">
+                <small id="emailHelp" class="form-text text-muted">We'll never share your email.</small>
+            </div>
+            <div class="mb-3">
+                <label for="role" class="form-label">Role:</label>
+                <select name="role" id="role" class="form-select" required aria-required="true">
+                    <option value="" disabled {% if not employee or not employee.role %}selected{% endif %}>Select a role</option>
+                    <option value="employee" {% if employee and employee.role == 'employee' %}selected{% endif %}>Employee</option>
+                    <option value="manager" {% if employee and employee.role == 'manager' %}selected{% endif %}>Manager</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="fingerprint_template" class="form-label">Fingerprint Template (Optional):</label>
+                <input type="text" name="fingerprint_template" id="fingerprint_template" value="{{ employee.fingerprint_template | escape if employee else '' }}" class="form-control" placeholder="Enter fingerprint data">
+            </div>
+            <button type="submit" class="btn btn-primary submit-btn" id="submitBtn">{{ 'Add' if not employee else 'Update' }} Employee</button>
+            <div id="loadingSpinner" class="spinner-border text-primary d-none" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </form>
+    </div>
+    {% endblock %}
+    {% block scripts %}
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('employeeForm');
+            const submitBtn = document.getElementById('submitBtn');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+
+            form.addEventListener('submit', (e) => {
+                submitBtn.disabled = true;
+                loadingSpinner.classList.remove('d-none');
+                // Optional: Add basic client-side validation
+                const name = document.getElementById('name').value;
+                if (!/^[A-Za-z\s]{2,50}$/.test(name)) {
+                    e.preventDefault();
+                    alert('Name should be 2-50 letters only.');
+                    submitBtn.disabled = false;
+                    loadingSpinner.classList.add('d-none');
+                    return;
+                }
+            });
+        });
+    </script>
+    {% endblock %}
+</body>
+</html>

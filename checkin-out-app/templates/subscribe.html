@@ -1,0 +1,467 @@
+{% extends "base.html" %}
+
+{% block title %}
+Subscription - {{ config.company_name or 'Hospitality' }}
+{% endblock %}
+
+{% block extra_head %}
+<script src="https://js.stripe.com/v3/"></script>
+<script src="https://www.paypal.com/sdk/js?client-id={{ paypal_client_id }}¤cy=USD"></script>
+<style>
+  .subscription-container {
+    width: 100%;
+    padding: 40px;
+    background: linear-gradient(135deg, #f5f7fa 0%, #ffffff 100%);
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e0e6f0;
+    position: relative;
+    overflow: hidden;
+  }
+  .subscription-container::before {
+    content: '';
+    position: absolute;
+    top: -50px;
+    left: -50px;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(0, 123, 255, 0.1) 0%, transparent 70%);
+    z-index: 0;
+  }
+  .plan-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 25px;
+    margin-bottom: 40px;
+    position: relative;
+    z-index: 1;
+  }
+  .plan-card {
+    background: #ffffff;
+    border: 1px solid #e0e6f0;
+    border-radius: 15px;
+    padding: 25px;
+    text-align: center;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .plan-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 5px;
+    background: #007bff;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .plan-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 30px rgba(0, 123, 255, 0.2);
+  }
+  .plan-card:hover::after {
+    opacity: 1;
+  }
+  .plan-card.selected {
+    border-color: #007bff;
+    box-shadow: 0 6px 18px rgba(0, 123, 255, 0.2);
+  }
+  .plan-card .badge {
+    position: absolute;
+    top: -10px;
+    right: 15px;
+    background: #28a745;
+    color: #fff;
+    padding: 5px 10px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+  }
+  .plan-card h3 {
+    font-size: 1.8rem;
+    color: #2c3e50;
+    margin-bottom: 15px;
+    font-weight: 600;
+  }
+  .plan-card p {
+    color: #7f8c8d;
+    margin: 10px 0;
+    font-size: 1.1rem;
+  }
+  .payment-section {
+    background: #ffffff;
+    padding: 25px;
+    border-radius: 15px;
+    border: 1px solid #e0e6f0;
+    position: relative;
+    z-index: 1;
+  }
+  .payment-method {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+  }
+  .payment-method:hover {
+    background: #f1f3f5;
+  }
+  .payment-method input {
+    margin-right: 10px;
+  }
+  .payment-method label {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #e0e6f0;
+    background: #f9fbfd;
+    cursor: pointer;
+  }
+  .payment-method label img {
+    width: 40px;
+    margin-right: 15px;
+  }
+  .payment-method label span {
+    font-size: 1.1rem;
+    color: #2c3e50;
+  }
+  .payment-form {
+    margin-top: 15px;
+  }
+  #card-element, #mpesa-form input, #paypal-form input {
+    padding: 10px;
+    border: 1px solid #e0e6f0;
+    border-radius: 8px;
+    background: #f9fbfd;
+    font-size: 1rem;
+    width: 100%;
+  }
+  #card-errors, #mpesa-errors, #paypal-errors {
+    color: #dc3545;
+    margin-top: 10px;
+    font-size: 1rem;
+  }
+  .loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.7);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+  }
+  .loading-spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #007bff;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  .theme-button {
+    background: #007bff;
+    color: #fff;
+    border: none;
+    padding: 12px 30px;
+    font-size: 1.1rem;
+    font-weight: 500;
+    transition: background 0.3s ease;
+    width: 100%;
+    border-radius: 8px;
+  }
+  .theme-button:hover {
+    background: #0056b3;
+  }
+  @media (max-width: 768px) {
+    .subscription-container {
+      padding: 20px;
+    }
+    .plan-grid {
+      grid-template-columns: 1fr;
+    }
+    .payment-section {
+      margin-top: 20px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="subscription-container">
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner" id="loadingSpinner"></div>
+  </div>
+  <h1 class="text-center mb-5">Upgrade Your Subscription</h1>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+          {{ message | escape }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+  <form id="subscription-form" method="POST" action="{{ url_for('subscribe') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="transaction_id" id="transaction-id" value="{{ transaction_id | escape }}">
+    <div class="plan-grid">
+      {% for plan, details in subscription_tiers.items() %}
+      <div class="plan-card {% if plan == 'premium' %}selected{% endif %}" data-plan="{{ plan }}">
+        {% if plan == 'premium' %}<span class="badge">Recommended</span>{% endif %}
+        <h3>{{ plan.capitalize() }}</h3>
+        <p>Price: $<span class="plan-price">{{ details.price }}</span>/month</p>
+        <p>Max Employees: {{ details.employee_limit }}</p>
+        <ul>
+          {% for feature in details.features %}
+          <li>{{ feature | escape }}</li>
+          {% endfor %}
+        </ul>
+        <input type="radio" name="plan_type" value="{{ plan }}" id="{{ plan }}-plan" class="d-none" {% if plan == 'premium' %}checked{% endif %}>
+        <label for="{{ plan }}-plan" class="w-100"></label>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="payment-section">
+      <h3 class="text-lg font-semibold mb-2">Select Payment Method</h3>
+      <div class="flex flex-col space-y-2">
+        <div class="payment-method">
+          <input type="radio" name="payment_method" value="mpesa" class="mr-2" checked aria-label="Pay with M-Pesa">
+          <label class="flex items-center">
+            <i class="fas fa-mobile-alt mr-2" style="color: #ff6200;"></i>
+            <span>M-Pesa</span>
+          </label>
+        </div>
+        <div class="payment-method">
+          <input type="radio" name="payment_method" value="card" class="mr-2" aria-label="Pay with Card (Visa, Mastercard, etc.)">
+          <label class="flex items-center">
+            <i class="far fa-credit-card mr-2" style="color: #1a73e8;"></i>
+            <span>Card (Visa, Mastercard, etc.)</span>
+          </label>
+        </div>
+        <div class="payment-method">
+          <input type="radio" name="payment_method" value="paypal" class="mr-2" aria-label="Pay with PayPal">
+          <label class="flex items-center">
+            <i class="fab fa-paypal mr-2" style="color: #0070ba;"></i>
+            <span>PayPal</span>
+          </label>
+        </div>
+      </div>
+      <!-- M-Pesa Form -->
+      <div id="mpesa-form" class="payment-form">
+        <form method="post" action="{{ url_for('subscribe') }}" class="mt-4">
+          <input type="hidden" name="payment_method" value="mpesa">
+          <input type="hidden" name="order_notes" id="order_notes_mpesa" value="">
+          <div class="mb-4">
+            <label for="mpesa_amount" class="block text-sm font-medium mb-1">Amount (USD)</label>
+            <input type="number" name="amount" id="mpesa_amount" value="" class="p-2 border rounded-lg w-full" readonly>
+          </div>
+          <div class="mb-4">
+            <label for="phone_number" class="block text-sm font-medium mb-1">Phone Number (e.g., 2547XXXXXXXX)</label>
+            <input type="text" name="phone_number" id="phone_number" placeholder="2547XXXXXXXX" class="p-2 border rounded-lg w-full" required>
+          </div>
+          <button type="submit" class="theme-button py-2 rounded-lg transition-colors duration-300" aria-label="Pay with M-Pesa">Pay with M-Pesa</button>
+        </form>
+      </div>
+      <!-- Card Form (Stripe) -->
+      <div id="card-form" class="payment-form hidden">
+        <form id="card-payment-form" method="post" action="{{ url_for('subscribe') }}">
+          <input type="hidden" name="payment_method" value="card">
+          <input type="hidden" name="order_notes" id="order_notes_card" value="">
+          <div class="mb-4">
+            <label for="card_amount" class="block text-sm font-medium mb-1">Amount (USD)</label>
+            <input type="number" name="amount" id="card_amount" value="" class="p-2 border rounded-lg w-full" readonly>
+          </div>
+          <div id="card-element" class="mb-4 p-2 border rounded-lg"></div>
+          <div id="card-errors" class="text-red-500 text-sm mb-4" role="alert"></div>
+          <button type="submit" class="theme-button py-2 rounded-lg transition-colors duration-300" aria-label="Pay with Card">Pay with Card</button>
+        </form>
+      </div>
+      <!-- PayPal Form -->
+      <div id="paypal-form" class="payment-form hidden">
+        <form method="post" action="{{ url_for('subscribe') }}">
+          <input type="hidden" name="payment_method" value="paypal">
+          <input type="hidden" name="order_notes" id="order_notes_paypal" value="">
+          <div class="mb-4">
+            <label for="paypal_amount" class="block text-sm font-medium mb-1">Amount (USD)</label>
+            <input type="number" name="amount" id="paypal_amount" value="" class="p-2 border rounded-lg w-full" readonly>
+          </div>
+          <div id="paypal-button-container"></div>
+          <div id="paypal-errors" class="text-red-500 text-sm mb-4" role="alert"></div>
+        </form>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+  }
+
+  function showLoading(state) {
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    loadingOverlay.style.display = state ? 'flex' : 'none';
+    loadingSpinner.classList[state ? 'add' : 'remove']('active');
+  }
+
+  const stripe = Stripe('{{ stripe_publishable_key }}');
+  const elements = stripe.elements();
+  const cardElement = elements.create('card', {
+    style: { base: { fontSize: '16px', color: '#2c3e50', '::placeholder': { color: '#7f8c8d' } } }
+  });
+  let paypalInitialized = false;
+
+  const form = document.getElementById('subscription-form');
+  const mpesaForm = document.getElementById('mpesa-form').querySelector('form');
+  const cardForm = document.getElementById('card-form').querySelector('form');
+  const paypalForm = document.getElementById('paypal-form').querySelector('form');
+  const mpesaRadio = document.querySelector('input[value="mpesa"]');
+  const cardRadio = document.querySelector('input[value="card"]');
+  const paypalRadio = document.querySelector('input[value="paypal"]');
+  const mpesaAmount = document.getElementById('mpesa_amount');
+  const cardAmount = document.getElementById('card_amount');
+  const paypalAmount = document.getElementById('paypal_amount');
+  const cardErrors = document.getElementById('card-errors');
+  const mpesaErrors = document.getElementById('mpesa-errors');
+  const paypalErrors = document.getElementById('paypal-errors');
+  const planCards = document.querySelectorAll('.plan-card');
+
+  // Select plan and update amounts
+  planCards.forEach(card => {
+    card.addEventListener('click', () => {
+      planCards.forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      const radio = card.querySelector('input[name="plan_type"]');
+      radio.checked = true;
+      const planType = radio.value;
+      const price = {{ subscription_tiers | tojson }}[planType].price;
+      mpesaAmount.value = price;
+      cardAmount.value = price;
+      paypalAmount.value = price;
+    });
+  });
+
+  // Toggle payment forms
+  function togglePaymentForms() {
+    const selectedMethod = document.querySelector('input[name="payment_method"]:checked').value;
+    document.querySelectorAll('.payment-form').forEach(form => form.classList.add('hidden'));
+    if (selectedMethod === 'mpesa') document.getElementById('mpesa-form').classList.remove('hidden');
+    else if (selectedMethod === 'card') document.getElementById('card-form').classList.remove('hidden');
+    else if (selectedMethod === 'paypal') document.getElementById('paypal-form').classList.remove('hidden');
+    if (selectedMethod === 'card' && !cardElement._mounted) {
+      cardElement.mount('#card-element');
+    } else if (selectedMethod !== 'card') {
+      cardElement.unmount();
+    }
+    if (selectedMethod === 'paypal' && !paypalInitialized) {
+      paypal.Buttons({
+        createOrder: (data, actions) => {
+          const planType = document.querySelector('input[name="plan_type"]:checked').value;
+          const amount = {{ subscription_tiers | tojson }}[planType].price;
+          return actions.order.create({ purchase_units: [{ amount: { value: amount.toFixed(2), currency: 'USD' } }] });
+        },
+        onApprove: async (data, actions) => {
+          showLoading(true);
+          const order = await actions.order.capture();
+          const formData = new FormData(paypalForm);
+          formData.append('paypal_order_id', order.id);
+          const response = await fetch('/subscribe', { method: 'POST', body: formData, credentials: 'include' });
+          const result = await response.json();
+          if (result.success) {
+            window.location.href = `/completed/success?transaction_id=${document.getElementById('transaction-id').value}&plan=${formData.get('plan_type')}`;
+          } else {
+            paypalErrors.textContent = result.error || 'Payment failed';
+          }
+          showLoading(false);
+        },
+        onError: (err) => {
+          paypalErrors.textContent = 'PayPal error: ' + err.message;
+          showLoading(false);
+        }
+      }).render('#paypal-button-container');
+      paypalInitialized = true;
+    }
+  }
+
+  mpesaRadio.addEventListener('change', togglePaymentForms);
+  cardRadio.addEventListener('change', togglePaymentForms);
+  paypalRadio.addEventListener('change', togglePaymentForms);
+  togglePaymentForms();
+
+  // Form submissions
+  mpesaForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (confirm('Are you sure you want to proceed with M-Pesa payment?')) {
+      showLoading(true);
+      try {
+        const phoneNumber = document.getElementById('phone_number').value;
+        if (!phoneNumber.match(/^2547\d{8}$/)) {
+          mpesaErrors.textContent = 'Invalid M-Pesa number (e.g., 2547xxxxxxxx)';
+          throw new Error('Invalid M-Pesa number');
+        }
+        const formData = new FormData(mpesaForm);
+        const response = await fetch('/subscribe', { method: 'POST', body: formData, credentials: 'include' });
+        const data = await response.json();
+        if (data.success) {
+          mpesaErrors.textContent = 'M-Pesa payment request sent. Please complete on your phone.';
+        } else {
+          mpesaErrors.textContent = data.error || 'M-Pesa payment failed';
+        }
+      } catch (err) {
+        mpesaErrors.textContent = 'Payment error: ' + err.message;
+      } finally {
+        showLoading(false);
+      }
+    }
+  });
+
+  cardForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (confirm('Are you sure you want to proceed with Card payment?')) {
+      showLoading(true);
+      try {
+        const { error, paymentMethod: stripePaymentMethod } = await stripe.createPaymentMethod({ type: 'card', card: cardElement });
+        if (error) {
+          cardErrors.textContent = error.message;
+          throw error;
+        }
+        const formData = new FormData(cardForm);
+        formData.append('payment_method_id', stripePaymentMethod.id);
+        const response = await fetch('/subscribe', { method: 'POST', body: formData, credentials: 'include' });
+        const data = await response.json();
+        if (data.success && data.session_id) {
+          await stripe.redirectToCheckout({ sessionId: data.session_id });
+        } else {
+          cardErrors.textContent = data.error || 'Stripe payment failed';
+        }
+      } catch (err) {
+        cardErrors.textContent = 'Payment error: ' + err.message;
+      } finally {
+        showLoading(false);
+      }
+    }
+  });
+
+  paypalForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    // PayPal button handles submission
+  });
+</script>
+{% endblock %}

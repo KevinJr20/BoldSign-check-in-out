@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}
+Payment Error - {{ config.company_name or 'Hospitality' }}
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  .error-section {
+    max-width: 600px;
+    margin: 40px auto;
+    padding: 20px;
+    text-align: center;
+    background: var(--table-bg);
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--dropdown-border);
+    position: relative;
+  }
+  .error-section h1 {
+    font-size: 2.5rem;
+    font-weight: 600;
+    color: #dc3545; /* Bootstrap danger */
+    margin-bottom: 20px;
+  }
+  .error-section p {
+    font-size: 1.2rem;
+    color: var(--text-muted);
+    margin-bottom: 30px;
+  }
+  .btn-custom {
+    background: var(--upgrade-btn-bg);
+    color: #fff;
+    border-radius: 25px;
+    padding: 10px 25px;
+    font-weight: 600;
+    transition: transform 0.2s, box-shadow 0.3s;
+  }
+  .btn-custom:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.5);
+  }
+  .error-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: none;
+  }
+  @media (max-width: 767px) {
+    .error-section {
+      margin: 20px auto;
+      padding: 15px;
+    }
+    .error-section h1 {
+      font-size: 2rem;
+    }
+    .error-section p {
+      font-size: 1rem;
+    }
+    .btn-custom {
+      padding: 8px 20px;
+      font-size: 0.9rem;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mx-auto">
+  <div class="tab-content">
+    <div class="error-section">
+      <div class="error-loading spinner-border text-primary" role="status">
+        <span class="visually-hidden">Processing...</span>
+      </div>
+      <h1 class="text-danger">Error</h1>
+      <p>{{ message | escape }}</p>
+      <a href="/subscribe" class="btn btn-custom" id="tryAgainBtn" aria-label="Try payment again">Try Again</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+  }
+
+  function showLoading(state) {
+    const loadingSpinner = document.querySelector('.error-loading');
+    const tryAgainBtn = document.getElementById('tryAgainBtn');
+    loadingSpinner.style.display = state ? 'block' : 'none';
+    tryAgainBtn.disabled = state;
+    document.querySelector('.error-section').style.opacity = state ? '0.5' : '1';
+  }
+
+  $(document).ready(() => {
+    const token = getCookie('access_token_cookie');
+    let hasLoggedIn = typeof hasLoggedIn !== 'undefined' ? hasLoggedIn : false;
+
+    if (!hasLoggedIn || !token) {
+      if (typeof showToast === 'function') showToast('Please log in to view this page.');
+      showLoading(true);
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 2000); // Redirect after 2 seconds
+    }
+
+    $('#tryAgainBtn').on('click', () => {
+      showLoading(true);
+      // Simulate a delay or API call (replace with actual logic)
+      setTimeout(() => {
+        showLoading(false);
+        // Redirect or handle retry logic here
+        window.location.href = '/subscribe';
+      }, 1500);
+    });
+  });
+</script>
+{% endblock %}

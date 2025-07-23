@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}
+{{ config.company_name or 'Hospitality' }} - Success
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  .success-section {
+    max-width: 600px;
+    margin: 40px auto;
+    padding: 20px;
+    text-align: center;
+    background: var(--table-bg);
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--dropdown-border);
+  }
+  .success-section h1 {
+    font-size: 2.5rem;
+    font-weight: 600;
+    color: #28a745; /* Bootstrap success */
+    margin-bottom: 20px;
+  }
+  .success-section p {
+    font-size: 1.2rem;
+    color: var(--text-muted);
+    margin-bottom: 30px;
+  }
+  .btn-custom {
+    background: var(--upgrade-btn-bg);
+    color: #fff;
+    border-radius: 25px;
+    padding: 10px 25px;
+    font-weight: 600;
+    transition: transform 0.2s, box-shadow 0.3s;
+  }
+  .btn-custom:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.5);
+  }
+  @media (max-width: 767px) {
+    .success-section {
+      margin: 20px auto;
+      padding: 15px;
+    }
+    .success-section h1 {
+      font-size: 2rem;
+    }
+    .success-section p {
+      font-size: 1rem;
+    }
+    .btn-custom {
+      padding: 8px 20px;
+      font-size: 0.9rem;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mx-auto">
+  <div class="tab-content">
+    <div class="success-section">
+      <h1 class="text-success">Success</h1>
+      <p>{{ message or 'Your action was completed successfully!' }}</p>
+      <a href="{{ continue_url or url_for('dashboard') }}" class="btn btn-custom" aria-label="Continue to dashboard">Continue</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+  }
+
+  $(document).ready(() => {
+    let hasLoggedIn = typeof hasLoggedIn !== 'undefined' ? hasLoggedIn : false;
+    const token = getCookie('access_token_cookie');
+
+    if (!hasLoggedIn || !token) {
+      if (typeof showToast === 'function') showToast('Please log in to view this page.');
+      window.location.href = '/login';
+    }
+  });
+</script>
+{% endblock %}
