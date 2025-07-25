@@ -32,7 +32,6 @@ def login():
                         access_token = create_access_token(identity={'username': username, 'role': user.role})
                         response = make_response(redirect(url_for('dashboard.dashboard')))
                         set_access_cookies(response, access_token)
-                        flash('Login successful!', 'success')
                         return response
                 elif login_type == 'guest':
                     guest = session.query(Guest).filter_by(guest_id=username).first()
@@ -41,7 +40,6 @@ def login():
                         access_token = create_access_token(identity={'username': username, 'role': 'guest'})
                         response = make_response(redirect(url_for('dashboard.dashboard')))
                         set_access_cookies(response, access_token)
-                        flash('Guest login successful!', 'success')
                         return response
                 flash('Invalid credentials.', 'danger')
             finally:
@@ -55,7 +53,6 @@ def logout():
     logout_user()
     response = make_response(redirect(url_for('auth.login')))
     unset_jwt_cookies(response)
-    flash('Logged out.', 'success')
     return response
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
