@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}
+Attendance - {{ config.company_name or 'Hospitality' }}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Attendance Records</h1>
+    <form class="mb-4" method="get" action="{{ url_for('attendance.get_attendance') }}">
+        <div class="row g-2">
+            <div class="col-md-4">
+                <input type="date" class="form-control" name="start_date" value="{{ request.args.get('start_date') }}">
+            </div>
+            <div class="col-md-4">
+                <input type="date" class="form-control" name="end_date" value="{{ request.args.get('end_date') }}">
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary">Filter</button>
+            </div>
+        </div>
+    </form>
+    {% if records %}
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Employee ID</th>
+                        <th>Name</th>
+                        <th>Date</th>
+                        <th>Time In</th>
+                        <th>Time Out</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in records %}
+                        <tr>
+                            <td>{{ record.employee_id }}</td>
+                            <td>{{ record.name }}</td>
+                            <td>{{ record.date }}</td>
+                            <td>{{ record.time_in or 'N/A' }}</td>
+                            <td>{{ record.time_out or 'N/A' }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                {% for page in range(1, pagination.total_pages + 1) %}
+                    <li class="page-item {{ 'active' if page == pagination.current_page else '' }}">
+                        <a class="page-link" href="{{ url_for('attendance.get_attendance', page=page, start_date=request.args.get('start_date'), end_date=request.args.get('end_date')) }}">{{ page }}</a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </nav>
+    {% else %}
+        <p class="text-muted">No attendance records found.</p>
+    {% endif %}
+    <a href="{{ url_for('attendance.export_attendance') }}" class="btn btn-success mt-3">Export to CSV</a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Fetch attendance data and update table
+    function loadAttendance(page = 1) {
+        const urlParams = new URLSearchParams(window.location.search);
+        urlParams.set('page', page);
+        fetch(`${window.location.pathname}?${urlParams.toString()}`, {
+            method: 'GET',
+            credentials: 'include'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                let rows = '';
+                data.records.forEach(record => {
+                    rows += `<tr><td>${record.employee_id}</td><td>${record.name}</td><td>${record.date}</td><td>${record.time_in || 'N/A'}</td><td>${record.time_out || 'N/A'}</td></tr>`;
+                });
+                document.querySelector('tbody').innerHTML = rows;
+                updatePagination(data.pagination);
+            } else {
+                showToast(data.error || 'Failed to load attendance');
+            }
+        })
+        .catch(error => showToast('Error: ' + error.message));
+    }
+
+    function updatePagination(pagination) {
+        const paginationEl = document.querySelector('.pagination');
+        paginationEl.innerHTML = '';
+        for (let page = 1; page <= pagination.total_pages; page++) {
+            const li = document.createElement('li');
+            li.className = `page-item ${page === pagination.current_page ? 'active' : ''}`;
+            const a = document.createElement('a');
+            a.className = 'page-link';
+            a.href = `${window.location.pathname}?page=${page}&${new URLSearchParams(window.location.search).toString().replace(/page=\d+&?/, '')}`;
+            a.textContent = page;
+            li.appendChild(a);
+            paginationEl.appendChild(li);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadAttendance();
+        document.querySelector('form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            loadAttendance(1);
+            history.pushState({}, '', e.target.action + '?' + new URLSearchParams(new FormData(e.target)).toString());
+        });
+        document.querySelectorAll('.page-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                loadAttendance(parseInt(e.target.textContent));
+                history.pushState({}, '', e.target.href);
+            });
+        });
+    });
+</script>
+{% endblock %}

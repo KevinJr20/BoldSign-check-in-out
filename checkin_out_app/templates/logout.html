@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}
+{{ config.company_name or 'Hospitality' }} - Logout
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  .logout-container {
+    text-align: center;
+    padding: 40px 20px;
+    max-width: 600px;
+    margin: 40px auto;
+    background: var(--table-bg);
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--dropdown-border);
+    position: relative;
+  }
+  .intro-section h1 {
+    font-size: 2rem;
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 20px;
+  }
+  .intro-section p {
+    font-size: 1.2rem;
+    color: var(--text-muted);
+  }
+  .btn-custom {
+    background: var(--upgrade-btn-bg);
+    color: #fff;
+    border-radius: 25px;
+    padding: 10px 25px;
+    font-weight: 600;
+    transition: transform 0.2s, box-shadow 0.3s;
+  }
+  .btn-custom:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.5);
+  }
+  .btn-secondary {
+    background: var(--dropdown-border);
+    color: var(--text-color);
+    border: none;
+    border-radius: 25px;
+    padding: 10px 25px;
+    font-weight: 600;
+    transition: transform 0.2s, box-shadow 0.3s;
+  }
+  .btn-secondary:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+  .logout-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: none;
+  }
+  @media (max-width: 767px) {
+    .logout-container {
+      padding: 20px 15px;
+      margin: 20px auto;
+    }
+    .intro-section h1 {
+      font-size: 1.5rem;
+    }
+    .intro-section p {
+      font-size: 1rem;
+    }
+    .btn-custom, .btn-secondary {
+      padding: 8px 20px;
+      font-size: 0.9rem;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="logout-container">
+  <div class="logout-loading spinner-border text-primary" role="status">
+    <span class="visually-hidden">Logging out...</span>
+  </div>
+  <div class="intro-section">
+    <h1>Logout Confirmation</h1>
+    <p>Are you sure you want to log out of your {{ config.company_name or 'Hospitality' }} Dashboard session?</p>
+  </div>
+  <div class="d-flex justify-content-center gap-3">
+    <form method="POST" action="{{ url_for('auth.logout') }}" id="logoutForm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn btn-custom" aria-label="Confirm logout">
+        <i class="fas fa-sign-out-alt me-2"></i> Yes, Logout
+      </button>
+    </form>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary" aria-label="Cancel logout">
+      <i class="fas fa-arrow-left me-2"></i> Cancel
+    </a>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+  }
+
+  function showLoading(state) {
+    const loadingSpinner = document.querySelector('.logout-loading');
+    const logoutBtn = document.querySelector('#logoutForm button');
+    loadingSpinner.style.display = state ? 'block' : 'none';
+    logoutBtn.disabled = state;
+    document.querySelector('.logout-container').style.opacity = state ? '0.5' : '1';
+  }
+
+  $(document).ready(() => {
+    let hasLoggedIn = typeof hasLoggedIn !== 'undefined' ? hasLoggedIn : false;
+    const token = getCookie('access_token_cookie');
+
+    if (!hasLoggedIn || !token) {
+      if (typeof showToast === 'function') showToast('You are not logged in.');
+      window.location.href = '/login';
+    }
+
+    const logoutForm = document.getElementById('logoutForm');
+    logoutForm.addEventListener('submit', (e) => {
+      showLoading(true);
+      setTimeout(() => {
+      }, 1000); // Simulated delay
+    });
+  });
+</script>
+{% endblock %}
