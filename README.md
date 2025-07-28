@@ -1,8 +1,8 @@
-# Hospitality Management System 🕒🏨
+# Hospitality Management System 
 
 A Flask-based web application for managing employee attendance, hotel bookings, and guest records. Designed for organizations in the hospitality industry, this system offers biometric check-in/check-out tracking, room management, guest check-in/out, and a customizable interface with real-time updates and Redis caching for performance.
 
-# Features ✨
+# Features 
 
 ## Biometric Attendance
 
@@ -54,7 +54,7 @@ Paginated data loading for efficient dashboard rendering.
 Password hashing with `bcrypt` and encrypted fingerprint storage using `cryptography`.fernet.
 `JWT tokens` secure API endpoints with role-based authorization.
 
-## Prerequisites 📋
+## Prerequisites 
 
 Python: 3.8+ (3.10 or 3.11 recommended)
 PostgreSQL: 12+ for data storage
@@ -63,7 +63,7 @@ Biometric Scanner: Compatible fingerprint templates required
 Node.js: For SocketIO client (optional, included via CDN in templates)
 Dependencies: Listed in `requirements.txt`
 
-## Installation 🚀
+## Installation 
 
 1. Clone the Repository
 ```
@@ -161,7 +161,7 @@ Place your logo in static/photos/ if using a custom logo_url.
 
 Access at `http://localhost:5000`.
 
-## Usage 🖥️
+## Usage 
 
 ### Login
 
@@ -217,7 +217,7 @@ hospitality-management-system/
 └── README.md              # This file
 ```
 
-## Database Schema 🗄️
+## Database Schema 
 ```
 employees: employee_id (PK), name, fingerprint_template
 attendance: id (PK), employee_id (FK), name, date, time_in, time_out, timestamp, fingerprint
@@ -227,7 +227,7 @@ audit_log: id (PK), timestamp, employee_id (FK), action
 users: username (PK), password_hash, role
 ```
 
-## Security 🔒
+## Security 
 
 Passwords hashed with `bcrypt`.
 Fingerprints encrypted using `cryptography.fernet`.
@@ -235,7 +235,7 @@ JWT tokens secure API endpoints with role-based access.
 Redis connections secured with passwords (local) or TLS (cloud).
 Default admin user protected from deletion.
 
-## Troubleshooting 🛠️
+## Troubleshooting 
 
 ### Bcrypt Error
 
@@ -278,7 +278,7 @@ psql -U user -d hospitality -f init_db.sql
 Check logs in the terminal or browser console (F12).
 ```
 
-## Contributing 🤝
+## Contributing
 
 Contributions are welcome! Please:
 
@@ -290,7 +290,7 @@ Push to the branch (git push origin feature/xyz).
 Open a pull request.
 ```
 
-## License 📜
+## License
 
 MIT License. See `LICENSE` for details.
 Contact 📬
