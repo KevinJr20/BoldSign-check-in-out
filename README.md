@@ -297,4 +297,5 @@ MIT License. See `LICENSE` for details.
 ## Contact 
 
 For support or inquiries, contact `kevojr69@gmail.com` or open an issue on GitHub.
+
 Built by `Kevin Omondi Jr.`
