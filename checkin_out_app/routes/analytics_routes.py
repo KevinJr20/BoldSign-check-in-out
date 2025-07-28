@@ -1,7 +1,9 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from ..models import db, Attendance
+from datetime import datetime, date, timedelta
+from ..models import db, Attendance, User  # Added User
 from ..utils import sanitize_input, get_current_time
+from datetime import timedelta
 
 analytics_bp = Blueprint('analytics', __name__, url_prefix='/analytics')
 
@@ -9,7 +11,8 @@ analytics_bp = Blueprint('analytics', __name__, url_prefix='/analytics')
 @jwt_required()
 def analytics():
     username = sanitize_input(get_jwt_identity())
-    with db.session as session:
+    session = db.session  # Use session directly
+    try:
         user = session.query(User).filter_by(username=username).first()
         if not user or user.role != 'admin':
             return jsonify({'error': 'Access denied'}), 403
@@ -18,11 +21,13 @@ def analytics():
         offset = (page - 1) * per_page
         end_date = get_current_time().date()
         start_date = end_date - timedelta(days=30)
-        total_dates = session.query(Attendance.date.distinct().count()).filter(Attendance.date.between(start_date.isoformat(), end_date.isoformat())).scalar()
+        total_dates = session.query(db.func.count(db.distinct(Attendance.date))).filter(Attendance.date.between(start_date.isoformat(), end_date.isoformat())).scalar()
         trends = session.query(Attendance.date, db.func.count(db.distinct(Attendance.employee_id)).label('active_employees')).filter(Attendance.date.between(start_date.isoformat(), end_date.isoformat())).group_by(Attendance.date).order_by(Attendance.date).limit(per_page).offset(offset).all()
+    finally:
+        session.close()  # Optional: Close session if not using autocommit
     return jsonify({
         'success': True,
-        'trends': [{'date': trend[0], 'active_employees': trend[1]} for trend in trends],
+        'trends': [{'date': trend[0].isoformat(), 'active_employees': trend[1]} for trend in trends],
         'pagination': {
             'current_page': page,
             'per_page': per_page,

@@ -1,6 +1,6 @@
 import os
 import hashlib
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from ..models import db, User, Employee, Attendance, Subscription
 from ..utils import sanitize_input, allowed_file, match_fingerprint
@@ -15,7 +15,8 @@ employee_bp = Blueprint('employee', __name__, url_prefix='/employees')
 @jwt_required()
 def employees():
     username = sanitize_input(get_jwt_identity())
-    with db.session as session:
+    session = db.session  # Use session directly
+    try:
         user = session.query(User).filter_by(username=username).first()
         if not user or user.role != 'admin':
             return jsonify({'error': 'Access denied'}), 403
@@ -25,6 +26,8 @@ def employees():
         total_employees = session.query(Employee).filter_by(organization_id=username).count()
         employees = session.query(Employee).filter_by(organization_id=username).order_by(Employee.name).limit(per_page).offset(offset).all()
         pagination = {'current_page': page, 'per_page': per_page, 'total_items': total_employees, 'total_pages': (total_employees + per_page - 1) // per_page}
+    finally:
+        session.close()  # Optional: Close session if not using autocommit
     return render_template(
         'employees.html',
         employees=employees,
@@ -40,7 +43,8 @@ def employees():
 @jwt_required()
 def get_employees():
     username = sanitize_input(get_jwt_identity())
-    with db.session as session:
+    session = db.session  # Use session directly
+    try:
         user = session.query(User).filter_by(username=username).first()
         if not user or user.role != 'admin':
             return jsonify({'error': 'Access denied'}), 403
@@ -49,6 +53,8 @@ def get_employees():
         offset = (page - 1) * per_page
         total_employees = session.query(Employee).filter_by(organization_id=username).count()
         employees = [emp._asdict() for emp in session.query(Employee).filter_by(organization_id=username).order_by(Employee.name).limit(per_page).offset(offset).all()]
+    finally:
+        session.close()  # Optional: Close session if not using autocommit
     return jsonify({
         'success': True,
         'employees': employees,
@@ -64,7 +70,8 @@ def get_employees():
 @jwt_required()
 def edit_employee(employee_id):
     username = sanitize_input(get_jwt_identity())
-    with db.session as session:
+    session = db.session  # Use session directly
+    try:
         user = session.query(User).filter_by(username=username).first()
         if not user or user.role != 'admin':
             return jsonify({'error': 'Access denied'}), 403
@@ -83,11 +90,11 @@ def edit_employee(employee_id):
             return jsonify({'error': 'Invalid email'}), 400
         if photo and allowed_file(photo.filename, photo.stream):
             photo.stream.seek(0, os.SEEK_END)
-            if photo.stream.tell() > app.config['MAX_FILE_SIZE']:
+            if photo.stream.tell() > current_app.config['MAX_FILE_SIZE']:
                 return jsonify({'error': 'File size exceeds 5MB'}), 400
             photo.stream.seek(0)
             filename = secure_filename(f"{employee_id}_{photo.filename}")
-            photo_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            photo_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
             photo.save(photo_path)
             photo_url = f"/static/uploads/{filename}"
         else:
@@ -100,13 +107,19 @@ def edit_employee(employee_id):
         employee.biometric_hash = biometric_hash
         employee.photo_url = photo_url
         session.commit()
+    except Exception as e:
+        session.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        session.close()  # Optional: Close session if not using autocommit
     return jsonify({'success': True, 'message': 'Employee updated'})
 
 @employee_bp.route('/api/<employee_id>', methods=['DELETE'])
 @jwt_required()
 def delete_employee(employee_id):
     username = sanitize_input(get_jwt_identity())
-    with db.session as session:
+    session = db.session  # Use session directly
+    try:
         user = session.query(User).filter_by(username=username).first()
         if not user or user.role != 'admin':
             return jsonify({'error': 'Access denied'}), 403
@@ -116,13 +129,19 @@ def delete_employee(employee_id):
         session.delete(employee)
         session.query(Attendance).filter_by(employee_id=employee_id).delete()
         session.commit()
+    except Exception as e:
+        session.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        session.close()  # Optional: Close session if not using autocommit
     return jsonify({'success': True, 'message': 'Employee deleted'})
 
 @employee_bp.route('/bulk_import', methods=['POST'])
 @jwt_required()
 def bulk_import_employees():
     username = sanitize_input(get_jwt_identity())
-    with db.session as session:
+    session = db.session  # Use session directly
+    try:
         user = session.query(User).filter_by(username=username).first()
         if not user or user.role != 'admin':
             return jsonify({'error': 'Access denied'}), 403
@@ -158,13 +177,19 @@ def bulk_import_employees():
             session.add(new_employee)
             count += 1
         session.commit()
+    except Exception as e:
+        session.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        session.close()  # Optional: Close session if not using autocommit
     return jsonify({'success': True, 'message': f'{count} employees imported'})
 
 @employee_bp.route('/bulk_delete', methods=['POST'])
 @jwt_required()
 def bulk_delete_employees():
     username = sanitize_input(get_jwt_identity())
-    with db.session as session:
+    session = db.session  # Use session directly
+    try:
         user = session.query(User).filter_by(username=username).first()
         if not user or user.role != 'admin':
             return jsonify({'error': 'Access denied'}), 403
@@ -177,4 +202,9 @@ def bulk_delete_employees():
         session.query(Employee).filter(Employee.employee_id.in_(employee_ids), Employee.organization_id==username).delete()
         session.query(Attendance).filter(Attendance.employee_id.in_(employee_ids)).delete()
         session.commit()
+    except Exception as e:
+        session.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        session.close()  # Optional: Close session if not using autocommit
     return jsonify({'success': True, 'message': f'{len(valid_ids)} employees deleted'})
