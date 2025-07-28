@@ -56,6 +56,7 @@ class Attendance(db.Model):
     date = db.Column(db.DateTime, nullable=True)
     time_in = db.Column(db.DateTime, nullable=True)
     time_out = db.Column(db.DateTime, nullable=True)
+    organization_id = db.Column(db.String(50), nullable=False)
     timestamp = db.Column(db.DateTime, nullable=True)
     __table_args__ = (db.Index('idx_attendance_employee_id', 'employee_id'),)
 

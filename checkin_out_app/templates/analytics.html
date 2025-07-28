@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}{{ username }}'s Analytics Dashboard{% endblock %}
+
+{% block extra_head %}
+<style>
+  .dashboard {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    font-family: Arial, sans-serif;
+  }
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+  .card {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  }
+  .card h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: #333;
+  }
+  .card p {
+    margin: 5px 0 0;
+    font-size: 1.5rem;
+    color: #007bff;
+  }
+  .chart-container {
+    background: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+  }
+  .pagination {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+  }
+  .pagination a {
+    padding: 8px 12px;
+    background: #007bff;
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+  }
+  .pagination a:hover {
+    background: #0056b3;
+  }
+  @media (max-width: 768px) {
+    .summary {
+      grid-template-columns: 1fr;
+    }
+    .card {
+      margin-bottom: 15px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+  <h1>Analytics Dashboard</h1>
+  <div class="summary">
+    <div class="card">
+      <h3>Total Active Dates</h3>
+      <p>{{ pagination.total_items }}</p>
+    </div>
+    <div class="card">
+      <h3>Current Page</h3>
+      <p>{{ pagination.current_page }}</p>
+    </div>
+    <div class="card">
+      <h3>Items per Page</h3>
+      <p>{{ pagination.per_page }}</p>
+    </div>
+  </div>
+
+  <div class="chart-container">
+    <h2>Employee Activity Trends</h2>
+    <canvas id="trendsChart"></canvas>
+  </div>
+
+  <div class="pagination">
+    {% if pagination.current_page > 1 %}
+      <a href="/analytics/?page={{ pagination.current_page - 1 }}&per_page={{ pagination.per_page }}">Previous</a>
+    {% endif %}
+    {% if pagination.current_page < pagination.total_pages %}
+      <a href="/analytics/?page={{ pagination.current_page + 1 }}&per_page={{ pagination.per_page }}">Next</a>
+    {% endif %}
+  </div>
+</div>
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const ctx = document.getElementById('trendsChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: {{ trends | map(attribute='date') | list | safe }},
+      datasets: [{
+        label: 'Active Employees',
+        data: {{ trends | map(attribute='active_employees') | list | safe }},
+        borderColor: 'rgb(75, 192, 192)',
+        tension: 0.1
+      }]
+    },
+    options: {
+      scales: {
+        y: { beginAtZero: true }
+      }
+    }
+  });
+</script>
+{% endblock %}
+{% endblock %}

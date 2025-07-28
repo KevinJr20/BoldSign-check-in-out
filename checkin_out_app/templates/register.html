@@ -157,97 +157,61 @@
 
 {% block scripts %}
 <script>
-  function getCookie(name) {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
-    return null;
+  const sidebar = document.getElementById('sidebar');
+  const hamburger = document.getElementById('hamburger');
+  const content = document.querySelector('.content');
+  const themeToggle = document.getElementById('themeToggle');
+  const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+  function toggleSidebar() {
+      sidebar.classList.toggle('hidden');
+      sidebar.classList.toggle('active', !sidebar.classList.contains('hidden'));
+      sidebarOverlay.classList.toggle('active', !sidebar.classList.contains('hidden'));
+      content.classList.toggle('shifted', !sidebar.classList.contains('hidden'));
   }
 
-  function showLoading(state) {
-    const loadingSpinner = document.querySelector('.register-loading');
-    const registerBtn = document.getElementById('registerBtn');
-    loadingSpinner.style.display = state ? 'block' : 'none';
-    registerBtn.disabled = state;
-    document.querySelector('.register-section').style.opacity = state ? '0.5' : '1';
-  }
+  hamburger.addEventListener('click', toggleSidebar);
+  sidebarOverlay.addEventListener('click', toggleSidebar);
 
-  function updateStrengthMeter(password) {
-    const strengthMeterFill = document.getElementById('strengthMeterFill');
-    let strength = 0;
-    if (password.length >= 8) strength += 25;
-    if (/[A-Z]/.test(password)) strength += 25;
-    if (/[a-z]/.test(password)) strength += 25;
-    if (/[0-9]/.test(password)) strength += 25;
-    strengthMeterFill.style.width = `${strength}%`;
-    strengthMeterFill.style.backgroundColor = strength < 50 ? '#dc3545' : strength < 75 ? '#ffc107' : '#28a745';
-  }
-
-  const registerForm = document.getElementById('registerFormData');
-  const registerMessage = document.getElementById('registerMessage');
-
-  registerForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    showLoading(true);
-    const formData = new FormData(registerForm);
-    const password = document.getElementById('password').value;
-    const confirmPassword = document.getElementById('confirm_password').value;
-
-    if (!password || !confirmPassword) {
-      registerMessage.textContent = 'Both password fields are required.';
-      registerMessage.style.color = '#dc3545';
-      if (typeof showToast === 'function') showToast('Both password fields are required.');
-      showLoading(false);
-      return;
-    }
-    if (password !== confirmPassword) {
-      registerMessage.textContent = 'Passwords do not match.';
-      registerMessage.style.color = '#dc3545';
-      if (typeof showToast === 'function') showToast('Passwords do not match.');
-      showLoading(false);
-      return;
-    }
-    if (!/^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}$/.test(password)) {
-      registerMessage.textContent = 'Password must be at least 8 characters with uppercase, lowercase, and a number.';
-      registerMessage.style.color = '#dc3545';
-      if (typeof showToast === 'function') showToast('Password must meet requirements.');
-      showLoading(false);
-      return;
-    }
-
-    try {
-      const response = await fetch('/register', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include'
+  document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+      link.addEventListener('click', (e) => {
+          // Only prevent default and toggle sidebar on mobile, otherwise allow navigation
+          if (window.innerWidth < 768) {
+              e.preventDefault();
+              document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
+              link.classList.add('active');
+              window.location.href = link.getAttribute('href');
+              toggleSidebar();
+          } else {
+              document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
+              link.classList.add('active');
+              // Allow default navigation behavior on desktop
+          }
       });
-      if (response.redirected) {
-        window.location.href = response.url; // Follow redirect to /login
-      } else {
-        const data = await response.json();
-        registerMessage.textContent = data.message || 'Registration failed';
-        registerMessage.style.color = data.status === 'success' ? '#28a745' : '#dc3545';
-        if (typeof showToast === 'function') showToast(data.message || 'Registration failed');
+  });
+
+  themeToggle.addEventListener('click', () => {
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+      themeToggle.innerHTML = `<i class="fas ${isDark ? 'fa-sun' : 'fa-moon'}"></i>`;
+      localStorage.setItem('theme', isDark ? 'light' : 'dark');
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+      themeToggle.innerHTML = `<i class="fas ${savedTheme === 'dark' ? 'fa-sun' : 'fa-moon'}"></i>`;
+      if (window.innerWidth < 768) {
+          sidebar.classList.add('hidden');
+          sidebarOverlay.classList.remove('active');
       }
-    } catch (error) {
-      console.error('Error during registration:', error);
-      registerMessage.textContent = 'An error occurred. Please try again.';
-      registerMessage.style.color = '#dc3545';
-      if (typeof showToast === 'function') showToast('An error occurred. Please try again.');
-    } finally {
-      showLoading(false);
-    }
   });
 
-  // Update strength meter as user types
-  const passwordField = document.getElementById('password');
-  passwordField.addEventListener('input', () => {
-    updateStrengthMeter(passwordField.value);
-  });
-
-  // Initialize
-  $(document).ready(() => {
-    updateAuthUI(); // From base.html
-  });
+  function showToast(message) {
+      const toastEl = document.getElementById('toast');
+      toastEl.querySelector('.toast-body').textContent = message;
+      const toast = new bootstrap.Toast(toastEl);
+      toast.show();
+  }
 </script>
 {% endblock %}

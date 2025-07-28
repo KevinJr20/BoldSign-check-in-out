@@ -1,10 +1,10 @@
-from flask import Blueprint, jsonify, render_template
+from flask import Blueprint, jsonify, render_template, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from ..models import db, User, Employee, Guest, QrCode
-from ..utils import sanitize_input, get_current_time
+from ..models import db, User, Employee, Guest, QrCode, Attendance 
+from ..utils import sanitize_input, get_current_time, decrypt_guest_name
 import uuid
 from datetime import timedelta
-from flask_socketio import socketio  # Ensure socketio is imported
+from flask_socketio import socketio 
 
 qr_bp = Blueprint('qr', __name__, url_prefix='/qr')
 
@@ -12,7 +12,8 @@ qr_bp = Blueprint('qr', __name__, url_prefix='/qr')
 @jwt_required()
 def qr_scan():
     username = sanitize_input(get_jwt_identity())
-    with db.session as session:
+    session = db.session  # Use session directly
+    try:
         user = session.query(User).filter_by(username=username).first()
         if not user or user.role not in ['admin', 'employee']:
             return jsonify({'error': 'Access denied'}), 403
@@ -65,12 +66,18 @@ def qr_scan():
             })
             return jsonify({'success': True, 'message': 'Guest check-in successful'})
         return jsonify({'error': 'Invalid QR code type'}), 400
+    except Exception as e:
+        session.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        session.close()  # Optional: Close session if not using autocommit
 
 @qr_bp.route('/generate', methods=['POST'])
 @jwt_required()
 def generate_qr():
     username = sanitize_input(get_jwt_identity())
-    with db.session as session:
+    session = db.session  # Use session directly
+    try:
         user = session.query(User).filter_by(username=username).first()
         if not user or user.role != 'admin':
             return jsonify({'error': 'Access denied'}), 403
@@ -88,15 +95,23 @@ def generate_qr():
         new_qr = QrCode(qr_code=qr_code, user_id=user_id, user_type=user_type, expires_at=expires_at)
         session.add(new_qr)
         session.commit()
+    except Exception as e:
+        session.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        session.close()  # Optional: Close session if not using autocommit
     return jsonify({'success': True, 'qr_code': qr_code, 'expires_at': expires_at.isoformat()})
 
 @qr_bp.route('/', methods=['GET'], endpoint='qr')  # New route for 'qr.qr'
 @jwt_required()
 def qr_home():
     username = sanitize_input(get_jwt_identity())
-    with db.session as session:
+    session = db.session  # Use session directly
+    try:
         user = session.query(User).filter_by(username=username).first()
         if not user or user.role not in ['admin', 'employee']:
             return jsonify({'error': 'Access denied'}), 403
         qrs = session.query(QrCode).filter_by(used=False).all()
+    finally:
+        session.close()  # Optional: Close session if not using autocommit
     return render_template('qr.html', qrs=qrs, hasLoggedIn=True, username=username, userRole=user.role)

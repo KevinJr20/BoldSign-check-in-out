@@ -1,13 +1,14 @@
-from flask import Blueprint, jsonify, render_template
+from flask import Blueprint, jsonify, render_template, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from ..models import db, Room, Booking, Guest
+from ..models import db, Room, Booking, Guest, User  # Added User
 from ..utils import sanitize_input, get_current_time, encrypt_guest_name, validate_date, parse_date
-from ..utils import sanitize_input, get_current_time, get_mpesa_access_token, validate_mpesa_signature
+from ..utils import get_mpesa_access_token, validate_mpesa_signature
 import requests
 import re
 import uuid
 import base64
 from flask_socketio import socketio  # Ensure socketio is imported
+from datetime import date  # Added for date.today()
 
 room_bp = Blueprint('room', __name__, url_prefix='/rooms')
 
@@ -15,7 +16,8 @@ room_bp = Blueprint('room', __name__, url_prefix='/rooms')
 @jwt_required()
 def room_status():
     username = sanitize_input(get_jwt_identity())
-    with db.session as session:
+    session = db.session  # Use session directly
+    try:
         user = session.query(User).filter_by(username=username).first()
         if not user:
             return jsonify({'error': 'User not found'}), 404
@@ -24,6 +26,8 @@ def room_status():
         offset = (page - 1) * per_page
         total_rooms = session.query(Room).count()
         rooms = session.query(Room).order_by(Room.room_id).limit(per_page).offset(offset).all()
+    finally:
+        session.close()  # Optional: Close session if not using autocommit
     return jsonify({
         'success': True,
         'rooms': [room._asdict() for room in rooms],
@@ -39,7 +43,8 @@ def room_status():
 @jwt_required()
 def book_room():
     username = sanitize_input(get_jwt_identity())
-    with db.session as session:
+    session = db.session  # Use session directly
+    try:
         user = session.query(User).filter_by(username=username).first()
         if not user:
             return jsonify({'error': 'User not found'}), 404
@@ -60,7 +65,7 @@ def book_room():
         room = session.query(Room).filter_by(room_id=room_id).first()
         if not room or room.status != 'available':
             return jsonify({'error': 'Room not available'}), 400
-        if session.query(Booking).filter(Booking.room_id==room_id, Booking.status.notin_(['cancelled', 'checked_out']), Booking.check_in_date<=check_out_date, Booking.check_out_date>=check_in_date).first():
+        if session.query(Booking).filter(Booking.room_id == room_id, Booking.status.notin_(['cancelled', 'checked_out']), Booking.check_in_date <= check_out_date, Booking.check_out_date >= check_in_date).first():
             return jsonify({'error': 'Room booked for selected dates'}), 400
         guest_id = str(uuid.uuid4())
         encrypted_name = encrypt_guest_name(guest_name)
@@ -99,15 +104,23 @@ def book_room():
         session.add_all([new_booking, new_guest])
         session.commit()
         socketio.emit('room_status_update', {'room_id': room_id, 'status': 'occupied'})
+    except Exception as e:
+        session.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        session.close()  # Optional: Close session if not using autocommit
     return jsonify({'success': True, 'message': 'Room booked'})
 
 @room_bp.route('/', methods=['GET'], endpoint='room')  # New route for 'room.room'
 @jwt_required()
 def room_home():
     username = sanitize_input(get_jwt_identity())
-    with db.session as session:
+    session = db.session  # Use session directly
+    try:
         user = session.query(User).filter_by(username=username).first()
         if not user:
             return jsonify({'error': 'User not found'}), 404
         rooms = session.query(Room).all()
+    finally:
+        session.close()  # Optional: Close session if not using autocommit
     return render_template('room.html', rooms=rooms, hasLoggedIn=True, username=username, userRole='admin')

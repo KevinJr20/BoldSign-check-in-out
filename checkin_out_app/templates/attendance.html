@@ -1,121 +1,156 @@
 {% extends "base.html" %}
 
-{% block title %}
-Attendance - {{ config.company_name or 'Hospitality' }}
+{% block title %}{{ username }}'s Attendance Overview{% endblock %}
+
+{% block extra_head %}
+<style>
+  .attendance-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  .attendance-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+  }
+  .attendance-table th, .attendance-table td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--dropdown-border);
+  }
+  .attendance-table th {
+    background-color: var(--table-header-bg);
+    color: var(--table-header-text);
+  }
+  .pagination {
+    text-align: center;
+    margin-top: 20px;
+  }
+  .pagination a {
+    padding: 8px 12px;
+    margin: 0 5px;
+    text-decoration: none;
+    color: var(--text-color);
+    border: 1px solid var(--dropdown-border);
+    border-radius: 5px;
+  }
+  .pagination a.active {
+    background-color: var(--header-bg);
+    color: var(--header-text);
+  }
+  @media (max-width: 768px) {
+    .attendance-table {
+      display: block;
+      overflow-x: auto;
+    }
+  }
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h1 class="mb-4">Attendance Records</h1>
-    <form class="mb-4" method="get" action="{{ url_for('attendance.get_attendance') }}">
-        <div class="row g-2">
-            <div class="col-md-4">
-                <input type="date" class="form-control" name="start_date" value="{{ request.args.get('start_date') }}">
-            </div>
-            <div class="col-md-4">
-                <input type="date" class="form-control" name="end_date" value="{{ request.args.get('end_date') }}">
-            </div>
-            <div class="col-md-4">
-                <button type="submit" class="btn btn-primary">Filter</button>
-            </div>
-        </div>
-    </form>
-    {% if records %}
-        <div class="table-responsive">
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>Employee ID</th>
-                        <th>Name</th>
-                        <th>Date</th>
-                        <th>Time In</th>
-                        <th>Time Out</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for record in records %}
-                        <tr>
-                            <td>{{ record.employee_id }}</td>
-                            <td>{{ record.name }}</td>
-                            <td>{{ record.date }}</td>
-                            <td>{{ record.time_in or 'N/A' }}</td>
-                            <td>{{ record.time_out or 'N/A' }}</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        <nav aria-label="Page navigation">
-            <ul class="pagination justify-content-center">
-                {% for page in range(1, pagination.total_pages + 1) %}
-                    <li class="page-item {{ 'active' if page == pagination.current_page else '' }}">
-                        <a class="page-link" href="{{ url_for('attendance.get_attendance', page=page, start_date=request.args.get('start_date'), end_date=request.args.get('end_date')) }}">{{ page }}</a>
-                    </li>
-                {% endfor %}
-            </ul>
-        </nav>
+<div class="attendance-container">
+  <h2 class="mb-4">Attendance Overview</h2>
+  <div class="user-info mb-3">
+    Welcome, {{ username }} (Role: {{ userRole }})
+    {% if hasLoggedIn %}
+      <span style="color: var(--text-success);">Logged In</span>
     {% else %}
-        <p class="text-muted">No attendance records found.</p>
+      <span style="color: var(--text-danger);">Not Logged In</span>
     {% endif %}
-    <a href="{{ url_for('attendance.export_attendance') }}" class="btn btn-success mt-3">Export to CSV</a>
+  </div>
+  <table class="attendance-table">
+    <thead>
+      <tr>
+        <th>Employee ID</th>
+        <th>Name</th>
+        <th>Date</th>
+        <th>Time In</th>
+        <th>Time Out</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if records and records|length > 0 %}
+        {% for record in records %}
+        <tr>
+          <td>{{ record.employee_id }}</td>
+          <td>{{ record.name }}</td>
+          <td>{{ record.date }}</td>
+          <td>{{ record.time_in or 'N/A' }}</td>
+          <td>{{ record.time_out or 'N/A' }}</td>
+        </tr>
+        {% endfor %}
+      {% else %}
+        <tr><td colspan="5" class="text-center">No attendance records found.</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+  {% if pagination.total_pages > 1 %}
+    <div class="pagination">
+      {% for page in range(1, pagination.total_pages + 1) %}
+        <a href="{{ url_for('attendance.get_attendance', page=page, start_date=start_date, end_date=end_date) }}" class="{{ 'active' if page == pagination.current_page else '' }}">{{ page }}</a>
+      {% endfor %}
+    </div>
+  {% endif %}
 </div>
-{% endblock %}
 
-{% block scripts %}
 <script>
-    // Fetch attendance data and update table
-    function loadAttendance(page = 1) {
-        const urlParams = new URLSearchParams(window.location.search);
-        urlParams.set('page', page);
-        fetch(`${window.location.pathname}?${urlParams.toString()}`, {
-            method: 'GET',
-            credentials: 'include'
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                let rows = '';
-                data.records.forEach(record => {
-                    rows += `<tr><td>${record.employee_id}</td><td>${record.name}</td><td>${record.date}</td><td>${record.time_in || 'N/A'}</td><td>${record.time_out || 'N/A'}</td></tr>`;
-                });
-                document.querySelector('tbody').innerHTML = rows;
-                updatePagination(data.pagination);
-            } else {
-                showToast(data.error || 'Failed to load attendance');
-            }
-        })
-        .catch(error => showToast('Error: ' + error.message));
+  // Fetch attendance data and update the page
+  async function loadAttendance() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const page = urlParams.get('page') || 1;
+    const startDate = urlParams.get('start_date');
+    const endDate = urlParams.get('end_date');
+    let url = `/attendance/?page=${page}`;
+    if (startDate && endDate) {
+      url += `&start_date=${startDate}&end_date=${endDate}`;
     }
 
-    function updatePagination(pagination) {
-        const paginationEl = document.querySelector('.pagination');
-        paginationEl.innerHTML = '';
-        for (let page = 1; page <= pagination.total_pages; page++) {
-            const li = document.createElement('li');
-            li.className = `page-item ${page === pagination.current_page ? 'active' : ''}`;
-            const a = document.createElement('a');
-            a.className = 'page-link';
-            a.href = `${window.location.pathname}?page=${page}&${new URLSearchParams(window.location.search).toString().replace(/page=\d+&?/, '')}`;
-            a.textContent = page;
-            li.appendChild(a);
-            paginationEl.appendChild(li);
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('jwt_token')}` // Adjust based on your JWT storage
         }
+      });
+      const data = await response.json();
+      if (data.success) {
+        const records = data.records;
+        const tbody = document.querySelector('tbody');
+        tbody.innerHTML = '';
+        if (records.length > 0) {
+          records.forEach(record => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td>${record.employee_id}</td>
+              <td>${record.name}</td>
+              <td>${record.date}</td>
+              <td>${record.time_in || 'N/A'}</td>
+              <td>${record.time_out || 'N/A'}</td>
+            `;
+            tbody.appendChild(row);
+          });
+        } else {
+          tbody.innerHTML = '<tr><td colspan="5" class="text-center">No attendance records found.</td></tr>';
+        }
+        // Update pagination
+        const pagination = document.querySelector('.pagination');
+        pagination.innerHTML = '';
+        if (data.pagination.total_pages > 1) {
+          for (let i = 1; i <= data.pagination.total_pages; i++) {
+            const a = document.createElement('a');
+            a.href = `/attendance/?page=${i}${startDate && endDate ? `&start_date=${startDate}&end_date=${endDate}` : ''}`;
+            a.textContent = i;
+            a.className = i === data.pagination.current_page ? 'active' : '';
+            pagination.appendChild(a);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching attendance:', error);
     }
+  }
 
-    document.addEventListener('DOMContentLoaded', () => {
-        loadAttendance();
-        document.querySelector('form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            loadAttendance(1);
-            history.pushState({}, '', e.target.action + '?' + new URLSearchParams(new FormData(e.target)).toString());
-        });
-        document.querySelectorAll('.page-link').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                loadAttendance(parseInt(e.target.textContent));
-                history.pushState({}, '', e.target.href);
-            });
-        });
-    });
+  // Load data on page load
+  window.onload = loadAttendance;
 </script>
 {% endblock %}

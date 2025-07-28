@@ -1,8 +1,9 @@
-from flask import Blueprint, jsonify, send_file
+from flask import Blueprint, jsonify, send_file, request, render_template
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from ..models import db, Attendance, Employee
+from ..models import db, Attendance, Employee, User
 from ..utils import sanitize_input, validate_date, get_current_time
 import pandas as pd
+from flask_socketio import socketio
 
 attendance_bp = Blueprint('attendance', __name__, url_prefix='/attendance')
 
@@ -10,7 +11,8 @@ attendance_bp = Blueprint('attendance', __name__, url_prefix='/attendance')
 @jwt_required()
 def get_attendance():
     username = sanitize_input(get_jwt_identity())
-    with db.session as session:
+    session = db.session
+    try:
         user = session.query(User).filter_by(username=username).first()
         if not user or user.role not in ['admin', 'employee']:
             return jsonify({'error': 'Access denied'}), 403
@@ -28,17 +30,18 @@ def get_attendance():
             total_records = session.query(Attendance).count()
             records = session.query(Attendance).order_by(Attendance.timestamp.desc()).limit(per_page).offset(offset).all()
         pagination = {'current_page': page, 'per_page': per_page, 'total_items': total_records, 'total_pages': (total_records + per_page - 1) // per_page}
-    return jsonify({
-        'success': True,
-        'records': [record._asdict() for record in records],
-        'pagination': pagination
-    })
+        # Convert records to list of dictionaries for template
+        records_list = [record._asdict() for record in records]
+    finally:
+        session.close()
+    return render_template('attendance.html', records=records_list, pagination=pagination, hasLoggedIn=True, username=username, userRole=user.role, start_date=start_date, end_date=end_date)
 
 @attendance_bp.route('/export', methods=['GET'])
 @jwt_required()
 def export_attendance():
     username = sanitize_input(get_jwt_identity())
-    with db.session as session:
+    session = db.session
+    try:
         user = session.query(User).filter_by(username=username).first()
         if not user or user.role != 'admin':
             return jsonify({'error': 'Access denied'}), 403
@@ -46,6 +49,8 @@ def export_attendance():
         df = pd.DataFrame([record._asdict() for record in records])
         csv_path = 'attendance_export.csv'
         df.to_csv(csv_path, index=False)
+    finally:
+        session.close()
     return send_file(csv_path, as_attachment=True, download_name='attendance_export.csv')
 
 @attendance_bp.route('/check_in', methods=['POST'])
@@ -57,7 +62,8 @@ def check_in():
     name = sanitize_input(data.get('name'))
     if not employee_id or not name:
         return jsonify({'error': 'Missing employee_id or name'}), 400
-    with db.session as session:
+    session = db.session
+    try:
         new_attendance = Attendance(employee_id=employee_id, name=name, date=get_current_time().date().isoformat(), time_in=get_current_time().strftime('%H:%M:%S'), timestamp=get_current_time())
         session.add(new_attendance)
         session.commit()
@@ -67,6 +73,11 @@ def check_in():
             'action': 'check-in',
             'time_in': get_current_time().strftime('%H:%M:%S')
         })
+    except Exception as e:
+        session.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        session.close()
     return jsonify({'success': True, 'message': 'Checked in successfully'})
 
 @attendance_bp.route('/check_out', methods=['POST'])
@@ -77,7 +88,8 @@ def check_out():
     employee_id = sanitize_input(data.get('id'))
     if not employee_id:
         return jsonify({'error': 'Missing employee_id'}), 400
-    with db.session as session:
+    session = db.session
+    try:
         attendance = session.query(Attendance).filter_by(employee_id=employee_id, date=get_current_time().date().isoformat(), time_out=None).first()
         if attendance:
             attendance.time_out = get_current_time().strftime('%H:%M:%S')
@@ -87,4 +99,9 @@ def check_out():
                 'action': 'check-out',
                 'time_out': get_current_time().strftime('%H:%M:%S')
             })
+    except Exception as e:
+        session.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        session.close()
     return jsonify({'success': True, 'message': 'Checked out successfully'})
