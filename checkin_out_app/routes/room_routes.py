@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, render_template, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from ..models import db, Room, Booking, Guest, User  # Added User
-from ..utils import sanitize_input, get_current_time, encrypt_guest_name, validate_date, parse_date
+from ..utils import sanitize_input, get_current_time, encrypt_data, validate_date, parse_date
 from ..utils import get_mpesa_access_token, validate_mpesa_signature
 import requests
 import re

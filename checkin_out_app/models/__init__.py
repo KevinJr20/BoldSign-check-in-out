@@ -1,15 +1,20 @@
 from datetime import datetime
 from flask_login import UserMixin
+from flask_sqlalchemy import SQLAlchemy
 from ..db import db  # Import db from db.py
+from ..utils import get_current_time
 
 class User(db.Model, UserMixin):
     __tablename__ = 'users'
     username = db.Column(db.Text, primary_key=True)
     email = db.Column(db.Text, nullable=False)
     name = db.Column(db.Text)
-    password_hash = db.Column(db.Text, nullable=False)
-    organization_type = db.Column(db.Text, nullable=False)
+    password_hash = db.Column(db.LargeBinary)
+    organization_type = db.Column(db.Text, nullable=True)  # Changed to nullable for flexibility
     role = db.Column(db.Text, server_default='admin', nullable=False)
+    is_verified = db.Column(db.Boolean, default=False, nullable=False)  # New field for email verification
+    webauthn_credential_id = db.Column(db.LargeBinary, nullable=True)  # New field for WebAuthn
+    webauthn_public_key = db.Column(db.LargeBinary, nullable=True)  # New field for WebAuthn
     __table_args__ = (db.Index('idx_users_username', 'username'),)
 
     def is_active(self):
@@ -27,6 +32,7 @@ class VerificationToken(db.Model):
     token = db.Column(db.String(36), unique=True, nullable=False)
     expires_at = db.Column(db.DateTime, nullable=False)
     __table_args__ = (db.Index('idx_verification_tokens_user_id', 'user_id'),)
+    user = db.relationship('User', backref='verification_tokens')
 
 class Employee(db.Model):
     __tablename__ = 'employees'
@@ -40,13 +46,18 @@ class Employee(db.Model):
     photo_url = db.Column(db.Text)
     __table_args__ = (db.Index('idx_employees_organization_id', 'organization_id'),)
 
-class AuditLog(db.Model): 
+class AuditLog(db.Model):
     __tablename__ = 'audit_log'
     id = db.Column(db.Integer, primary_key=True)
-    employee_id = db.Column(db.Text, db.ForeignKey('employees.employee_id'), nullable=False)
-    action = db.Column(db.Text, nullable=False)
-    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    __table_args__ = (db.Index('idx_audit_log_employee_id', 'employee_id'),)
+    employee_id = db.Column(db.String, db.ForeignKey('employees.id', ondelete='SET NULL'), nullable=True)  # Allow NULL
+    user_id = db.Column(db.String, db.ForeignKey('users.username', ondelete='SET NULL'), nullable=True)  # New field
+    action = db.Column(db.String(255), nullable=False)
+    timestamp = db.Column(db.DateTime, default=get_current_time)
+
+    def __init__(self, employee_id=None, user_id=None, action=None):
+        self.employee_id = employee_id
+        self.user_id = user_id
+        self.action = action
 
 class Attendance(db.Model):
     __tablename__ = 'attendance'
@@ -96,6 +107,7 @@ class Guest(db.Model, UserMixin):
     check_out_date = db.Column(db.DateTime, nullable=True)
     room_id = db.Column(db.Text, db.ForeignKey('rooms.room_id'), nullable=True)
     status = db.Column(db.Text, server_default='completed', nullable=False)
+    password_hash = db.Column(db.Text, nullable=True)  # Added for password support
     __table_args__ = (db.Index('idx_guests_room_id', 'room_id'),)
 
     def is_active(self):
@@ -132,4 +144,6 @@ class QrCode(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     expires_at = db.Column(db.DateTime, nullable=False)
     used = db.Column(db.Boolean, default=False)
-    __table_args__ = (db.Index('idx_qr_codes_qr_code', 'qr_code', unique=True),)
+    __table_args__ = (
+        db.Index('idx_qr_codes_qr_code', 'qr_code', unique=True),
+    )

@@ -46,6 +46,8 @@ def configure_app(app):
     app.config['JWT_COOKIE_SECURE'] = os.getenv('FLASK_ENV') != 'development'
     app.config['JWT_ACCESS_COOKIE_PATH'] = '/'
     app.config['JWT_COOKIE_SAMESITE'] = 'Lax'
+    app.config['JWT_COOKIE_NAME'] = 'access_token_cookie'
+    app.config['PREFERRED_URL_SCHEME'] = 'https'
     app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=12)
     app.config['WTF_CSRF_ENABLED'] = False
     app.config['STRIPE_PUBLISHABLE_KEY'] = os.getenv('STRIPE_PUBLISHABLE_KEY')
@@ -54,6 +56,8 @@ def configure_app(app):
     app.config['MPESA_SHORTCODE'] = os.getenv('MPESA_SHORTCODE')
     app.config['MPESA_PASSKEY'] = os.getenv('MPESA_PASSKEY')
     app.config['DATABASE_URL'] = os.getenv('DATABASE_URL')
+    app.config['WEBAUTHN_RP_ID'] = os.getenv('WEBAUTHN_RP_ID', 'ke3v0jr1com')
+    app.config['company_name'] = os.getenv('COMPANY_NAME', 'Hospitality')  # Optional, for RP name
     # app.config['REDIS_URL'] = os.getenv('REDIS_URL')
     # app.config['SENTRY_DSN'] = os.getenv('SENTRY_DSN')
     app.config['SUBSCRIPTION_DURATION_DAYS'] = int(os.getenv('SUBSCRIPTION_DURATION_DAYS', 30))

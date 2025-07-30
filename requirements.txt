@@ -19,5 +19,10 @@ redis
 sentry-sdk
 eventlet
 python-daraja
-libmagic
-pyhton-magic
+python-magic-bin  # Corrected from libmagic and pyhton-magic
+Pillow
+webauthn  # Added for WebAuthn support
+cbor2  # Required for webauthn
+qrcode  # Added for QR code generation
+python-dateutil  # Required for date parsing
+werkzeug  # Included for Flask's underlying utilities

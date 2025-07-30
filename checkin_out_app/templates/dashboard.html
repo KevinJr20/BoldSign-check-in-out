@@ -6,133 +6,137 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="/static/css/dashboard.css">
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js" defer></script>
 {% endblock %}
 
 {% block content %}
 <div class="dashboard-container">
     <div class="intro-section">
-        <h1 id="welcome-title">Welcome to Your Management Portal</h1>
-        <p id="welcome-message">
-            {% if hasLoggedIn %}
-                {% if userRole == 'admin' %}
-                    Manage your organization, employees, and bookings with full control
-                {% elif userRole == 'employee' %}
-                    Handle employee check-ins and access attendance records
-                {% elif userRole == 'guest' %}
-                    Book rooms and manage your stay with ease
-                {% else %}
-                    Explore your dashboard and manage services efficiently
-                {% endif %}
+        <h1 id="welcome-title" class="text-center mb-4">Welcome to Your Management Portal</h1>
+        <p id="welcome-message" class="text-center">
+            {% if not current_user.is_authenticated %}
+                Please <a href="{{ url_for('auth.login') }}" aria-label="Log in">log in</a> or 
+                <a href="{{ url_for('auth.register') }}" aria-label="Register">register</a> 
+                to access your personalized dashboard.
             {% else %}
-                Please <a href="{{ url_for('auth.login') }}">log in</a> or <a href="{{ url_for('auth.register') }}">register</a> to access your personalized dashboard
+                {% if current_user.role == 'admin' %}
+                    Manage your organization, employees, and bookings with full control.
+                {% elif current_user.role == 'employee' %}
+                    Handle employee check-ins and access attendance records.
+                {% elif current_user.role == 'guest' %}
+                    Book rooms and manage your stay with ease.
+                {% else %}
+                    Explore your dashboard and manage services efficiently.
+                {% endif %}
             {% endif %}
         </p>
     </div>
-    {% if hasLoggedIn %}
-        <div class="metrics-section">
-            <div class="metric-card">
+
+    {% if current_user.is_authenticated %}
+        <div class="metrics-section row g-4 justify-content-center mb-4">
+            <div class="metric-card col-md-4 col-sm-6">
                 <div class="metric-title">Total Users</div>
                 <div class="metric-value" id="total-users">0</div>
             </div>
-            <div class="metric-card">
+            <div class="metric-card col-md-4 col-sm-6">
                 <div class="metric-title">Active Bookings</div>
                 <div class="metric-value" id="active-bookings">0</div>
             </div>
-            <div class="metric-card">
+            <div class="metric-card col-md-4 col-sm-6">
                 <div class="metric-title">Total Guests</div>
                 <div class="metric-value" id="total-guests">0</div>
             </div>
         </div>
     {% endif %}
-    <div class="container-fluid d-flex justify-content-center">
-        <div class="tab-content lazyload">
-            <ul class="nav nav-tabs justify-content-center" id="myTab" role="tablist">
+
+    <div class="container-fluid">
+        <div class="tab-content">
+            <ul class="nav nav-tabs justify-content-center mb-3" id="myTab" role="tablist">
                 <li class="nav-item" id="employeeTabNav">
-                    <button class="nav-link active animate" id="employee-tab-btn" data-bs-toggle="tab" data-bs-target="#employee-tab" type="button" role="tab" aria-controls="employee-tab" aria-selected="true" aria-label="Employee Management">
+                    <button class="nav-link active" id="employee-tab-btn" data-bs-toggle="tab" data-bs-target="#employee-tab" type="button" role="tab" aria-controls="employee-tab" aria-selected="true">
                         <i class="fas fa-users"></i> Employee Management
                     </button>
                 </li>
                 <li class="nav-item" id="bookingTabNav">
-                    <button class="nav-link animate" id="booking-tab-btn" data-bs-toggle="tab" data-bs-target="#booking-tab" type="button" role="tab" aria-controls="booking-tab" aria-selected="false" aria-label="Hotel Booking">
+                    <button class="nav-link" id="booking-tab-btn" data-bs-toggle="tab" data-bs-target="#booking-tab" type="button" role="tab" aria-controls="booking-tab" aria-selected="false">
                         <i class="fas fa-bed"></i> Hotel Booking
                     </button>
                 </li>
                 <li class="nav-item" id="guestTabNav">
-                    <button class="nav-link animate" id="guest-tab-btn" data-bs-toggle="tab" data-bs-target="#guest-tab" type="button" role="tab" aria-controls="guest-tab" aria-selected="false" aria-label="Guest Management">
+                    <button class="nav-link" id="guest-tab-btn" data-bs-toggle="tab" data-bs-target="#guest-tab" type="button" role="tab" aria-controls="guest-tab" aria-selected="false">
                         <i class="fas fa-user"></i> Guest Management
                     </button>
                 </li>
             </ul>
-            <div class="tab-content lazyload" id="myTabContent">
+            <div class="tab-content" id="myTabContent">
                 <div class="tab-pane fade show active" id="employee-tab" role="tabpanel" aria-labelledby="employee-tab-btn">
-                    <div class="chart-container">
-                        <div class="chart-controls">
-                            <input class="form-control form-control-sm animate" id="employeeChartStartDate" type="date" aria-label="Start Date"/>
-                            <input class="form-control form-control-sm animate" id="employeeChartEndDate" type="date" aria-label="End Date"/>
-                            <button class="btn btn-custom animate" id="employeeChartFilterBtn" aria-label="Filter Chart">Filter</button>
+                    <div class="chart-container mb-4">
+                        <div class="chart-controls d-flex gap-2 mb-3">
+                            <input class="form-control form-control-sm" id="employeeChartStartDate" type="date" aria-label="Start Date for Employee Chart">
+                            <input class="form-control form-control-sm" id="employeeChartEndDate" type="date" aria-label="End Date for Employee Chart">
+                            <button class="btn btn-custom" id="employeeChartFilterBtn" aria-label="Filter Employee Chart">Filter</button>
                         </div>
                         <canvas id="employeeChart"></canvas>
                     </div>
                     <div class="login-section" id="employeeLoginSection">
-                        <div class="section-title">Employee Login</div>
-                        <form class="shadow-sm" id="employee-form">
+                        <h3 class="section-title mb-3">Employee Login</h3>
+                        <form class="shadow-sm p-3" id="employee-form">
                             <div class="mb-3">
                                 <label class="form-label" for="employeeUsername">Username</label>
-                                <input class="form-control animate" id="employeeUsername" name="username" required type="text"/>
+                                <input class="form-control" id="employeeUsername" name="username" required type="text" aria-label="Employee Username">
                             </div>
                             <div class="mb-3">
                                 <label class="form-label" for="employeePassword">Password</label>
-                                <input class="form-control animate" id="employeePassword" name="password" required type="password"/>
+                                <input class="form-control" id="employeePassword" name="password" required type="password" aria-label="Employee Password">
                             </div>
-                            <div class="d-flex justify-content-center align-items-center gap-2 mt-3">
-                                <button class="btn btn-custom animate" type="submit" aria-label="Password Login">
+                            <div class="d-flex justify-content-center gap-2 mb-3">
+                                <button class="btn btn-custom" type="submit" aria-label="Password Login">
                                     <i class="fas fa-lock me-2"></i> Password Login
                                 </button>
-                                <button class="btn btn-custom animate" id="employeeBiometricLogin" type="button" aria-label="Biometric Login">
+                                <button class="btn btn-custom" id="employeeBiometricLogin" type="button" aria-label="Biometric Login">
                                     <i class="fas fa-fingerprint me-2"></i> Biometric
                                 </button>
-                                <button class="btn btn-custom animate" id="employeeQrLogin" type="button" aria-label="QR Login">
+                                <button class="btn btn-custom" id="employeeQrLogin" type="button" aria-label="QR Login">
                                     <i class="fas fa-qrcode me-2"></i> QR Code
                                 </button>
                             </div>
                             <div class="qr-code-container hidden" id="employeeQrCodeContainer"></div>
                         </form>
                     </div>
-                    <div class="attendance-section hidden" id="attendanceSection">
-                        <div class="section-header">
-                            <div class="section-title">Employee Check-In/Out</div>
-                            <div class="d-flex align-items-center gap-3">
-                                <input class="form-control form-control-sm animate" id="employeeId" placeholder="Employee ID" type="text"/>
-                                <input class="form-control form-control-sm animate" id="employeeName" placeholder="Name" type="text"/>
-                                <button class="action-btn animate" id="checkInBtn" title="Check In" aria-label="Check In">
-                                    <i class="fas fa-sign-in-alt"></i>
+                    <div class="attendance-section mt-4" id="attendanceSection">
+                        <div class="section-header d-flex justify-content-between align-items-center mb-3">
+                            <h3 class="section-title">Employee Check-In/Out</h3>
+                            <div class="d-flex gap-2">
+                                <input class="form-control form-control-sm" id="employeeId" placeholder="Employee ID" type="text" aria-label="Employee ID">
+                                <input class="form-control form-control-sm" id="employeeName" placeholder="Name" type="text" aria-label="Employee Name">
+                                <button class="btn btn-custom btn-sm" id="checkInBtn" aria-label="Check In">
+                                    <i class="fas fa-sign-in-alt"></i> Check In
                                 </button>
-                                <button class="action-btn animate" id="checkOutBtn" title="Check Out" aria-label="Check Out">
-                                    <i class="fas fa-sign-out-alt"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="section-header attendance-records">
-                            <div class="section-title">Attendance Records</div>
-                            <div class="d-flex align-items-center gap-3">
-                                <input class="form-control form-control-sm animate" id="startDate" type="date"/>
-                                <input class="form-control form-control-sm animate" id="endDate" type="date"/>
-                                <button class="action-btn animate" id="filterAttendanceBtn" title="Filter Records" aria-label="Filter Records">
-                                    <i class="fas fa-filter"></i>
-                                </button>
-                                <button class="action-btn animate" id="refreshAttendanceBtn" title="Refresh Data" aria-label="Refresh Data">
-                                    <i class="fas fa-sync-alt"></i>
-                                </button>
-                                <button class="action-btn animate" id="exportBtn" title="Export to CSV" aria-label="Export to CSV">
-                                    <i class="fas fa-file-export"></i>
+                                <button class="btn btn-custom btn-sm" id="checkOutBtn" aria-label="Check Out">
+                                    <i class="fas fa-sign-out-alt"></i> Check Out
                                 </button>
                             </div>
                         </div>
-                        <div class="table-wrapper shadow-sm rounded">
-                            <input class="form-control animate" oninput="searchTable(this)" placeholder="Search..." type="text"/>
-                            <table class="table table-striped align-middle animate table table-responsive mx-auto">
+                        <div class="section-header d-flex justify-content-between align-items-center mb-3">
+                            <h3 class="section-title">Attendance Records</h3>
+                            <div class="d-flex gap-2">
+                                <input class="form-control form-control-sm" id="startDate" type="date" aria-label="Start Date">
+                                <input class="form-control form-control-sm" id="endDate" type="date" aria-label="End Date">
+                                <button class="btn btn-custom btn-sm" id="filterAttendanceBtn" aria-label="Filter Records">
+                                    <i class="fas fa-filter"></i> Filter
+                                </button>
+                                <button class="btn btn-custom btn-sm" id="refreshAttendanceBtn" aria-label="Refresh Data">
+                                    <i class="fas fa-sync-alt"></i> Refresh
+                                </button>
+                                <button class="btn btn-custom btn-sm" id="exportBtn" aria-label="Export to CSV">
+                                    <i class="fas fa-file-export"></i> Export
+                                </button>
+                            </div>
+                        </div>
+                        <div class="table-wrapper shadow-sm rounded mb-3">
+                            <input class="form-control mb-2" oninput="searchTable(this)" placeholder="Search..." type="text" aria-label="Search Attendance Records">
+                            <table class="table table-striped align-middle table-responsive mx-auto">
                                 <thead>
                                     <tr>
                                         <th onclick="sortTable(this)" data-order="asc">Employee ID</th>
@@ -154,7 +158,7 @@
                                             </tr>
                                         {% endfor %}
                                     {% else %}
-                                        <tr><td colspan="5">No attendance records found</td></tr>
+                                        <tr><td colspan="5" class="text-center">No attendance records found</td></tr>
                                     {% endif %}
                                 </tbody>
                             </table>
@@ -164,89 +168,92 @@
                                 <span class="pagination-info">
                                     Page {{ records_pagination.current_page }} of {{ records_pagination.total_pages }} ({{ records_pagination.total_items }} items)
                                 </span>
-                                <button class="page-link {{ 'disabled' if records_pagination.current_page == 1 }} animate" onclick="loadAttendance({{ records_pagination.current_page - 1 }}, {{ records_pagination.per_page }})" aria-label="Previous">
+                                <button class="btn btn-outline-secondary btn-sm {{ 'disabled' if records_pagination.current_page == 1 }}" onclick="loadAttendance({{ records_pagination.current_page - 1 }}, {{ records_pagination.per_page }})" aria-label="Previous Page">
                                     Previous
                                 </button>
                                 {% for page in range(1, records_pagination.total_pages + 1) %}
-                                    <button class="page-link {{ 'active' if page == records_pagination.current_page }} animate" onclick="loadAttendance({{ page }}, {{ records_pagination.per_page }})" aria-label="Page {{ page }}">
+                                    <button class="btn btn-outline-secondary btn-sm {{ 'active' if page == records_pagination.current_page }}" onclick="loadAttendance({{ page }}, {{ records_pagination.per_page }})" aria-label="Page {{ page }}">
                                         {{ page }}
                                     </button>
                                 {% endfor %}
-                                <button class="page-link {{ 'disabled' if records_pagination.current_page == records_pagination.total_pages }} animate" onclick="loadAttendance({{ records_pagination.current_page + 1 }}, {{ records_pagination.per_page }})" aria-label="Next">
+                                <button class="btn btn-outline-secondary btn-sm {{ 'disabled' if records_pagination.current_page == records_pagination.total_pages }}" onclick="loadAttendance({{ records_pagination.current_page + 1 }}, {{ records_pagination.per_page }})" aria-label="Next Page">
                                     Next
                                 </button>
                             {% endif %}
                         </div>
+                        <button class="btn btn-custom mt-3" data-bs-toggle="modal" data-bs-target="#addEmployeeModal" aria-label="Add Employee">
+                            <i class="fas fa-user-plus"></i> Add Employee
+                        </button>
                     </div>
                 </div>
                 <div class="tab-pane fade" id="booking-tab" role="tabpanel" aria-labelledby="booking-tab-btn">
-                    <div class="chart-container">
-                        <div class="chart-controls">
-                            <input class="form-control form-control-sm animate" id="roomChartStartDate" type="date" aria-label="Start Date"/>
-                            <input class="form-control form-control-sm animate" id="roomChartEndDate" type="date" aria-label="End Date"/>
-                            <button class="btn btn-custom animate" id="roomChartFilterBtn" aria-label="Filter Chart">Filter</button>
+                    <div class="chart-container mb-4">
+                        <div class="chart-controls d-flex gap-2 mb-3">
+                            <input class="form-control form-control-sm" id="roomChartStartDate" type="date" aria-label="Start Date for Room Chart">
+                            <input class="form-control form-control-sm" id="roomChartEndDate" type="date" aria-label="End Date for Room Chart">
+                            <button class="btn btn-custom" id="roomChartFilterBtn" aria-label="Filter Room Chart">Filter</button>
                         </div>
                         <canvas id="roomChart"></canvas>
                     </div>
                     <div class="login-section" id="guestLoginSection">
-                        <div class="section-title">Guest Authentication</div>
-                        <form class="shadow-sm" id="guest-form">
+                        <h3 class="section-title mb-3">Guest Authentication</h3>
+                        <form class="shadow-sm p-3" id="guest-form">
                             <div class="mb-3">
                                 <label class="form-label" for="guestUsername">Username</label>
-                                <input class="form-control animate" id="guestUsername" name="username" required type="text"/>
+                                <input class="form-control" id="guestUsername" name="username" required type="text" aria-label="Guest Username">
                             </div>
                             <div class="mb-3">
                                 <label class="form-label" for="guestPassword">Password</label>
-                                <input class="form-control animate" id="guestPassword" name="password" required type="password"/>
+                                <input class="form-control" id="guestPassword" name="password" required type="password" aria-label="Guest Password">
                             </div>
-                            <div class="d-flex justify-content-center align-items-center gap-2 mt-3">
-                                <button class="btn btn-custom animate" type="submit" aria-label="Password Login">
+                            <div class="d-flex justify-content-center gap-2 mb-3">
+                                <button class="btn btn-custom" type="submit" aria-label="Password Login">
                                     <i class="fas fa-lock me-2"></i> Password Login
                                 </button>
-                                <button class="btn btn-custom animate" id="guestBiometricLogin" type="button" aria-label="Biometric Login">
+                                <button class="btn btn-custom" id="guestBiometricLogin" type="button" aria-label="Biometric Login">
                                     <i class="fas fa-fingerprint me-2"></i> Biometric
                                 </button>
-                                <button class="btn btn-custom animate" id="guestQrLogin" type="button" aria-label="QR Login">
+                                <button class="btn btn-custom" id="guestQrLogin" type="button" aria-label="QR Login">
                                     <i class="fas fa-qrcode me-2"></i> QR Code
                                 </button>
                             </div>
                             <div class="qr-code-container hidden" id="guestQrCodeContainer"></div>
                         </form>
                     </div>
-                    <div class="booking-section">
-                        <div class="section-header">
-                            <div class="section-title">Hotel Reservation</div>
+                    <div class="booking-section mt-4">
+                        <div class="section-header d-flex justify-content-between align-items-center mb-3">
+                            <h3 class="section-title">Hotel Reservation</h3>
                         </div>
-                        <form class="shadow-sm" id="booking-form">
+                        <form class="shadow-sm p-3" id="booking-form">
                             <div class="mb-3">
                                 <label class="form-label" for="guestNameInput">Guest Name</label>
-                                <input class="form-control animate" id="guestNameInput" name="guestName" placeholder="Guest Name" required type="text"/>
+                                <input class="form-control" id="guestNameInput" name="guestName" placeholder="Guest Name" required type="text" aria-label="Guest Name">
                             </div>
                             <div class="mb-3">
                                 <label class="form-label" for="checkInDateInput">Check-In Date</label>
-                                <input class="form-control animate" id="checkInDateInput" name="checkInDate" required type="date"/>
+                                <input class="form-control" id="checkInDateInput" name="checkInDate" required type="date" aria-label="Check-In Date">
                             </div>
                             <div class="mb-3">
                                 <label class="form-label" for="checkOutDateInput">Check-Out Date</label>
-                                <input class="form-control animate" id="checkOutDateInput" name="checkOutDate" required type="date"/>
+                                <input class="form-control" id="checkOutDateInput" name="checkOutDate" required type="date" aria-label="Check-Out Date">
                             </div>
                             <div class="mb-3">
                                 <label class="form-label" for="roomTypeSelect">Room Type</label>
-                                <select class="form-control" id="roomTypeSelect" name="roomType" required>
+                                <select class="form-control" id="roomTypeSelect" name="roomType" required aria-label="Room Type">
                                     <option value="">Select Room Type</option>
                                     <option value="standard">Standard</option>
                                     <option value="deluxe">Deluxe</option>
                                     <option value="suite">Suite</option>
                                 </select>
                             </div>
-                            <button class="btn btn-custom animate" type="submit" aria-label="Book Room">Book Room</button>
+                            <button class="btn btn-custom" type="submit" aria-label="Book Room">Book Room</button>
                         </form>
-                        <div class="mt-3" id="roomAvailabilitySection">
-                            <div class="section-title">Room Availability</div>
-                            <div id="roomAvailabilityStatus"></div>
-                            <div class="table-wrapper shadow-sm rounded">
-                                <input class="form-control animate" oninput="searchTable(this)" placeholder="Search..." type="text"/>
-                                <table class="table table-striped align-middle animate table table-responsive mx-auto">
+                        <div class="mt-4" id="roomAvailabilitySection">
+                            <h3 class="section-title mb-3">Room Availability</h3>
+                            <div id="roomAvailabilityStatus" class="mb-3"></div>
+                            <div class="table-wrapper shadow-sm rounded mb-3">
+                                <input class="form-control mb-2" oninput="searchTable(this)" placeholder="Search..." type="text" aria-label="Search Rooms">
+                                <table class="table table-striped align-middle table-responsive mx-auto">
                                     <thead>
                                         <tr>
                                             <th onclick="sortTable(this)" data-order="asc">Room ID</th>
@@ -264,7 +271,7 @@
                                                 </tr>
                                             {% endfor %}
                                         {% else %}
-                                            <tr><td colspan="3">No rooms found</td></tr>
+                                            <tr><td colspan="3" class="text-center">No rooms found</td></tr>
                                         {% endif %}
                                     </tbody>
                                 </table>
@@ -274,60 +281,60 @@
                                     <span class="pagination-info">
                                         Page {{ rooms_pagination.current_page }} of {{ rooms_pagination.total_pages }} ({{ rooms_pagination.total_items }} items)
                                     </span>
-                                    <button class="page-link {{ 'disabled' if rooms_pagination.current_page == 1 }} animate" onclick="updateRoomStatus({{ rooms_pagination.current_page - 1 }}, {{ rooms_pagination.per_page }})" aria-label="Previous">
+                                    <button class="btn btn-outline-secondary btn-sm {{ 'disabled' if rooms_pagination.current_page == 1 }}" onclick="updateRoomStatus({{ rooms_pagination.current_page - 1 }}, {{ rooms_pagination.per_page }})" aria-label="Previous Page">
                                         Previous
                                     </button>
                                     {% for page in range(1, rooms_pagination.total_pages + 1) %}
-                                        <button class="page-link {{ 'active' if page == rooms_pagination.current_page }} animate" onclick="updateRoomStatus({{ page }}, {{ rooms_pagination.per_page }})" aria-label="Page {{ page }}">
+                                        <button class="btn btn-outline-secondary btn-sm {{ 'active' if page == rooms_pagination.current_page }}" onclick="updateRoomStatus({{ page }}, {{ rooms_pagination.per_page }})" aria-label="Page {{ page }}">
                                             {{ page }}
                                         </button>
                                     {% endfor %}
-                                    <button class="page-link {{ 'disabled' if rooms_pagination.current_page == rooms_pagination.total_pages }} animate" onclick="updateRoomStatus({{ rooms_pagination.current_page + 1 }}, {{ rooms_pagination.per_page }})" aria-label="Next">
+                                    <button class="btn btn-outline-secondary btn-sm {{ 'disabled' if rooms_pagination.current_page == rooms_pagination.total_pages }}" onclick="updateRoomStatus({{ rooms_pagination.current_page + 1 }}, {{ rooms_pagination.per_page }})" aria-label="Next Page">
                                         Next
                                     </button>
                                 {% endif %}
                             </div>
                         </div>
-                        <button class="btn btn-custom mt-3 animate" id="generateInvoiceBtn" aria-label="Generate Invoice">Generate Invoice</button>
+                        <button class="btn btn-custom mt-3" id="generateInvoiceBtn" aria-label="Generate Invoice">Generate Invoice</button>
                     </div>
                 </div>
                 <div class="tab-pane fade" id="guest-tab" role="tabpanel" aria-labelledby="guest-tab-btn">
-                    <div class="chart-container">
-                        <div class="chart-controls">
-                            <input class="form-control form-control-sm animate" id="guestChartStartDate" type="date" aria-label="Start Date"/>
-                            <input class="form-control form-control-sm animate" id="guestChartEndDate" type="date" aria-label="End Date"/>
-                            <button class="btn btn-custom animate" id="guestChartFilterBtn" aria-label="Filter Chart">Filter</button>
+                    <div class="chart-container mb-4">
+                        <div class="chart-controls d-flex gap-2 mb-3">
+                            <input class="form-control form-control-sm" id="guestChartStartDate" type="date" aria-label="Start Date for Guest Chart">
+                            <input class="form-control form-control-sm" id="guestChartEndDate" type="date" aria-label="End Date for Guest Chart">
+                            <button class="btn btn-custom" id="guestChartFilterBtn" aria-label="Filter Guest Chart">Filter</button>
                         </div>
                         <canvas id="guestChart"></canvas>
                     </div>
-                    <div class="guest-section hidden" id="guestSection">
-                        <div class="section-header">
-                            <div class="section-title">Guest Check-In/Out</div>
+                    <div class="guest-section mt-4" id="guestSection">
+                        <div class="section-header d-flex justify-content-between align-items-center mb-3">
+                            <h3 class="section-title">Guest Check-In/Out</h3>
                             <div class="d-flex gap-2">
-                                <input class="form-control form-control-sm animate" id="guestIdInput" placeholder="Guest ID" type="text"/>
-                                <input class="form-control form-control-sm animate" id="guestNameInput" placeholder="Guest Name" type="text"/>
-                                <button class="action-btn animate" id="guestCheckInBtn" title="Guest Check-In" aria-label="Guest Check-In">
-                                    <i class="fas fa-sign-in-alt"></i>
+                                <input class="form-control form-control-sm" id="guestIdInput" placeholder="Guest ID" type="text" aria-label="Guest ID">
+                                <input class="form-control form-control-sm" id="guestNameInput" placeholder="Guest Name" type="text" aria-label="Guest Name">
+                                <button class="btn btn-custom btn-sm" id="guestCheckInBtn" aria-label="Guest Check-In">
+                                    <i class="fas fa-sign-in-alt"></i> Check In
                                 </button>
-                                <button class="action-btn animate" id="guestCheckOutBtn" title="Guest Check-Out" aria-label="Guest Check-Out">
-                                    <i class="fas fa-sign-out-alt"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="section-header">
-                            <div class="section-title">Guest Records & Sync</div>
-                            <div class="d-flex align-items-center gap-2">
-                                <button class="action-btn animate" id="refreshGuestRecordsBtn" title="Refresh" aria-label="Refresh">
-                                    <i class="fas fa-sync-alt"></i>
-                                </button>
-                                <button class="action-btn animate" id="syncChannelsBtn" title="Sync with OTAs/PMS" aria-label="Sync with OTAs/PMS">
-                                    <i class="fas fa-sync"></i>
+                                <button class="btn btn-custom btn-sm" id="guestCheckOutBtn" aria-label="Guest Check-Out">
+                                    <i class="fas fa-sign-out-alt"></i> Check Out
                                 </button>
                             </div>
                         </div>
-                        <div class="table-wrapper shadow-sm rounded">
-                            <input class="form-control animate" oninput="searchTable(this)" placeholder="Search..." type="text"/>
-                            <table class="table table-striped align-middle animate table table-responsive mx-auto">
+                        <div class="section-header d-flex justify-content-between align-items-center mb-3">
+                            <h3 class="section-title">Guest Records & Sync</h3>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-custom btn-sm" id="refreshGuestRecordsBtn" aria-label="Refresh">
+                                    <i class="fas fa-sync-alt"></i> Refresh
+                                </button>
+                                <button class="btn btn-custom btn-sm" id="syncChannelsBtn" aria-label="Sync with OTAs/PMS">
+                                    <i class="fas fa-sync"></i> Sync with OTAs/PMS
+                                </button>
+                            </div>
+                        </div>
+                        <div class="table-wrapper shadow-sm rounded mb-3">
+                            <input class="form-control mb-2" oninput="searchTable(this)" placeholder="Search..." type="text" aria-label="Search Guests">
+                            <table class="table table-striped align-middle table-responsive mx-auto">
                                 <thead>
                                     <tr>
                                         <th onclick="sortTable(this)" data-order="asc">Guest ID</th>
@@ -351,7 +358,7 @@
                                             </tr>
                                         {% endfor %}
                                     {% else %}
-                                        <tr><td colspan="6">No guest records available</td></tr>
+                                        <tr><td colspan="6" class="text-center">No guest records available</td></tr>
                                     {% endif %}
                                 </tbody>
                             </table>
@@ -361,47 +368,52 @@
                                 <span class="pagination-info">
                                     Page {{ guests_pagination.current_page }} of {{ guests_pagination.total_pages }} ({{ guests_pagination.total_items }} items)
                                 </span>
-                                <button class="page-link {{ 'disabled' if guests_pagination.current_page == 1 }} animate" onclick="loadGuestRecords({{ guests_pagination.current_page - 1 }}, {{ guests_pagination.per_page }})" aria-label="Previous">
+                                <button class="btn btn-outline-secondary btn-sm {{ 'disabled' if guests_pagination.current_page == 1 }}" onclick="loadGuestRecords({{ guests_pagination.current_page - 1 }}, {{ guests_pagination.per_page }})" aria-label="Previous Page">
                                     Previous
                                 </button>
                                 {% for page in range(1, guests_pagination.total_pages + 1) %}
-                                    <button class="page-link {{ 'active' if page == guests_pagination.current_page }} animate" onclick="loadGuestRecords({{ page }}, {{ guests_pagination.per_page }})" aria-label="Page {{ page }}">
+                                    <button class="btn btn-outline-secondary btn-sm {{ 'active' if page == guests_pagination.current_page }}" onclick="loadGuestRecords({{ page }}, {{ guests_pagination.per_page }})" aria-label="Page {{ page }}">
                                         {{ page }}
                                     </button>
                                 {% endfor %}
-                                <button class="page-link {{ 'disabled' if guests_pagination.current_page == guests_pagination.total_pages }} animate" onclick="loadGuestRecords({{ guests_pagination.current_page + 1 }}, {{ guests_pagination.per_page }})" aria-label="Next">
+                                <button class="btn btn-outline-secondary btn-sm {{ 'disabled' if guests_pagination.current_page == guests_pagination.total_pages }}" onclick="loadGuestRecords({{ guests_pagination.current_page + 1 }}, {{ guests_pagination.per_page }})" aria-label="Next Page">
                                     Next
                                 </button>
                             {% endif %}
                         </div>
+                        <button class="btn btn-custom mt-3" data-bs-toggle="modal" data-bs-target="#addEmployeeModal" aria-label="Add Employee">
+                            <i class="fas fa-user-plus"></i> Add Employee
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="skeleton-loader">
+
+    <div class="skeleton-loader d-none" id="skeletonLoader">
         <div class="skeleton-card"></div>
         <div class="skeleton-card"></div>
         <div class="skeleton-card"></div>
     </div>
+
     <div class="modal fade" id="addEmployeeModal" tabindex="-1" aria-labelledby="addEmployeeModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="addEmployeeModalLabel">Add Employee</h5>
-                    <button type="button" class="btn-close animate" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="addEmployeeForm">
+                    <form id="addEmployeeForm" class="p-3">
                         <div class="mb-3">
                             <label class="form-label" for="employeeName">Employee Name</label>
-                            <input class="form-control animate" id="employeeName" required type="text"/>
+                            <input class="form-control" id="employeeName" required type="text" aria-label="Employee Name">
                         </div>
                         <div class="mb-3">
                             <label class="form-label" for="employeeEmail">Employee Email</label>
-                            <input class="form-control animate" id="employeeEmail" required type="email"/>
+                            <input class="form-control" id="employeeEmail" required type="email" aria-label="Employee Email">
                         </div>
-                        <button class="btn btn-custom animate" type="submit" aria-label="Add Employee">Add Employee</button>
+                        <button class="btn btn-custom" type="submit" aria-label="Add Employee">Add Employee</button>
                     </form>
                 </div>
             </div>
@@ -411,6 +423,6 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-<script src="/static/js/dashboard.js"></script>
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js" defer></script>
+<script src="/static/js/dashboard.js" defer></script>
 {% endblock %}

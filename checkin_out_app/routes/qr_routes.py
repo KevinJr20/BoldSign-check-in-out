@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, render_template, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from ..models import db, User, Employee, Guest, QrCode, Attendance 
-from ..utils import sanitize_input, get_current_time, decrypt_guest_name
+from ..utils import sanitize_input, get_current_time, decrypt_data
 import uuid
 from datetime import timedelta
 from flask_socketio import socketio 

@@ -301,7 +301,7 @@ Subscription - {{ config.company_name or 'Hospitality' }}
   <div class="loading-overlay" id="loadingOverlay">
     <div class="loading-spinner" id="loadingSpinner"></div>
   </div>
-  <h1 class="text-center mb-5" style="font-size: 2.5rem; font-weight: 700;">Upgrade Your Subscription</h1>
+  <h1 class="text-center mb-5" style="font-size: 2.5rem; font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; font-weight: 700;">Upgrade Your Plan</h1>
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
       {% for category, message in messages %}
@@ -318,7 +318,7 @@ Subscription - {{ config.company_name or 'Hospitality' }}
     <div class="plan-grid">
       {% for plan, details in subscription_tiers.items() %}
       <div class="plan-card {% if plan == 'pro' %}selected{% endif %}" data-plan="{{ plan }}">
-        {% if plan == 'pro' %}<span class="badge">Recommended</span>{% endif %}
+        {% if plan == 'pro' %}<span class="badge">MOST POPULAR</span>{% endif %}
         <h3>{{ plan.capitalize() }}</h3>
         <p>Price: $<span class="plan-price">{{ details.price }}</span>/month</p>
         <p>Max Employees: {{ details.employee_limit }}</p>

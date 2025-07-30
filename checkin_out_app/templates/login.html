@@ -33,6 +33,7 @@ Login - {{ config.company_name or 'Hospitality' }}
     border: 1px solid var(--dropdown-border);
     border-radius: 5px;
     padding: 10px;
+    width: 100%;
   }
   .password-toggle {
     position: absolute;
@@ -46,8 +47,8 @@ Login - {{ config.company_name or 'Hospitality' }}
     font-size: 1rem;
   }
   .btn-custom {
-    background: var(--upgrade-btn-bg);
-    color: #fff;
+    background: var(--header-bg);
+    color: var(--header-text);
     border-radius: 25px;
     padding: 10px;
     font-weight: 600;
@@ -80,6 +81,22 @@ Login - {{ config.company_name or 'Hospitality' }}
     text-decoration: none;
   }
   .forgot-password a:hover {
+    text-decoration: underline;
+  }
+  .alt-login {
+    margin-top: 20px;
+    text-align: center;
+    color: var(--text-muted);
+  }
+  .alt-login button {
+    background: none;
+    border: none;
+    color: var(--text-color);
+    cursor: pointer;
+    font-size: 1rem;
+    margin: 0 10px;
+  }
+  .alt-login button:hover {
     text-decoration: underline;
   }
   @media (max-width: 767px) {
@@ -117,10 +134,19 @@ Login - {{ config.company_name or 'Hospitality' }}
     {% endif %}
   {% endwith %}
   <form method="POST" action="{{ url_for('auth.login') }}" id="loginForm">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-group">
-      <label for="username" class="form-label">Username</label>
-      <input type="text" class="form-control" id="username" name="username" required aria-required="true" aria-label="Enter username">
+      <label for="login_type" class="form-label">Role</label>
+      <select class="form-control" id="login_type" name="login_type" required aria-required="true" aria-label="Select role">
+        <option value="">Select Role</option>
+        {% for role in roles %}
+          <option value="{{ role }}">{{ role.capitalize() }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="username" class="form-label">Username or ID</label>
+      <input type="text" class="form-control" id="username" name="username" required aria-required="true" aria-label="Enter username or ID">
     </div>
     <div class="form-group">
       <label for="password" class="form-label">Password</label>
@@ -129,16 +155,13 @@ Login - {{ config.company_name or 'Hospitality' }}
         <i class="fas fa-eye"></i>
       </button>
     </div>
-    <div class="form-group">
-      <label for="login_type" class="form-label">Login Type</label>
-      <select class="form-control" id="login_type" name="login_type" required aria-required="true" aria-label="Select login type">
-        <option value="employee">Employee</option>
-        <option value="guest">Guest</option>
-      </select>
-    </div>
     <button type="submit" class="btn btn-custom" id="loginBtn">Login</button>
     <div class="forgot-password">
       <a href="{{ url_for('auth.forgot_password') }}">Forgot Password?</a>
+    </div>
+    <div class="alt-login">
+      <button type="button" id="biometricBtn" aria-label="Biometric Login">Biometric</button>
+      <button type="button" id="qrBtn" aria-label="QR Login">QR Code</button>
     </div>
   </form>
 </div>
@@ -162,31 +185,61 @@ Login - {{ config.company_name or 'Hospitality' }}
   }
 
   $(document).ready(() => {
-  const togglePassword = document.getElementById('togglePassword');
-  const passwordField = document.getElementById('password');
+    const togglePassword = document.getElementById('togglePassword');
+    const passwordField = document.getElementById('password');
 
-  togglePassword.addEventListener('click', () => {
-    const type = passwordField.type === 'password' ? 'text' : 'password';
-    passwordField.type = type;
-    togglePassword.innerHTML = `<i class="fas fa-eye${type === 'password' ? '' : '-slash'}"></i>`;
-  });
+    togglePassword.addEventListener('click', () => {
+      const type = passwordField.type === 'password' ? 'text' : 'password';
+      passwordField.type = type;
+      togglePassword.innerHTML = `<i class="fas fa-eye${type === 'password' ? '' : '-slash'}"></i>`;
+    });
 
-  const loginForm = document.getElementById('loginForm');
-  loginForm.addEventListener('submit', (e) => {
-    showLoading(true);
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
-    if (!username || !password) {
-      e.preventDefault();
-      if (typeof showToast === 'function') showToast('Username and password are required.');
-      showLoading(false);
-      return;
-    }
-  });
+    const loginForm = document.getElementById('loginForm');
+    loginForm.addEventListener('submit', (e) => {
+      showLoading(true);
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const loginType = document.getElementById('login_type').value;
+      if (!username || !password || !loginType) {
+        e.preventDefault();
+        if (typeof showToast === 'function') showToast('All fields are required.');
+        showLoading(false);
+        return;
+      }
+    });
 
-    // Check if already logged in (optional redirect)
+    // Biometric Login
+    document.getElementById('biometricBtn').addEventListener('click', async () => {
+      const username = prompt('Enter your username');
+      if (!username) return;
+      const response = await fetch(`/auth/biometric_login/start?username=${encodeURIComponent(username)}`);
+      const options = await response.json();
+      if (options.challenge) {
+        const credential = await navigator.credentials.get(options);
+        const finishResponse = await fetch('/auth/biometric_login/finish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, credential, challenge: options.challenge })
+        });
+        if (finishResponse.ok) window.location.href = await finishResponse.text();
+        else if (typeof showToast === 'function') showToast('Biometric login failed.');
+      }
+    });
+
+    // QR Login
+    document.getElementById('qrBtn').addEventListener('click', async () => {
+      const response = await fetch('/auth/qr_login/start');
+      const blob = await response.blob();
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(blob);
+      img.style.maxWidth = '100%';
+      document.querySelector('.login-container').appendChild(img);
+      // Mobile app scans QR; server handles verification
+    });
+
+    // Check if already logged in
     const token = getCookie('access_token_cookie');
-    if (token && typeof hasLoggedIn !== 'undefined' && hasLoggedIn) {
+    if (token && current_user.is_authenticated) {
       window.location.href = '/dashboard';
     }
   });

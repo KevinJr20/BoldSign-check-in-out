@@ -23,12 +23,13 @@
     text-align: center;
   }
   .btn-custom {
-    background: var(--upgrade-btn-bg);
-    color: #fff;
+    background: var(--header-bg);
+    color: var(--header-text);
     border-radius: 25px;
     padding: 10px;
     font-weight: 600;
     transition: transform 0.2s, box-shadow 0.3s;
+    width: 100%;
   }
   .btn-custom:hover {
     transform: scale(1.05);
@@ -49,7 +50,7 @@
     border-color: #dc3545;
   }
   .text-center a {
-    color: var(--button-bg);
+    color: var(--text-color);
     text-decoration: none;
     font-weight: 600;
   }
@@ -103,7 +104,6 @@
         <span class="visually-hidden">Registering...</span>
       </div>
       <h2 class="mb-4">Register</h2>
-      <!-- Display flash messages -->
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
           {% for category, message in messages %}
@@ -116,6 +116,15 @@
       {% endwith %}
       <form id="registerFormData" method="POST" action="{{ url_for('auth.register') }}" class="p-4">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="mb-3">
+          <label for="role" class="form-label">Role</label>
+          <select class="form-control" id="role" name="role" required aria-required="true" aria-label="Select role">
+            <option value="">Select Role</option>
+            {% for role in roles %}
+              <option value="{{ role }}">{{ role.capitalize() }}</option>
+            {% endfor %}
+          </select>
+        </div>
         <div class="mb-3">
           <label for="username" class="form-label">Username</label>
           <input type="text" class="form-control" id="username" name="username" placeholder="Username" required aria-required="true" aria-label="Enter username">
@@ -131,16 +140,16 @@
             <div class="strength-meter-fill" id="strengthMeterFill"></div>
           </div>
           <div class="password-requirements" style="font-size: 0.9rem; color: var(--text-muted); margin-top: 5px;">
-            Must contain at least 8 characters, including uppercase, lowercase, and a number.
+            Must contain at least 8 characters (including uppercase & lowercase), a number, and a special character.
           </div>
         </div>
         <div class="mb-3">
           <label for="confirm_password" class="form-label">Confirm Password</label>
           <input type="password" class="form-control" id="confirm_password" name="confirm_password" placeholder="Confirm Password" required aria-required="true" aria-label="Confirm password">
         </div>
-        <div class="mb-3">
+        <div class="mb-3" id="orgTypeField" style="display: none;">
           <label for="organization_type" class="form-label">Organization Type</label>
-          <select class="form-control" id="organization_type" name="organization_type" required aria-required="true" aria-label="Select organization type">
+          <select class="form-control" id="organization_type" name="organization_type" aria-label="Select organization type">
             {% for type in organization_types %}
               <option value="{{ type }}">{{ type.capitalize() }}</option>
             {% endfor %}
@@ -148,7 +157,7 @@
         </div>
         <button type="submit" class="btn btn-custom w-100" id="registerBtn">Register</button>
       </form>
-      <p class="text-center mt-3">Already have an account? <a href="/login">Login</a></p>
+      <p class="text-center mt-3">Already have an account? <a href="{{ url_for('auth.login') }}">Login</a></p>
       <div id="registerMessage" class="mt-3 text-center"></div>
     </div>
   </div>
@@ -157,61 +166,45 @@
 
 {% block scripts %}
 <script>
-  const sidebar = document.getElementById('sidebar');
-  const hamburger = document.getElementById('hamburger');
-  const content = document.querySelector('.content');
-  const themeToggle = document.getElementById('themeToggle');
-  const sidebarOverlay = document.getElementById('sidebarOverlay');
+  $(document).ready(() => {
+    const roleSelect = document.getElementById('role');
+    const orgTypeField = document.getElementById('orgTypeField');
+    roleSelect.addEventListener('change', () => {
+      orgTypeField.style.display = roleSelect.value === 'admin' ? 'block' : 'none';
+    });
 
-  function toggleSidebar() {
-      sidebar.classList.toggle('hidden');
-      sidebar.classList.toggle('active', !sidebar.classList.contains('hidden'));
-      sidebarOverlay.classList.toggle('active', !sidebar.classList.contains('hidden'));
-      content.classList.toggle('shifted', !sidebar.classList.contains('hidden'));
-  }
+    const passwordField = document.getElementById('password');
+    const confirmPasswordField = document.getElementById('confirm_password');
+    const strengthMeterFill = document.getElementById('strengthMeterFill');
 
-  hamburger.addEventListener('click', toggleSidebar);
-  sidebarOverlay.addEventListener('click', toggleSidebar);
+    passwordField.addEventListener('input', () => {
+      const password = passwordField.value;
+      let strength = 0;
+      if (password.length >= 8) strength += 25;
+      if (/[A-Z]/.test(password)) strength += 25;
+      if (/[a-z]/.test(password)) strength += 25;
+      if (/[0-9]/.test(password)) strength += 25;
+      strengthMeterFill.style.width = `${strength}%`;
+      strengthMeterFill.style.backgroundColor = strength < 50 ? '#dc3545' : strength < 75 ? '#ffc107' : '#28a745';
+    });
 
-  document.querySelectorAll('.sidebar .nav-link').forEach(link => {
-      link.addEventListener('click', (e) => {
-          // Only prevent default and toggle sidebar on mobile, otherwise allow navigation
-          if (window.innerWidth < 768) {
-              e.preventDefault();
-              document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
-              link.classList.add('active');
-              window.location.href = link.getAttribute('href');
-              toggleSidebar();
-          } else {
-              document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
-              link.classList.add('active');
-              // Allow default navigation behavior on desktop
-          }
-      });
-  });
-
-  themeToggle.addEventListener('click', () => {
-      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-      document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
-      themeToggle.innerHTML = `<i class="fas ${isDark ? 'fa-sun' : 'fa-moon'}"></i>`;
-      localStorage.setItem('theme', isDark ? 'light' : 'dark');
-  });
-
-  document.addEventListener('DOMContentLoaded', () => {
-      const savedTheme = localStorage.getItem('theme') || 'light';
-      document.documentElement.setAttribute('data-theme', savedTheme);
-      themeToggle.innerHTML = `<i class="fas ${savedTheme === 'dark' ? 'fa-sun' : 'fa-moon'}"></i>`;
-      if (window.innerWidth < 768) {
-          sidebar.classList.add('hidden');
-          sidebarOverlay.classList.remove('active');
+    const registerForm = document.getElementById('registerFormData');
+    registerForm.addEventListener('submit', (e) => {
+      const password = passwordField.value;
+      const confirmPassword = confirmPasswordField.value;
+      if (password !== confirmPassword) {
+        e.preventDefault();
+        if (typeof showToast === 'function') showToast('Passwords do not match.');
+        return;
       }
-  });
+      if (password.length < 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+        e.preventDefault();
+        if (typeof showToast === 'function') showToast('Password must meet requirements.');
+        return;
+      }
+    });
 
-  function showToast(message) {
-      const toastEl = document.getElementById('toast');
-      toastEl.querySelector('.toast-body').textContent = message;
-      const toast = new bootstrap.Toast(toastEl);
-      toast.show();
-  }
+    // Sidebar and theme scripts (already in base.html, no need to duplicate)
+  });
 </script>
 {% endblock %}

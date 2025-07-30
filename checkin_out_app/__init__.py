@@ -39,11 +39,18 @@ def create_app():
     migrate = Migrate(app, db)
     socketio.init_app(app, async_mode='threading')
     jwt = JWTManager(app)
+    
+    
+    
     login_manager.init_app(app)
     login_manager.login_view = 'auth.login'
     csrf.init_app(app)
     Limiter(app=app, key_func=get_remote_address, default_limits=["200 per day", "50 per hour"], storage_uri="memory://")
     Environment(app)
+    
+    @jwt.token_in_blocklist_loader
+    def check_if_token_in_blocklist(jwt_header, jwt_payload):
+        return False  # Placeholder; implement token revocation if needed
 
     # Import models after db is initialized
     from .models import User, VerificationToken, Employee, AuditLog, Attendance, Subscription, Room, Booking, Guest, Transaction, Configuration, QrCode
