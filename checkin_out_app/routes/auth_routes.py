@@ -16,14 +16,13 @@ from flask_mail import Mail, Message
 import logging
 
 # Configure logging
-logging.basicConfig(level=logging.DEBUG)  # Set to DEBUG for detailed output
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 csrf = CSRFProtect()
 mail = Mail()
 
-# Removed jwt = JWTManager() and init_app(app) since JWT is managed in __init__.py
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -79,7 +78,7 @@ def login():
                 log_audit(username if login_type != 'guest' else None, f"Failed login attempt as {login_type}")
             except Exception as e:
                 flash('An error occurred during login. Please try again.', 'danger')
-                logger.error(f"Login error for {username}: {str(e)}", exc_info=True)  # Include stack trace
+                logger.error(f"Login error for {username}: {str(e)}", exc_info=True)  
         return render_template('login.html', config=current_app.config, current_year=datetime.now().year, roles=['admin', 'employee', 'guest'])
     return render_template('login.html', config=current_app.config, current_year=datetime.now().year, roles=['admin', 'employee', 'guest'])
 
