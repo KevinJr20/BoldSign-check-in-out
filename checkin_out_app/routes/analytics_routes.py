@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_login import login_required, current_user
 from ..models import db, Attendance, User
 from ..utils import sanitize_input, get_current_time
 from datetime import timedelta
@@ -7,17 +7,22 @@ from datetime import timedelta
 analytics_bp = Blueprint('analytics', __name__, url_prefix='/analytics')
 
 @analytics_bp.route('/', methods=['GET'])
-@jwt_required()
+@login_required
 def analytics():
-    username = sanitize_input(get_jwt_identity())
+    if not current_user.is_authenticated or current_user.role != 'admin':
+        return render_template('error.html', message='Access denied', code=403), 403
+    
+    username = sanitize_input(current_user.username)
     session = db.session
     try:
-        user = session.query(User).filter_by(username=username).first()
-        if not user or user.role != 'admin':
-            return render_template('error.html', message='Access denied', code=403), 403
-        
-        page = int(sanitize_input(request.args.get('page', 1)))
-        per_page = int(sanitize_input(request.args.get('per_page', 30)))
+        # Handle page parameter
+        page_str = request.args.get('page', '1')  # Default to '1' as string
+        page = int(sanitize_input(page_str)) if page_str.isdigit() else 1
+
+        # Handle per_page parameter
+        per_page_str = request.args.get('per_page', '30')  # Default to '30' as string
+        per_page = int(sanitize_input(per_page_str)) if per_page_str.isdigit() else 30
+
         offset = (page - 1) * per_page
         end_date = get_current_time().date()
         start_date = end_date - timedelta(days=30)
@@ -39,6 +44,6 @@ def analytics():
         pagination=pagination,
         hasLoggedIn=True,
         username=username,
-        userRole=user.role,
+        userRole=current_user.role,
         current_year=get_current_time().year
     )

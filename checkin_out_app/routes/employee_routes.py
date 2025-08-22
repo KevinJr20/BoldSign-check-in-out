@@ -1,7 +1,8 @@
 import os
 import hashlib
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, current_app
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_login import login_required, current_user
+from flask_wtf import CSRFProtect
 from ..models import db, User, Employee, Attendance, Subscription
 from ..utils import sanitize_input, allowed_file, match_fingerprint
 from werkzeug.utils import secure_filename
@@ -10,46 +11,93 @@ import pandas as pd
 from datetime import datetime
 
 employee_bp = Blueprint('employee', __name__, url_prefix='/employees')
+csrf = CSRFProtect()
 
-@employee_bp.route('/', methods=['GET'], endpoint='employee')  # Explicitly set endpoint to 'employee'
-@jwt_required()
+@employee_bp.route('/', methods=['GET', 'POST'], endpoint='employee')
+@login_required
 def employees():
-    username = sanitize_input(get_jwt_identity())
-    session = db.session  # Use session directly
+    if not current_user.is_authenticated or current_user.role != 'admin':
+        return jsonify({'error': 'Access denied'}), 403
+    
+    username = sanitize_input(current_user.username)
+    session = db.session
     try:
-        user = session.query(User).filter_by(username=username).first()
-        if not user or user.role != 'admin':
-            return jsonify({'error': 'Access denied'}), 403
-        page = int(sanitize_input(request.args.get('page', 1)))
-        per_page = int(sanitize_input(request.args.get('per_page', 50)))
+        print("Request method:", request.method)  # Debug log
+        print("Request form data:", request.form)  # Debug form data
+        if request.method == 'POST' and 'action' in request.form and request.form['action'] == 'add':
+            employee_id = sanitize_input(request.form.get('employeeId'))
+            name = sanitize_input(request.form.get('employeeName'))
+            fingerprint_template = sanitize_input(request.form.get('fingerprintTemplate'))
+            email = sanitize_input(request.form.get('email', ''))
+            role = sanitize_input(request.form.get('role', 'employee'))
+            biometric_data = sanitize_input(request.form.get('biometricData', ''))
+            photo = request.files.get('photo')
+            if not all([employee_id, name, fingerprint_template]):
+                return jsonify({'success': False, 'message': 'Employee ID, name, and fingerprint template are required.'}), 400
+            if Employee.query.filter_by(employee_id=employee_id, organization_id=username).first():
+                return jsonify({'success': False, 'message': 'Employee ID already exists!'}), 400
+            if email and not validate_email(email):
+                return jsonify({'success': False, 'message': 'Invalid email!'}), 400
+            if photo and not allowed_file(photo.filename, photo.stream):
+                return jsonify({'success': False, 'message': 'Invalid file type!'}), 400
+            else:
+                if photo:
+                    photo.stream.seek(0, os.SEEK_END)
+                    if photo.stream.tell() > current_app.config['MAX_FILE_SIZE']:
+                        return jsonify({'success': False, 'message': 'File size exceeds 5MB!'}), 400
+                    photo.stream.seek(0)
+                    filename = secure_filename(f"{employee_id}_{photo.filename}")
+                    photo_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+                    photo.save(photo_path)
+                    photo_url = f"/static/uploads/{filename}"
+                else:
+                    photo_url = None
+                # Corrected default hash logic
+                biometric_hash = hashlib.sha256(biometric_data.encode() if biometric_data else b'').hexdigest()
+                new_employee = Employee(
+                    employee_id=employee_id, name=name, email=email, role=role,
+                    fingerprint_template=fingerprint_template, biometric_hash=biometric_hash,
+                    photo_url=photo_url, organization_id=username
+                )
+                session.add(new_employee)
+                session.commit()
+                return jsonify({'success': True, 'message': 'Employee added successfully!'})
+
+        # GET request handling
+        page = int(sanitize_input(request.args.get('page', '1'))) if request.args.get('page', '1').isdigit() else 1
+        per_page = int(sanitize_input(request.args.get('per_page', '50'))) if request.args.get('per_page', '50').isdigit() else 50
         offset = (page - 1) * per_page
         total_employees = session.query(Employee).filter_by(organization_id=username).count()
         employees = session.query(Employee).filter_by(organization_id=username).order_by(Employee.name).limit(per_page).offset(offset).all()
         pagination = {'current_page': page, 'per_page': per_page, 'total_items': total_employees, 'total_pages': (total_employees + per_page - 1) // per_page}
+
+        return render_template(
+            'employees.html',
+            employees=employees,
+            pagination=pagination,
+            hasLoggedIn=True,
+            username=username,
+            userRole=current_user.role,
+            current_year=datetime.now().year,
+            datetime=datetime
+        )
+    except Exception as e:
+        session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
     finally:
-        session.close()  # Optional: Close session if not using autocommit
-    return render_template(
-        'employees.html',
-        employees=employees,
-        pagination=pagination,
-        hasLoggedIn=True,
-        username=username,
-        userRole=user.role,
-        current_year=datetime.now().year,
-        datetime=datetime
-    )
+        session.close()
 
 @employee_bp.route('/api', methods=['GET'])
-@jwt_required()
+@login_required
 def get_employees():
-    username = sanitize_input(get_jwt_identity())
+    if not current_user.is_authenticated or current_user.role != 'admin':
+        return jsonify({'error': 'Access denied'}), 403
+    
+    username = sanitize_input(current_user.username)
     session = db.session  # Use session directly
     try:
-        user = session.query(User).filter_by(username=username).first()
-        if not user or user.role != 'admin':
-            return jsonify({'error': 'Access denied'}), 403
-        page = int(sanitize_input(request.args.get('page', 1)))
-        per_page = int(sanitize_input(request.args.get('per_page', 50)))
+        page = int(sanitize_input(request.args.get('page', '1'))) if request.args.get('page', '1').isdigit() else 1
+        per_page = int(sanitize_input(request.args.get('per_page', '50'))) if request.args.get('per_page', '50').isdigit() else 50
         offset = (page - 1) * per_page
         total_employees = session.query(Employee).filter_by(organization_id=username).count()
         employees = [emp._asdict() for emp in session.query(Employee).filter_by(organization_id=username).order_by(Employee.name).limit(per_page).offset(offset).all()]
@@ -67,14 +115,14 @@ def get_employees():
     })
 
 @employee_bp.route('/api/<employee_id>', methods=['PUT'])
-@jwt_required()
+@login_required
 def edit_employee(employee_id):
-    username = sanitize_input(get_jwt_identity())
+    if not current_user.is_authenticated or current_user.role != 'admin':
+        return jsonify({'error': 'Access denied'}), 403
+    
+    username = sanitize_input(current_user.username)
     session = db.session  # Use session directly
     try:
-        user = session.query(User).filter_by(username=username).first()
-        if not user or user.role != 'admin':
-            return jsonify({'error': 'Access denied'}), 403
         employee = session.query(Employee).filter_by(employee_id=employee_id, organization_id=username).first()
         if not employee:
             return jsonify({'error': 'Employee not found'}), 404
@@ -115,14 +163,14 @@ def edit_employee(employee_id):
     return jsonify({'success': True, 'message': 'Employee updated'})
 
 @employee_bp.route('/api/<employee_id>', methods=['DELETE'])
-@jwt_required()
+@login_required
 def delete_employee(employee_id):
-    username = sanitize_input(get_jwt_identity())
+    if not current_user.is_authenticated or current_user.role != 'admin':
+        return jsonify({'error': 'Access denied'}), 403
+    
+    username = sanitize_input(current_user.username)
     session = db.session  # Use session directly
     try:
-        user = session.query(User).filter_by(username=username).first()
-        if not user or user.role != 'admin':
-            return jsonify({'error': 'Access denied'}), 403
         employee = session.query(Employee).filter_by(employee_id=employee_id, organization_id=username).first()
         if not employee:
             return jsonify({'error': 'Employee not found'}), 404
@@ -137,14 +185,14 @@ def delete_employee(employee_id):
     return jsonify({'success': True, 'message': 'Employee deleted'})
 
 @employee_bp.route('/bulk_import', methods=['POST'])
-@jwt_required()
+@login_required
 def bulk_import_employees():
-    username = sanitize_input(get_jwt_identity())
+    if not current_user.is_authenticated or current_user.role != 'admin':
+        return jsonify({'error': 'Access denied'}), 403
+    
+    username = sanitize_input(current_user.username)
     session = db.session  # Use session directly
     try:
-        user = session.query(User).filter_by(username=username).first()
-        if not user or user.role != 'admin':
-            return jsonify({'error': 'Access denied'}), 403
         file = request.files.get('file')
         if not file or not file.filename.endswith('.csv'):
             return jsonify({'error': 'CSV file required'}), 400
@@ -185,14 +233,14 @@ def bulk_import_employees():
     return jsonify({'success': True, 'message': f'{count} employees imported'})
 
 @employee_bp.route('/bulk_delete', methods=['POST'])
-@jwt_required()
+@login_required
 def bulk_delete_employees():
-    username = sanitize_input(get_jwt_identity())
+    if not current_user.is_authenticated or current_user.role != 'admin':
+        return jsonify({'error': 'Access denied'}), 403
+    
+    username = sanitize_input(current_user.username)
     session = db.session  # Use session directly
     try:
-        user = session.query(User).filter_by(username=username).first()
-        if not user or user.role != 'admin':
-            return jsonify({'error': 'Access denied'}), 403
         employee_ids = request.get_json().get('employee_ids', [])
         if not employee_ids:
             return jsonify({'error': 'No employee IDs'}), 400

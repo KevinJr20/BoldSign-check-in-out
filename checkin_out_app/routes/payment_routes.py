@@ -1,6 +1,6 @@
 import os
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, current_app
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_login import login_required, current_user
 from ..models import db, User, Subscription, Transaction, Booking
 from datetime import datetime, date, timedelta
 from ..utils import sanitize_input, get_current_time, get_mpesa_access_token, validate_mpesa_signature
@@ -22,20 +22,19 @@ paypalrestsdk.configure({
 })
 
 @payment_bp.route('/subscribe', methods=['GET', 'POST'])
-@jwt_required()
+@login_required
 def subscribe():
-    username = sanitize_input(get_jwt_identity())
+    if not current_user.is_authenticated or current_user.role != 'admin':
+        flash('Access denied.', 'danger')
+        return render_template('error.html', message='Access denied', config=current_app.config, hasLoggedIn=True, username=current_user.username, userRole=current_user.role, current_year=datetime.now().year, datetime=datetime)
+    
+    username = sanitize_input(current_user.username)
     session = db.session()  # Create session instance
     try:
-        user = session.query(User).filter_by(username=username).first()
-        if not user:
-            flash('User not found.', 'danger')
-            return render_template('error.html', message='User not found', config=current_app.config, hasLoggedIn=False, username='', userRole='', current_year=datetime.now().year, datetime=datetime)
-        
         if request.method == 'GET':
             subscription = session.query(Subscription).filter_by(organization_id=username).first()
             if not subscription:
-                org_type = user.organization_type
+                org_type = current_user.organization_type
                 default_plan = current_app.config['ORGANIZATION_TYPES'].get(org_type, {}).get('default_plan', 'pro')
                 employee_limit = current_app.config['SUBSCRIPTION_TIERS'][default_plan]['employee_limit']
                 start_date = datetime.combine(date.today(), datetime.min.time())
@@ -60,7 +59,7 @@ def subscribe():
                 transaction_id=transaction_id,
                 hasLoggedIn=True,
                 username=username,
-                userRole='admin',
+                userRole=current_user.role,
                 current_year=datetime.now().year,
                 datetime=datetime
             )
@@ -204,9 +203,13 @@ def mpesa_callback():
         session.close()
 
 @payment_bp.route('/success')
-@jwt_required()
+@login_required
 def payment_success():
-    username = sanitize_input(get_jwt_identity())
+    if not current_user.is_authenticated or current_user.role != 'admin':
+        flash('Access denied.', 'danger')
+        return render_template('error.html', message='Access denied', config=current_app.config, hasLoggedIn=True, username=current_user.username, userRole=current_user.role, current_year=datetime.now().year, datetime=datetime)
+    
+    username = sanitize_input(current_user.username)
     transaction_id = sanitize_input(request.args.get('transaction_id'))
     plan = sanitize_input(request.args.get('plan'))
     session = db.session()
@@ -214,7 +217,7 @@ def payment_success():
         transaction = session.query(Transaction).filter_by(transaction_id=transaction_id).first()
         if not transaction or transaction.status == 'completed':
             flash('Invalid or already processed transaction.', 'danger')
-            return render_template('error.html', message='Invalid or already processed transaction.', config=current_app.config, hasLoggedIn=True, username=username, userRole='admin', current_year=datetime.now().year, datetime=datetime)
+            return render_template('error.html', message='Invalid or already processed transaction.', config=current_app.config, hasLoggedIn=True, username=username, userRole=current_user.role, current_year=datetime.now().year, datetime=datetime)
         transaction.status = 'completed'
         subscription = session.query(Subscription).filter_by(organization_id=username).first()
         subscription.plan = plan
@@ -223,7 +226,7 @@ def payment_success():
         subscription.end_date = subscription.start_date + timedelta(days=current_app.config['SUBSCRIPTION_DURATION_DAYS'])
         session.commit()
         flash(f'Subscription upgraded to {plan} successfully.', 'success')
-        return render_template('success.html', message=f'Subscription upgraded to {plan} successfully.', config=current_app.config, hasLoggedIn=True, username=username, userRole='admin', current_year=datetime.now().year, datetime=datetime)
+        return render_template('success.html', message=f'Subscription upgraded to {plan} successfully.', config=current_app.config, hasLoggedIn=True, username=username, userRole=current_user.role, current_year=datetime.now().year, datetime=datetime)
     except Exception as e:
         session.rollback()
         return jsonify({'error': str(e)}), 500
@@ -231,12 +234,16 @@ def payment_success():
         session.close()
 
 @payment_bp.route('/cancel')
-@jwt_required()
+@login_required
 def payment_cancel():
+    if not current_user.is_authenticated or current_user.role != 'admin':
+        flash('Access denied.', 'danger')
+        return render_template('error.html', message='Access denied', config=current_app.config, hasLoggedIn=True, username=current_user.username, userRole=current_user.role, current_year=datetime.now().year, datetime=datetime)
+    
     session = db.session()
     try:
         flash('Payment cancelled.', 'info')
-        return render_template('error.html', message='Payment was canceled.', config=current_app.config, hasLoggedIn=True, username=get_jwt_identity(), userRole='admin', current_year=datetime.now().year, datetime=datetime)
+        return render_template('error.html', message='Payment was canceled.', config=current_app.config, hasLoggedIn=True, username=current_user.username, userRole=current_user.role, current_year=datetime.now().year, datetime=datetime)
     except Exception as e:
         session.rollback()
         return jsonify({'error': str(e)}), 500

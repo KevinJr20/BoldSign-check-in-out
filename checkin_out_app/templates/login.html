@@ -136,15 +136,6 @@ Login - {{ config.company_name or 'Hospitality' }}
   <form method="POST" action="{{ url_for('auth.login') }}" id="loginForm">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="form-group">
-      <label for="login_type" class="form-label">Role</label>
-      <select class="form-control" id="login_type" name="login_type" required aria-required="true" aria-label="Select role">
-        <option value="">Select Role</option>
-        {% for role in roles %}
-          <option value="{{ role }}">{{ role.capitalize() }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="form-group">
       <label for="username" class="form-label">Username or ID</label>
       <input type="text" class="form-control" id="username" name="username" required aria-required="true" aria-label="Enter username or ID">
     </div>
@@ -169,13 +160,6 @@ Login - {{ config.company_name or 'Hospitality' }}
 
 {% block scripts %}
 <script>
-  function getCookie(name) {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
-    return null;
-  }
-
   function showLoading(state) {
     const loadingSpinner = document.querySelector('.login-loading');
     const loginBtn = document.getElementById('loginBtn');
@@ -199,8 +183,7 @@ Login - {{ config.company_name or 'Hospitality' }}
       showLoading(true);
       const username = document.getElementById('username').value;
       const password = document.getElementById('password').value;
-      const loginType = document.getElementById('login_type').value;
-      if (!username || !password || !loginType) {
+      if (!username || !password) {
         e.preventDefault();
         if (typeof showToast === 'function') showToast('All fields are required.');
         showLoading(false);
@@ -208,40 +191,22 @@ Login - {{ config.company_name or 'Hospitality' }}
       }
     });
 
-    // Biometric Login
+    // Biometric Login (Placeholder)
     document.getElementById('biometricBtn').addEventListener('click', async () => {
       const username = prompt('Enter your username');
       if (!username) return;
-      const response = await fetch(`/auth/biometric_login/start?username=${encodeURIComponent(username)}`);
-      const options = await response.json();
-      if (options.challenge) {
-        const credential = await navigator.credentials.get(options);
-        const finishResponse = await fetch('/auth/biometric_login/finish', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, credential, challenge: options.challenge })
-        });
-        if (finishResponse.ok) window.location.href = await finishResponse.text();
-        else if (typeof showToast === 'function') showToast('Biometric login failed.');
-      }
+      alert('Biometric login is not fully implemented yet. Please use password login.');
     });
 
-    // QR Login
+    // QR Login (Placeholder)
     document.getElementById('qrBtn').addEventListener('click', async () => {
-      const response = await fetch('/auth/qr_login/start');
-      const blob = await response.blob();
-      const img = document.createElement('img');
-      img.src = URL.createObjectURL(blob);
-      img.style.maxWidth = '100%';
-      document.querySelector('.login-container').appendChild(img);
-      // Mobile app scans QR; server handles verification
+      alert('QR login is not fully implemented yet. Please use password login.');
     });
 
-    // Check if already logged in
-    const token = getCookie('access_token_cookie');
-    if (token && current_user.is_authenticated) {
-      window.location.href = '/dashboard';
-    }
+    // Redirect if already authenticated (server-side handled)
+    {% if current_user.is_authenticated %}
+      window.location.href = '{{ url_for('dashboard.dashboard') }}';
+    {% endif %}
   });
 </script>
 {% endblock %}

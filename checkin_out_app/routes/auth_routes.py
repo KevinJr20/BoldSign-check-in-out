@@ -2,20 +2,21 @@ import os
 import qrcode
 from io import BytesIO
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, make_response, current_app
-from flask_jwt_extended import jwt_required, create_access_token, set_access_cookies, unset_jwt_cookies, get_jwt_identity
 from flask_login import login_user, logout_user, login_required, current_user
 from passlib.hash import bcrypt
 from uuid import uuid4
+from flask_wtf import FlaskForm
 from datetime import datetime, timedelta
 from webauthn import generate_authentication_options, verify_authentication_response, generate_registration_options, verify_registration_response
 from ..db import db
-from ..models import User, VerificationToken, Guest, Subscription, QrCode, Employee, AuditLog
+from ..models import User, VerificationToken, Guest, Subscription, QrCode, Employee, AuditLog, Room, Booking
+from wtforms import StringField, PasswordField, SubmitField
+from wtforms.validators import DataRequired, Email
 from ..utils import sanitize_input, validate_email, get_current_time, encrypt_data, decrypt_data
 from flask_wtf.csrf import CSRFProtect
 from flask_mail import Mail, Message
 import logging
 
-# Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
@@ -23,162 +24,113 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 csrf = CSRFProtect()
 mail = Mail()
 
+def log_audit(user_id, action):
+    """Logs an audit event to the AuditLog table."""
+    try:
+        audit = AuditLog(
+            employee_id=user_id if user_id and isinstance(user_id, str) and len(user_id) <= 50 else None,
+            user_id=user_id,
+            action=action
+        )
+        db.session.add(audit)
+        db.session.commit()
+        logger.debug(f"Audit log created for {user_id}: {action}")
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Failed to log audit for {user_id}: {str(e)}", exc_info=True)
+        
+class LoginForm(FlaskForm):
+    email = StringField('Email', validators=[DataRequired(), Email()])
+    password = PasswordField('Password', validators=[DataRequired()])
+    submit = SubmitField('Login')
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard.dashboard'))
-    if request.method == 'POST':
-        username = sanitize_input(request.form.get('username'))
-        password = request.form.get('password')
-        login_type = sanitize_input(request.form.get('login_type'))
-        logger.debug(f"Login attempt: username={username}, password={password[:2]}..., login_type={login_type}")
-        if not all([username, password, login_type]):
-            flash('All fields are required.', 'danger')
-            return render_template('login.html', config=current_app.config, current_year=datetime.now().year)
-        with db.session() as session:
+    form = LoginForm()
+    if form.validate_on_submit():
+        email = form.email.data
+        password = form.password.data
+        user = User.query.filter_by(email=email).first()
+        if user:
             try:
-                if login_type in ['admin', 'employee']:
-                    user = session.query(User).filter_by(username=username).first()
-                    logger.debug(f"User query result: {user}")
-                    if user:
-                        try:
-                            decrypted_hash = decrypt_data(user.password_hash)
-                            logger.debug(f"Decrypted hash: {decrypted_hash[:10]}...")  # Partial for security
-                            if bcrypt.verify(password, decrypted_hash):
-                                logger.debug(f"Password verified for {username}")
-                                if user.role == login_type and check_subscription(user.username):
-                                    login_user(user)
-                                    access_token = create_access_token(identity={'username': username, 'role': user.role}, expires_delta=timedelta(hours=12))
-                                    response = make_response(redirect(url_for(f'dashboard.{login_type}')))
-                                    set_access_cookies(response, access_token, httponly=True, secure=False, samesite='Lax')
-                                    log_audit(user.username, f"Login as {login_type}")
-                                    return response
-                                else:
-                                    logger.debug(f"Role mismatch or subscription check failed for {username}")
-                            else:
-                                logger.debug(f"Password verification failed for {username}")
-                        except ValueError as e:
-                            logger.error(f"Decryption error for {username}: {str(e)}")
-                    else:
-                        logger.debug(f"User {username} not found")
-                elif login_type == 'guest':
-                    guest = session.query(Guest).filter_by(guest_id=username).first()
-                    logger.debug(f"Guest query result: {guest}")
-                    if guest and (not guest.password_hash or bcrypt.verify(password, decrypt_data(guest.password_hash))):
-                        login_user(guest)
-                        access_token = create_access_token(identity={'guest_id': username, 'role': 'guest'}, expires_delta=timedelta(hours=12))
-                        response = make_response(redirect(url_for('dashboard.guest')))
-                        set_access_cookies(response, access_token, httponly=True, secure=False, samesite='Lax')
-                        log_audit(None, f"Guest login for {username}")
-                        return response
-                    else:
-                        logger.debug(f"Guest {username} not found or password mismatch")
-                flash('Invalid credentials or role mismatch.', 'danger')
-                log_audit(username if login_type != 'guest' else None, f"Failed login attempt as {login_type}")
-            except Exception as e:
-                flash('An error occurred during login. Please try again.', 'danger')
-                logger.error(f"Login error for {username}: {str(e)}", exc_info=True)  
-        return render_template('login.html', config=current_app.config, current_year=datetime.now().year, roles=['admin', 'employee', 'guest'])
-    return render_template('login.html', config=current_app.config, current_year=datetime.now().year, roles=['admin', 'employee', 'guest'])
+                # Try decrypting password_hash (Fernet)
+                decrypted_hash = decrypt_data(user.password_hash)
+                if decrypted_hash and password == decrypted_hash:  # Plaintext comparison
+                    login_user(user)
+                    logger.info(f"User {email} logged in at {get_current_time()}")
+                    log_audit(user.username, 'Login as admin')
+                    next_page = request.args.get('next')
+                    return redirect(next_page or url_for('dashboard.dashboard'))
+            except (ValueError, TypeError, cryptography.fernet.InvalidToken):
+                # Fall back to bcrypt if Fernet fails
+                if user.password_hash and bcrypt.verify(password, user.password_hash.decode('utf-8') if isinstance(user.password_hash, bytes) else user.password_hash):
+                    login_user(user)
+                    logger.info(f"User {email} logged in at {get_current_time()}")
+                    log_audit(user.username, 'Login as admin')
+                    next_page = request.args.get('next')
+                    return redirect(next_page or url_for('dashboard.dashboard'))
+            flash('Invalid email or password', 'danger')
+        else:
+            flash('Invalid email or password', 'danger')
+    return render_template('login.html', form=form, config=current_app.config, current_year=datetime.now().year)
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard.dashboard'))
     if request.method == 'POST':
-        if request.form:
-            username = sanitize_input(request.form.get('username'))
-            email = sanitize_input(request.form.get('email'))
-            password = request.form.get('password')
-            role = sanitize_input(request.form.get('role'))
-            logger.debug(f"Registration attempt: username={username}, email={email}, role={role}")
-            if not all([username, email, password, role]):
-                flash('All fields are required.', 'danger')
-                return render_template('register.html', organization_types=current_app.config['ORGANIZATION_TYPES'], current_year=datetime.now().year, roles=['admin', 'employee', 'guest'])
-            if not validate_email(email) or role not in ['admin', 'employee', 'guest']:
-                flash('Invalid email or role.', 'danger')
-                return render_template('register.html', organization_types=current_app.config['ORGANIZATION_TYPES'], current_year=datetime.now().year, roles=['admin', 'employee', 'guest'])
-            if len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not any(c.isdigit() for c in password):
-                flash('Password must be at least 8 characters with uppercase, lowercase, and a number.', 'danger')
-                return render_template('register.html', organization_types=current_app.config['ORGANIZATION_TYPES'], current_year=datetime.now().year, roles=['admin', 'employee', 'guest'])
-            with db.session() as session:
+        username = sanitize_input(request.form.get('username'))
+        email = sanitize_input(request.form.get('email'))
+        password = request.form.get('password')
+        role = sanitize_input(request.form.get('role'))
+        logger.debug(f"Registration attempt: username={username}, email={email}, role={role}")
+        if not all([username, email, password, role]):
+            flash('All fields are required.', 'danger')
+            return render_template('register.html', organization_types=current_app.config['ORGANIZATION_TYPES'], current_year=datetime.now().year, roles=['admin', 'employee', 'guest'])
+        if not validate_email(email) or role not in ['admin', 'employee', 'guest']:
+            flash('Invalid email or role.', 'danger')
+            return render_template('register.html', organization_types=current_app.config['ORGANIZATION_TYPES'], current_year=datetime.now().year, roles=['admin', 'employee', 'guest'])
+        if len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not any(c.isdigit() for c in password):
+            flash('Password must be at least 8 characters with uppercase, lowercase, and a number.', 'danger')
+            return render_template('register.html', organization_types=current_app.config['ORGANIZATION_TYPES'], current_year=datetime.now().year, roles=['admin', 'employee', 'guest'])
+        with db.session() as session:
+            try:
+                if session.query(User).filter_by(username=username).first() or session.query(User).filter_by(email=email).first():
+                    flash('Username or email already exists.', 'danger')
+                    return render_template('register.html', organization_types=current_app.config['ORGANIZATION_TYPES'], current_year=datetime.now().year, roles=['admin', 'employee', 'guest'])
                 try:
-                    if session.query(User).filter_by(username=username).first() or session.query(User).filter_by(email=email).first():
-                        flash('Username or email already exists.', 'danger')
+                    password_hash = encrypt_data(bcrypt.hash(password))
+                    logger.debug(f"Encrypted password hash: {password_hash[:10]}...")  # Partial for security
+                except ValueError as e:
+                    logger.error(f"Encryption error for {username}: {str(e)}")
+                    flash('Encryption key issue. Contact support.', 'danger')
+                    return redirect(url_for('auth.register'))
+                if role == 'admin':
+                    organization_type = request.form.get('organization_type')
+                    if not organization_type or organization_type not in current_app.config['ORGANIZATION_TYPES']:
+                        flash('Invalid organization type.', 'danger')
                         return render_template('register.html', organization_types=current_app.config['ORGANIZATION_TYPES'], current_year=datetime.now().year, roles=['admin', 'employee', 'guest'])
-                    try:
-                        password_hash = encrypt_data(bcrypt.hash(password))
-                        logger.debug(f"Encrypted password hash: {password_hash[:10]}...")  # Partial for security
-                    except ValueError as e:
-                        logger.error(f"Encryption error for {username}: {str(e)}")
-                        flash('Encryption key issue. Contact support.', 'danger')
-                        return redirect(url_for('auth.register'))
-                    if role == 'admin':
-                        organization_type = request.form.get('organization_type')
-                        if not organization_type or organization_type not in current_app.config['ORGANIZATION_TYPES']:
-                            flash('Invalid organization type.', 'danger')
-                            return render_template('register.html', organization_types=current_app.config['ORGANIZATION_TYPES'], current_year=datetime.now().year, roles=['admin', 'employee', 'guest'])
-                        default_plan = current_app.config['ORGANIZATION_TYPES'][organization_type]['default_plan']
-                        employee_limit = current_app.config['SUBSCRIPTION_TIERS'][default_plan]['employee_limit']
-                        subscription = Subscription(organization_id=username, plan=default_plan, employee_limit=employee_limit, start_date=get_current_time(), end_date=get_current_time() + timedelta(days=current_app.config['SUBSCRIPTION_DURATION_DAYS']))
-                        session.add(subscription)
-                    new_user = User(username=username, email=email, password_hash=password_hash, role=role, organization_type=role=='admin' and organization_type or None, is_verified=False)
-                    session.add(new_user)
-                    token = VerificationToken(user_id=username, token=str(uuid4()), expires_at=get_current_time() + timedelta(days=1))
-                    session.add(token)
-                    session.commit()
-                    send_verification_email(email, token.token)
-                    logger.info(f"Registration successful for {username} as {role}")
-                    flash('Registration successful! Please check your email to verify.', 'success')
-                except Exception as e:
-                    session.rollback()
-                    flash('An error occurred during registration. Please try again.', 'danger')
-                    logger.error(f"Registration error for {username}: {str(e)}", exc_info=True)  # Include stack trace
+                    default_plan = current_app.config['ORGANIZATION_TYPES'][organization_type]['default_plan']
+                    employee_limit = current_app.config['SUBSCRIPTION_TIERS'][default_plan]['employee_limit']
+                    subscription = Subscription(organization_id=username, plan=default_plan, employee_limit=employee_limit, start_date=get_current_time(), end_date=get_current_time() + timedelta(days=current_app.config['SUBSCRIPTION_DURATION_DAYS']))
+                    session.add(subscription)
+                new_user = User(username=username, email=email, password_hash=password_hash, role=role, organization_type=role=='admin' and organization_type or None, is_verified=False)
+                session.add(new_user)
+                token = VerificationToken(user_id=username, token=str(uuid4()), expires_at=get_current_time() + timedelta(days=1))
+                session.add(token)
+                session.commit()
+                send_verification_email(email, token.token)
+                logger.info(f"Registration successful for {username} as {role}")
+                flash('Registration successful! Please check your email to verify.', 'success')
                 return redirect(url_for('auth.login'))
-        elif request.method == 'POST' and request.is_json:
-            data = request.get_json()
-            username = sanitize_input(data.get('username'))
-            email = sanitize_input(data.get('email'))
-            password = data.get('password')
-            role = sanitize_input(data.get('role'))
-            logger.debug(f"JSON registration attempt: username={username}, email={email}, role={role}")
-            if not all([username, email, password, role]):
-                return jsonify({'status': 'error', 'message': 'All fields are required.'}), 400
-            if not validate_email(email) or role not in ['admin', 'employee', 'guest']:
-                return jsonify({'status': 'error', 'message': 'Invalid email or role.'}), 400
-            if len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not any(c.isdigit() for c in password):
-                return jsonify({'status': 'error', 'message': 'Password must be at least 8 characters with uppercase, lowercase, and a number.'}), 400
-            with db.session() as session:
-                try:
-                    if session.query(User).filter_by(username=username).first() or session.query(User).filter_by(email=email).first():
-                        return jsonify({'status': 'error', 'message': 'Username or email already exists.'}), 400
-                    try:
-                        password_hash = encrypt_data(bcrypt.hash(password))
-                        logger.debug(f"Encrypted password hash: {password_hash[:10]}...")  # Partial for security
-                    except ValueError as e:
-                        logger.error(f"Encryption error for {username}: {str(e)}")
-                        return jsonify({'status': 'error', 'message': 'Encryption key issue. Contact support.'}), 500
-                    if role == 'admin':
-                        organization_type = data.get('organization_type')
-                        if not organization_type or organization_type not in current_app.config['ORGANIZATION_TYPES']:
-                            return jsonify({'status': 'error', 'message': 'Invalid organization type.'}), 400
-                        default_plan = current_app.config['ORGANIZATION_TYPES'][organization_type]['default_plan']
-                        employee_limit = current_app.config['SUBSCRIPTION_TIERS'][default_plan]['employee_limit']
-                        subscription = Subscription(organization_id=username, plan=default_plan, employee_limit=employee_limit, start_date=get_current_time(), end_date=get_current_time() + timedelta(days=current_app.config['SUBSCRIPTION_DURATION_DAYS']))
-                        session.add(subscription)
-                    new_user = User(username=username, email=email, password_hash=password_hash, role=role, organization_type=role=='admin' and organization_type or None, is_verified=False)
-                    session.add(new_user)
-                    token = VerificationToken(user_id=username, token=str(uuid4()), expires_at=get_current_time() + timedelta(days=1))
-                    session.add(token)
-                    session.commit()
-                    send_verification_email(email, token.token)
-                    logger.info(f"JSON registration successful for {username} as {role}")
-                    return jsonify({'status': 'success', 'message': 'Registration successful! Please check your email to verify.'}), 200
-                except Exception as e:
-                    session.rollback()
-                    logger.error(f"JSON registration error for {username}: {str(e)}", exc_info=True)
-                    return jsonify({'status': 'error', 'message': 'Registration failed. Please try again.'}), 500
+            except Exception as e:
+                session.rollback()
+                flash('An error occurred during registration. Please try again.', 'danger')
+                logger.error(f"Registration error for {username}: {str(e)}", exc_info=True)
+                return redirect(url_for('auth.login'))
+        return render_template('register.html', organization_types=current_app.config['ORGANIZATION_TYPES'], current_year=datetime.now().year, roles=['admin', 'employee', 'guest'])
     return render_template('register.html', organization_types=current_app.config['ORGANIZATION_TYPES'], current_year=datetime.now().year, roles=['admin', 'employee', 'guest'])
 
 @auth_bp.route('/verify_email/<token>', methods=['GET'])
@@ -295,7 +247,7 @@ def change_credentials():
                     session.commit()
                     log_audit(user.username, "Credentials updated")
                     flash('Credentials updated successfully.', 'success')
-                    return redirect(url_for(f'dashboard.{current_user.role}'))
+                    return redirect(url_for('dashboard.dashboard'))
                 flash('Current password incorrect.', 'danger')
                 log_audit(user.username if user else None, "Failed credential update attempt")
             except Exception as e:
@@ -347,9 +299,9 @@ def biometric_register_finish():
             except Exception as e:
                 flash('Biometric registration failed. Please try again.', 'danger')
                 logger.error(f"Biometric registration error for {user.username}: {str(e)}", exc_info=True)
-            return redirect(url_for(f'dashboard.{current_user.role}'))
+            return redirect(url_for('dashboard.dashboard'))
         flash('User not found.', 'danger')
-        return redirect(url_for(f'dashboard.{current_user.role}'))
+        return redirect(url_for('dashboard.dashboard'))
 
 @auth_bp.route('/biometric_login/start', methods=['GET'])
 def biometric_login_start():
@@ -387,11 +339,8 @@ def biometric_login_finish():
             rp_id=current_app.config['WEBAUTHN_RP_ID']
         ):
             login_user(user)
-            access_token = create_access_token(identity={'username': username, 'role': user.role}, expires_delta=timedelta(hours=12))
-            response = make_response(redirect(url_for(f'dashboard.{user.role}')))
-            set_access_cookies(response, access_token, httponly=True, secure=False, samesite='Lax')
             log_audit(user.username, "Biometric login successful")
-            return response
+            return redirect(url_for('dashboard.dashboard'))
         flash('Biometric authentication failed. Please try again or use password login.', 'danger')
         log_audit(username, "Failed biometric login attempt")
         return redirect(url_for('auth.login'))
@@ -430,18 +379,42 @@ def qr_login_finish():
                 if guest:
                     qr_record.used = True
                     login_user(guest)
-                    access_token = create_access_token(identity={'guest_id': session_id, 'role': 'guest'}, expires_delta=timedelta(hours=12))
-                    response = make_response(redirect(url_for('dashboard.guest')))
-                    set_access_cookies(response, access_token, httponly=True, secure=False, samesite='Lax')
-                    session.commit()
                     log_audit(session_id, "QR login successful")
-                    return response
+                    session.commit()
+                    return redirect(url_for('dashboard.dashboard'))
             flash('Invalid or expired QR code.', 'danger')
             log_audit(session_id, "Failed QR login attempt")
         except Exception as e:
             flash('An error occurred. Please try again.', 'danger')
             logger.error(f"QR login error for session {session_id}: {str(e)}", exc_info=True)
     return redirect(url_for('auth.login'))
+
+@auth_bp.route('/book_guest', methods=['GET', 'POST'])
+@login_required
+def book_guest():
+    if current_user.role not in ['admin', 'employee']:
+        flash('Access denied.', 'danger')
+        return redirect(url_for('dashboard.dashboard'))
+    if request.method == 'POST':
+        guest_id = sanitize_input(request.form.get('guest_id'))
+        name = sanitize_input(request.form.get('name'))
+        room_id = sanitize_input(request.form.get('room_id'))
+        if not all([guest_id, name, room_id]):
+            flash('All fields are required.', 'danger')
+            return render_template('book_guest.html')
+        with db.session() as session:
+            try:
+                new_guest = Guest(guest_id=guest_id, name=name, check_in_date=get_current_time(), room_id=room_id, status='checked_in')
+                session.add(new_guest)
+                session.commit()
+                flash('Guest booked successfully.', 'success')
+                return redirect(url_for('dashboard.dashboard'))
+            except Exception as e:
+                session.rollback()
+                flash('An error occurred while booking guest. Please try again.', 'danger')
+                logger.error(f"Guest booking error for {guest_id}: {str(e)}", exc_info=True)
+        return render_template('book_guest.html')
+    return render_template('book_guest.html')
 
 @auth_bp.route('/resend_reset', methods=['POST'])
 def resend_reset():
@@ -457,16 +430,109 @@ def resend_reset():
                 return jsonify({'status': 'success', 'message': 'Reset link resent successfully.'}), 200
     return jsonify({'status': 'error', 'message': 'Invalid or expired token.'}), 400
 
-@auth_bp.route('/logout', methods=['POST'])
+@auth_bp.route('/logout')
 @login_required
 def logout():
-    username = current_user.username if hasattr(current_user, 'username') else current_user.guest_id
-    logger.debug(f"Logout request for {username}")
     logout_user()
-    response = make_response(redirect(url_for('auth.login')))
-    unset_jwt_cookies(response)
-    log_audit(username, "Logout successful")
-    return response
+    return redirect(url_for('auth.login'))
+
+@auth_bp.route('/add_employee', methods=['GET', 'POST'])
+@login_required
+def add_employee():
+    if current_user.role != 'admin':
+        flash('Access denied.', 'danger')
+        return redirect(url_for('dashboard.dashboard'))
+    if request.method == 'POST':
+        employee_id = sanitize_input(request.form.get('employee_id'))
+        name = sanitize_input(request.form.get('name'))
+        email = sanitize_input(request.form.get('email'))
+        role = sanitize_input(request.form.get('role'))
+        fingerprint_template = request.form.get('fingerprint_template')
+        if not all([employee_id, name, email, role]):
+            flash('All fields except fingerprint are required.', 'danger')
+            return render_template('add_edit_employee.html', employee=None)
+        if not validate_email(email) or role not in ['employee', 'manager']:
+            flash('Invalid email or role.', 'danger')
+            return render_template('add_edit_employee.html', employee=None)
+        with db.session() as session:
+            try:
+                if session.query(Employee).filter_by(employee_id=employee_id).first():
+                    flash('Employee ID already exists.', 'danger')
+                    return render_template('add_edit_employee.html', employee=None)
+                password_hash = encrypt_data(bcrypt.hash('defaultpassword123'))  # Default password
+                new_employee = Employee(employee_id=employee_id, name=name, email=email, role=role, fingerprint_template=fingerprint_template, password_hash=password_hash)
+                session.add(new_employee)
+                session.commit()
+                logger.info(f"Employee {employee_id} added by {current_user.username}")
+                flash('Employee added successfully.', 'success')
+                return redirect(url_for('dashboard.dashboard'))
+            except Exception as e:
+                session.rollback()
+                flash('An error occurred while adding employee. Please try again.', 'danger')
+                logger.error(f"Employee addition error for {employee_id}: {str(e)}", exc_info=True)
+        return render_template('add_edit_employee.html', employee=None)
+    return render_template('add_edit_employee.html', employee=None)  # Render empty form for GET
+
+@auth_bp.route('/edit_employee/<employee_id>', methods=['GET', 'POST'])
+@login_required
+def edit_employee(employee_id):
+    if current_user.role != 'admin':
+        flash('Access denied.', 'danger')
+        return redirect(url_for('dashboard.dashboard'))
+    with db.session() as session:
+        employee = session.query(Employee).filter_by(employee_id=employee_id).first()
+        if not employee:
+            flash('Employee not found.', 'danger')
+            return redirect(url_for('dashboard.dashboard'))
+        if request.method == 'POST':
+            name = sanitize_input(request.form.get('name'))
+            email = sanitize_input(request.form.get('email'))
+            role = sanitize_input(request.form.get('role'))
+            fingerprint_template = request.form.get('fingerprint_template')
+            if not all([name, email, role]):
+                flash('All fields except fingerprint are required.', 'danger')
+                return render_template('add_edit_employee.html', employee=employee)
+            if not validate_email(email) or role not in ['employee', 'manager']:
+                flash('Invalid email or role.', 'danger')
+                return render_template('add_edit_employee.html', employee=employee)
+            try:
+                employee.name = name
+                employee.email = email
+                employee.role = role
+                employee.fingerprint_template = fingerprint_template
+                session.commit()
+                logger.info(f"Employee {employee_id} updated by {current_user.username}")
+                flash('Employee updated successfully.', 'success')
+                return redirect(url_for('dashboard.dashboard'))
+            except Exception as e:
+                session.rollback()
+                flash('An error occurred while updating employee. Please try again.', 'danger')
+                logger.error(f"Employee update error for {employee_id}: {str(e)}", exc_info=True)
+            return render_template('add_edit_employee.html', employee=employee)
+        return render_template('add_edit_employee.html', employee=employee)
+
+@auth_bp.route('/book_room', methods=['GET', 'POST'])
+@login_required
+def book_room():
+    if current_user.role != 'guest':
+        flash('Access denied.', 'danger')
+        return redirect(url_for('dashboard.dashboard'))
+    with db.session() as session:
+        available_rooms = session.query(Room).filter_by(status='available').all()
+        if request.method == 'POST':
+            room_id = sanitize_input(request.form.get('room_id'))
+            room = session.query(Room).filter_by(room_id=room_id, status='available').first()
+            if room:
+                booking = Booking(guest_id=current_user.guest_id or current_user.username, room_id=room_id, check_in_date=get_current_time(), check_out_date=get_current_time() + timedelta(days=1), status='booked')
+                session.add(booking)
+                room.status = 'occupied'
+                session.commit()
+                logger.info(f"Room {room_id} booked by guest {current_user.guest_id or current_user.username}")
+                flash('Room booked successfully.', 'success')
+                return redirect(url_for('dashboard.dashboard'))
+            flash('Room not available.', 'danger')
+            return render_template('book_room.html', available_rooms=available_rooms)
+        return render_template('book_room.html', available_rooms=available_rooms)
 
 def send_verification_email(email, token):
     try:
@@ -494,11 +560,10 @@ def check_subscription(organization_id):
 
 def log_audit(user_id, action):
     try:
-        audit = AuditLog(employee_id=user_id if user_id and isinstance(user_id, str) and len(user_id) <= 50 else None,
-                         user_id=user_id,
-                         action=action)
+        from .models import db, AuditLog  # Deferred import
+        audit = AuditLog(employee_id=user_id, user_id=user_id, action=action, timestamp=get_current_time())
         db.session.add(audit)
         db.session.commit()
-        logger.debug(f"Audit log created for {user_id}: {action}")
     except Exception as e:
+        db.session.rollback()
         logger.error(f"Failed to log audit for {user_id}: {str(e)}", exc_info=True)

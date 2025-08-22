@@ -1,8 +1,7 @@
-from datetime import datetime
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
 from ..db import db  # Import db from db.py
-from ..utils import get_current_time
+from datetime import datetime
 
 class User(db.Model, UserMixin):
     __tablename__ = 'users'
@@ -10,11 +9,11 @@ class User(db.Model, UserMixin):
     email = db.Column(db.Text, nullable=False)
     name = db.Column(db.Text)
     password_hash = db.Column(db.LargeBinary)
-    organization_type = db.Column(db.Text, nullable=True)  # Changed to nullable for flexibility
+    organization_type = db.Column(db.Text, nullable=True)
     role = db.Column(db.Text, server_default='admin', nullable=False)
-    is_verified = db.Column(db.Boolean, default=False, nullable=False)  # New field for email verification
-    webauthn_credential_id = db.Column(db.LargeBinary, nullable=True)  # New field for WebAuthn
-    webauthn_public_key = db.Column(db.LargeBinary, nullable=True)  # New field for WebAuthn
+    is_verified = db.Column(db.Boolean, default=False, nullable=False)
+    webauthn_credential_id = db.Column(db.LargeBinary, nullable=True)
+    webauthn_public_key = db.Column(db.LargeBinary, nullable=True)
     __table_args__ = (db.Index('idx_users_username', 'username'),)
 
     def is_active(self):
@@ -42,17 +41,18 @@ class Employee(db.Model):
     role = db.Column(db.Text)
     organization_id = db.Column(db.Text, db.ForeignKey('users.username'), nullable=False)
     fingerprint_template = db.Column(db.Text)
-    biometric_hash = db.Column(db.Text)
+    biometric_hash = db.Column(db.String(64), nullable=True)
     photo_url = db.Column(db.Text)
     __table_args__ = (db.Index('idx_employees_organization_id', 'organization_id'),)
 
 class AuditLog(db.Model):
     __tablename__ = 'audit_log'
     id = db.Column(db.Integer, primary_key=True)
-    employee_id = db.Column(db.String, db.ForeignKey('employees.id', ondelete='SET NULL'), nullable=True)  # Allow NULL
-    user_id = db.Column(db.String, db.ForeignKey('users.username', ondelete='SET NULL'), nullable=True)  # New field
+    employee_id = db.Column(db.String, db.ForeignKey('employees.employee_id', ondelete='SET NULL'), nullable=True)
+    user_id = db.Column(db.String, db.ForeignKey('users.username', ondelete='SET NULL'), nullable=True)
     action = db.Column(db.String(255), nullable=False)
-    timestamp = db.Column(db.DateTime, default=get_current_time)
+    from ..utils import get_current_time  # Local import
+    timestamp = db.Column(db.DateTime, default=get_current_time)  # Use get_current_time here
 
     def __init__(self, employee_id=None, user_id=None, action=None):
         self.employee_id = employee_id
@@ -107,7 +107,7 @@ class Guest(db.Model, UserMixin):
     check_out_date = db.Column(db.DateTime, nullable=True)
     room_id = db.Column(db.Text, db.ForeignKey('rooms.room_id'), nullable=True)
     status = db.Column(db.Text, server_default='completed', nullable=False)
-    password_hash = db.Column(db.Text, nullable=True)  # Added for password support
+    password_hash = db.Column(db.Text, nullable=True)
     __table_args__ = (db.Index('idx_guests_room_id', 'room_id'),)
 
     def is_active(self):

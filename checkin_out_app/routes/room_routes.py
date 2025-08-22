@@ -1,28 +1,28 @@
-from flask import Blueprint, jsonify, render_template, request
-from flask_jwt_extended import jwt_required, get_jwt_identity
-from ..models import db, Room, Booking, Guest, User  # Added User
+from flask import Blueprint, jsonify, render_template, request, current_app
+from flask_login import login_required, current_user
+from ..models import db, Room, Booking, Guest, User 
 from ..utils import sanitize_input, get_current_time, encrypt_data, validate_date, parse_date
 from ..utils import get_mpesa_access_token, validate_mpesa_signature
 import requests
 import re
 import uuid
 import base64
-from flask_socketio import socketio  # Ensure socketio is imported
-from datetime import date  # Added for date.today()
+from flask_socketio import socketio
+from datetime import date  
 
 room_bp = Blueprint('room', __name__, url_prefix='/rooms')
 
 @room_bp.route('/status', methods=['GET'])
-@jwt_required()
+@login_required
 def room_status():
-    username = sanitize_input(get_jwt_identity())
+    if not current_user.is_authenticated:
+        return jsonify({'error': 'User not found'}), 404
+    
+    username = sanitize_input(current_user.username)
     session = db.session  # Use session directly
     try:
-        user = session.query(User).filter_by(username=username).first()
-        if not user:
-            return jsonify({'error': 'User not found'}), 404
-        page = int(sanitize_input(request.args.get('page', 1)))
-        per_page = int(sanitize_input(request.args.get('per_page', 50)))
+        page = int(sanitize_input(request.args.get('page', '1'))) if request.args.get('page', '1').isdigit() else 1
+        per_page = int(sanitize_input(request.args.get('per_page', '50'))) if request.args.get('per_page', '50').isdigit() else 50
         offset = (page - 1) * per_page
         total_rooms = session.query(Room).count()
         rooms = session.query(Room).order_by(Room.room_id).limit(per_page).offset(offset).all()
@@ -40,14 +40,14 @@ def room_status():
     })
 
 @room_bp.route('/book', methods=['POST'])
-@jwt_required()
+@login_required
 def book_room():
-    username = sanitize_input(get_jwt_identity())
+    if not current_user.is_authenticated:
+        return jsonify({'error': 'User not found'}), 404
+    
+    username = sanitize_input(current_user.username)
     session = db.session  # Use session directly
     try:
-        user = session.query(User).filter_by(username=username).first()
-        if not user:
-            return jsonify({'error': 'User not found'}), 404
         data = request.get_json()
         guest_name = sanitize_input(data.get('guest_name'))
         room_id = sanitize_input(data.get('room_id'))
@@ -68,9 +68,9 @@ def book_room():
         if session.query(Booking).filter(Booking.room_id == room_id, Booking.status.notin_(['cancelled', 'checked_out']), Booking.check_in_date <= check_out_date, Booking.check_out_date >= check_in_date).first():
             return jsonify({'error': 'Room booked for selected dates'}), 400
         guest_id = str(uuid.uuid4())
-        encrypted_name = encrypt_guest_name(guest_name)
+        encrypted_name = encrypt_data(guest_name)  # Corrected function name
         nights = (check_out - check_in).days
-        amount = app.config['ROOM_PRICING'][room.room_type] * nights
+        amount = current_app.config['ROOM_PRICING'][room.room_type] * nights
         if payment_method == 'mpesa':
             phone_number = sanitize_input(data.get('phone_number'))
             if not phone_number or not re.match(r'^2547\d{8}$', phone_number):
@@ -79,16 +79,16 @@ def book_room():
             if not access_token:
                 return jsonify({'error': 'M-Pesa access token error'}), 500
             timestamp = get_current_time().strftime('%Y%m%d%H%M%S')
-            password = base64.b64encode(f"{app.config['MPESA_SHORTCODE']}{app.config['MPESA_PASSKEY']}{timestamp}".encode()).decode()
+            password = base64.b64encode(f"{current_app.config['MPESA_SHORTCODE']}{current_app.config['MPESA_PASSKEY']}{timestamp}".encode()).decode()
             headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
             payload = {
-                "BusinessShortCode": app.config['MPESA_SHORTCODE'],
+                "BusinessShortCode": current_app.config['MPESA_SHORTCODE'],
                 "Password": password,
                 "Timestamp": timestamp,
                 "TransactionType": "CustomerPayBillOnline",
                 "Amount": amount,
                 "PartyA": phone_number,
-                "PartyB": app.config['MPESA_SHORTCODE'],
+                "PartyB": current_app.config['MPESA_SHORTCODE'],
                 "PhoneNumber": phone_number,
                 "CallBackURL": f"{request.host_url}mpesa/callback",
                 "AccountReference": f"Booking-{guest_id}",
@@ -112,15 +112,15 @@ def book_room():
     return jsonify({'success': True, 'message': 'Room booked'})
 
 @room_bp.route('/', methods=['GET'], endpoint='room')  # New route for 'room.room'
-@jwt_required()
+@login_required
 def room_home():
-    username = sanitize_input(get_jwt_identity())
+    if not current_user.is_authenticated:
+        return jsonify({'error': 'User not found'}), 404
+    
+    username = sanitize_input(current_user.username)
     session = db.session  # Use session directly
     try:
-        user = session.query(User).filter_by(username=username).first()
-        if not user:
-            return jsonify({'error': 'User not found'}), 404
         rooms = session.query(Room).all()
     finally:
         session.close()  # Optional: Close session if not using autocommit
-    return render_template('room.html', rooms=rooms, hasLoggedIn=True, username=username, userRole='admin')
+    return render_template('room.html', rooms=rooms, hasLoggedIn=True, username=username, userRole=current_user.role)

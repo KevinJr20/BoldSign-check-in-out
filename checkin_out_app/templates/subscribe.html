@@ -359,11 +359,11 @@ Subscription - {{ config.company_name or 'Hospitality' }}
           <input type="hidden" name="payment_method" value="mpesa">
           <div class="mb-4">
             <label for="mpesa_amount" class="block text-sm font-medium mb-1">Amount (USD)</label>
-            <input type="number" name="amount" id="mpesa_amount" value="" class="p-2 border rounded-lg w-full" readonly>
+            <input type="number" name="amount" id="mpesa_amount" value="" class="p-2 border rounded-lg w-full">
           </div>
           <div class="mb-4">
-            <label for="phone_number" class="block text-sm font-medium mb-1">Phone Number (e.g., 2547XXXXXXXX)</label>
-            <input type="text" name="phone_number" id="phone_number" placeholder="2547XXXXXXXX" class="p-2 border rounded-lg w-full" required>
+            <label for="phone_number" class="block text-sm font-medium mb-1">Phone Number (e.g., 2547********)</label>
+            <input type="text" name="phone_number" id="phone_number" placeholder="2547********" class="p-2 border rounded-lg w-full" required>
           </div>
           <button type="submit" class="theme-button py-2 rounded-lg transition-colors duration-300" aria-label="Pay with M-Pesa">Confirm Payment</button>
         </form>
@@ -373,7 +373,7 @@ Subscription - {{ config.company_name or 'Hospitality' }}
           <input type="hidden" name="payment_method" value="card">
           <div class="mb-4">
             <label for="card_amount" class="block text-sm font-medium mb-1">Amount (USD)</label>
-            <input type="number" name="amount" id="card_amount" value="" class="p-2 border rounded-lg w-full" readonly>
+            <input type="number" name="amount" id="card_amount" value="" class="p-2 border rounded-lg w-full">
           </div>
           <div id="card-element" class="mb-4 p-2 border rounded-lg"></div>
           <div id="card-errors" class="text-red-500 text-sm mb-4" role="alert"></div>
@@ -385,7 +385,7 @@ Subscription - {{ config.company_name or 'Hospitality' }}
           <input type="hidden" name="payment_method" value="paypal">
           <div class="mb-4">
             <label for="paypal_amount" class="block text-sm font-medium mb-1">Amount (USD)</label>
-            <input type="number" name="amount" id="paypal_amount" value="" class="p-2 border rounded-lg w-full" readonly>
+            <input type="number" name="amount" id="paypal_amount" value="" class="p-2 border rounded-lg w-full">
           </div>
           <div id="paypal-button-container"></div>
           <div id="paypal-errors" class="text-red-500 text-sm mb-4" role="alert"></div>

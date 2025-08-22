@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify, flash
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_login import login_required, current_user
 from ..models import db, Guest, User
 from ..utils import sanitize_input, encrypt_data, decrypt_data, get_current_time
 from flask_socketio import socketio
@@ -11,16 +11,16 @@ guest_bp = Blueprint('guest', __name__, url_prefix='/guests')
 logger = logging.getLogger(__name__)
 
 @guest_bp.route('/records', methods=['GET'])
-@jwt_required()
+@login_required
 def guest_records_api():
-    username = sanitize_input(get_jwt_identity())
+    if not current_user.is_authenticated or current_user.role not in ['admin', 'guest']:
+        return jsonify({'status': 'error', 'message': 'Access denied'}), 403
+    
+    username = sanitize_input(current_user.username)
     with db.session() as session:
         try:
-            user = session.query(User).filter_by(username=username).first()
-            if not user or user.role not in ['admin', 'guest']:
-                return jsonify({'status': 'error', 'message': 'Access denied'}), 403
-            page = max(1, int(sanitize_input(request.args.get('page', 1))))  # Prevent negative page
-            per_page = min(100, max(1, int(sanitize_input(request.args.get('per_page', 50)))))  # Cap at 100
+            page = max(1, int(sanitize_input(request.args.get('page', '1'))) if request.args.get('page', '1').isdigit() else 1)  # Prevent negative page
+            per_page = min(100, max(1, int(sanitize_input(request.args.get('per_page', '50'))) if request.args.get('per_page', '50').isdigit() else 50))  # Cap at 100
             offset = (page - 1) * per_page
             total_guests = session.query(Guest).filter_by(status='checked_in').count()
             guests = (session.query(Guest)
@@ -54,16 +54,16 @@ def guest_records_api():
             return jsonify({'status': 'error', 'message': 'An error occurred'}), 500
 
 @guest_bp.route('/guest_records', methods=['GET'])
-@jwt_required()
+@login_required
 def guest_records():
-    username = sanitize_input(get_jwt_identity())
+    if not current_user.is_authenticated or current_user.role not in ['admin', 'guest']:
+        return jsonify({'status': 'error', 'message': 'Access denied'}), 403
+    
+    username = sanitize_input(current_user.username)
     with db.session() as session:
         try:
-            user = session.query(User).filter_by(username=username).first()
-            if not user or user.role not in ['admin', 'guest']:
-                return jsonify({'status': 'error', 'message': 'Access denied'}), 403
-            page = max(1, int(sanitize_input(request.args.get('page', 1))))
-            per_page = min(100, max(1, int(sanitize_input(request.args.get('per_page', 50)))))
+            page = max(1, int(sanitize_input(request.args.get('page', '1'))) if request.args.get('page', '1').isdigit() else 1)
+            per_page = min(100, max(1, int(sanitize_input(request.args.get('per_page', '50'))) if request.args.get('per_page', '50').isdigit() else 50))
             offset = (page - 1) * per_page
             total_guests = session.query(Guest).filter_by(status='checked_in').count()
             guests = (session.query(Guest)
@@ -80,19 +80,22 @@ def guest_records():
                 'total_items': total_guests,
                 'total_pages': (total_guests + per_page - 1) // per_page
             }
-            return render_template('guest_records.html', records=guests, pagination=pagination, hasLoggedIn=True, userRole=user.role)
+            return render_template('guest_records.html', records=guests, pagination=pagination, hasLoggedIn=True, userRole=current_user.role)
         except ValueError as e:
             flash('Invalid page or per_page parameter.', 'danger')
-            return render_template('guest_records.html', records=[], pagination={}, hasLoggedIn=True, userRole=user.role)
+            return render_template('guest_records.html', records=[], pagination={}, hasLoggedIn=True, userRole=current_user.role)
         except Exception as e:
             logger.error(f"Error in guest_records: {str(e)}")
             flash('An error occurred while loading records.', 'danger')
-            return render_template('guest_records.html', records=[], pagination={}, hasLoggedIn=True, userRole=user.role)
+            return render_template('guest_records.html', records=[], pagination={}, hasLoggedIn=True, userRole=current_user.role)
 
 @guest_bp.route('/check_in', methods=['POST'])
-@jwt_required()
+@login_required
 def guest_check_in():
-    username = sanitize_input(get_jwt_identity())
+    if not current_user.is_authenticated or current_user.role not in ['admin', 'guest']:
+        return jsonify({'status': 'error', 'message': 'Access denied'}), 403
+    
+    username = sanitize_input(current_user.username)
     data = request.get_json()
     guest_id = sanitize_input(data.get('guest_id'))
     name = sanitize_input(data.get('name'))
@@ -123,9 +126,12 @@ def guest_check_in():
             return jsonify({'status': 'error', 'message': 'An error occurred'}), 500
 
 @guest_bp.route('/check_out', methods=['POST'])
-@jwt_required()
+@login_required
 def guest_check_out():
-    username = sanitize_input(get_jwt_identity())
+    if not current_user.is_authenticated or current_user.role not in ['admin', 'guest']:
+        return jsonify({'status': 'error', 'message': 'Access denied'}), 403
+    
+    username = sanitize_input(current_user.username)
     data = request.get_json()
     guest_id = sanitize_input(data.get('guest_id'))
     if not guest_id:

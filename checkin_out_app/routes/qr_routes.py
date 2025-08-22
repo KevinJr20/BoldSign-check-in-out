@@ -1,22 +1,22 @@
 from flask import Blueprint, jsonify, render_template, request
-from flask_jwt_extended import jwt_required, get_jwt_identity
-from ..models import db, User, Employee, Guest, QrCode, Attendance 
+from flask_login import login_required, current_user
+from ..models import db, User, Employee, Guest, QrCode, Attendance, Booking
 from ..utils import sanitize_input, get_current_time, decrypt_data
 import uuid
 from datetime import timedelta
-from flask_socketio import socketio 
+from flask_socketio import socketio
 
 qr_bp = Blueprint('qr', __name__, url_prefix='/qr')
 
 @qr_bp.route('/scan', methods=['POST'])
-@jwt_required()
+@login_required
 def qr_scan():
-    username = sanitize_input(get_jwt_identity())
+    if not current_user.is_authenticated or current_user.role not in ['admin', 'employee']:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    username = sanitize_input(current_user.username)
     session = db.session  # Use session directly
     try:
-        user = session.query(User).filter_by(username=username).first()
-        if not user or user.role not in ['admin', 'employee']:
-            return jsonify({'error': 'Access denied'}), 403
         data = request.get_json()
         qr_code = sanitize_input(data.get('qr_code'))
         if not qr_code:
@@ -60,7 +60,7 @@ def qr_scan():
             session.commit()
             socketio.emit('guest_status_update', {
                 'guest_id': user_id,
-                'name': decrypt_guest_name(guest.name),
+                'name': decrypt_data(guest.name),
                 'action': 'check-in',
                 'date': guest.check_in_date
             })
@@ -73,14 +73,14 @@ def qr_scan():
         session.close()  # Optional: Close session if not using autocommit
 
 @qr_bp.route('/generate', methods=['POST'])
-@jwt_required()
+@login_required
 def generate_qr():
-    username = sanitize_input(get_jwt_identity())
+    if not current_user.is_authenticated or current_user.role != 'admin':
+        return jsonify({'error': 'Access denied'}), 403
+    
+    username = sanitize_input(current_user.username)
     session = db.session  # Use session directly
     try:
-        user = session.query(User).filter_by(username=username).first()
-        if not user or user.role != 'admin':
-            return jsonify({'error': 'Access denied'}), 403
         data = request.get_json()
         user_id = sanitize_input(data.get('user_id'))
         user_type = sanitize_input(data.get('user_type'))
@@ -103,15 +103,15 @@ def generate_qr():
     return jsonify({'success': True, 'qr_code': qr_code, 'expires_at': expires_at.isoformat()})
 
 @qr_bp.route('/', methods=['GET'], endpoint='qr')  # New route for 'qr.qr'
-@jwt_required()
+@login_required
 def qr_home():
-    username = sanitize_input(get_jwt_identity())
+    if not current_user.is_authenticated or current_user.role not in ['admin', 'employee']:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    username = sanitize_input(current_user.username)
     session = db.session  # Use session directly
     try:
-        user = session.query(User).filter_by(username=username).first()
-        if not user or user.role not in ['admin', 'employee']:
-            return jsonify({'error': 'Access denied'}), 403
         qrs = session.query(QrCode).filter_by(used=False).all()
     finally:
         session.close()  # Optional: Close session if not using autocommit
-    return render_template('qr.html', qrs=qrs, hasLoggedIn=True, username=username, userRole=user.role)
+    return render_template('qr.html', qrs=qrs, hasLoggedIn=True, username=username, userRole=current_user.role)
